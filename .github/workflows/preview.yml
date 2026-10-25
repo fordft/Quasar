@@ -82,6 +82,11 @@ jobs:
         run: |
           python3 scripts/release/prepare-linux-runtime.py
           echo "LD_LIBRARY_PATH=$GITHUB_WORKSPACE/target/linux-runtime/root/usr/lib/x86_64-linux-gnu" >> "$GITHUB_ENV"
+      - name: Verify Linux runtime dependencies
+        if: matrix.platform == 'linux'
+        run: |
+          ldd target/linux-runtime/root/usr/lib/x86_64-linux-gnu/libwebkit2gtk-4.1.so.0
+          python3 -c 'import ctypes; w = ctypes.CDLL("libwebkit2gtk-4.1.so.0"); v = [getattr(w, "webkit_get_" + p + "_version")() for p in ("major", "minor", "micro")]; print("Bundled WebKitGTK:", v); assert v == [2, 54, 2]'
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           shared-key: preview-${{ matrix.platform }}
@@ -98,7 +103,7 @@ jobs:
         env:
           APPIMAGE_EXTRACT_AND_RUN: '1'
         run: >-
-          pnpm -C desktop build --bundles appimage
+          pnpm -C desktop build --verbose --bundles appimage
           --config '{"build":{"beforeBuildCommand":null},"bundle":{"createUpdaterArtifacts":false,"resources":{"../target/THIRD_PARTY_NOTICES.txt":"licenses/THIRD_PARTY_NOTICES.txt"}}}'
       - name: Build macOS preview
         if: matrix.platform == 'macos'
@@ -144,6 +149,13 @@ jobs:
           path: target/preview-smoke/
           if-no-files-found: ignore
           retention-days: 7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure() && matrix.platform == 'linux'
+        with:
+          name: linux-packaging-diagnostics
+          path: target/release/Quasar
+          if-no-files-found: ignore
+          retention-days: 3
 
   ci:
     name: Main CI for the preview commit
