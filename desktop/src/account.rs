@@ -13,6 +13,7 @@ static MIGRATION_PENDING: AtomicBool = AtomicBool::new(false);
 #[serde(rename_all = "snake_case")]
 pub(crate) enum AccountFaultV1 {
     Offline,
+    Browser,
     Protocol,
     InvalidIdentity,
     InvalidCallback,
@@ -204,14 +205,48 @@ async fn reply(result: Result<(), AccountFaultV1>) -> AccountReplyV1 {
 
 /// Opens only a native-constructed authorization or fixed usage URL. Neither
 /// the URL nor the optional ID-token hint passes through chrome or diagnostics.
-async fn open_system(app: &tauri::AppHandle, url: String) -> bool {
+async fn open_system(app: &tauri::AppHandle, url: String, external_auth: bool) -> bool {
     let (send, receive) = tokio::sync::oneshot::channel();
     if app
         .run_on_main_thread(move || {
             #[cfg(target_os = "macos")]
             let opened = {
-                use objc2_app_kit::NSWorkspace;
-                use objc2_foundation::{NSString, NSURL};
+                use objc2_app_kit::{
+                    NSRunningApplication, NSWorkspace, NSWorkspaceOpenConfiguration,
+                };
+                use objc2_foundation::{NSArray, NSError, NSString, NSURL};
+                if external_auth {
+                    // A browser must not send OAuth URLs or ID-token hints to
+                    // its own tab/chrome projections when it becomes default.
+                    let workspace = NSWorkspace::sharedWorkspace();
+                    let target = NSURL::URLWithString(&NSString::from_str(&url));
+                    let browser = workspace.URLForApplicationWithBundleIdentifier(
+                        &NSString::from_str("com.apple.Safari"),
+                    );
+                    let (Some(target), Some(browser)) = (target, browser) else {
+                        let _ = send.send(false);
+                        return;
+                    };
+                    let answer = std::sync::Mutex::new(Some(send));
+                    let done = block2::RcBlock::new(
+                        move |application: *mut NSRunningApplication, error: *mut NSError| {
+                            if let Some(send) =
+                                answer.lock().unwrap_or_else(|p| p.into_inner()).take()
+                            {
+                                let _ = send.send(!application.is_null() && error.is_null());
+                            }
+                        },
+                    );
+                    let configuration = NSWorkspaceOpenConfiguration::configuration();
+                    configuration.setAddsToRecentItems(false);
+                    workspace.openURLs_withApplicationAtURL_configuration_completionHandler(
+                        &NSArray::from_retained_slice(&[target]),
+                        &browser,
+                        &configuration,
+                        Some(&done),
+                    );
+                    return;
+                }
                 NSURL::URLWithString(&NSString::from_str(&url))
                     .is_some_and(|url| NSWorkspace::sharedWorkspace().openURL(&url))
             };
@@ -220,7 +255,14 @@ async fn open_system(app: &tauri::AppHandle, url: String) -> bool {
                 use windows::core::{w, PCWSTR};
                 use windows::Win32::UI::Shell::ShellExecuteW;
                 use windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
-                let wide: Vec<u16> = url.encode_utf16().chain(Some(0)).collect();
+                // The stock external browser keeps the OAuth flow outside
+                // Quasar even when Quasar owns the http/https associations.
+                let address = if external_auth {
+                    format!("microsoft-edge:{url}")
+                } else {
+                    url
+                };
+                let wide: Vec<u16> = address.encode_utf16().chain(Some(0)).collect();
                 // SAFETY: both strings are NUL terminated and remain alive for the call.
                 unsafe {
                     ShellExecuteW(
@@ -237,7 +279,7 @@ async fn open_system(app: &tauri::AppHandle, url: String) -> bool {
             };
             #[cfg(not(any(target_os = "macos", target_os = "windows")))]
             let opened = {
-                let _ = url;
+                let _ = (url, external_auth);
                 false
             };
             let _ = send.send(opened);
@@ -294,7 +336,7 @@ pub(crate) async fn account_sign_in(
         Err(e) => return reply(Err(e.into())).await,
     };
     let app = caller.app_handle().clone();
-    if !open_system(&app, authorization.url().to_owned()).await {
+    if !open_system(&app, authorization.url().to_owned(), true).await {
         runtime.cancel();
         return AccountReplyV1 {
             account: empty(),
@@ -362,7 +404,12 @@ pub(crate) async fn account_manage_usage(caller: WebviewWindow) -> bool {
     if !authorize(&caller, CallerPolicy::Main, "account_manage_usage") {
         return false;
     }
-    open_system(caller.app_handle(), quasar_chatgpt::USAGE_URL.to_owned()).await
+    open_system(
+        caller.app_handle(),
+        quasar_chatgpt::USAGE_URL.to_owned(),
+        false,
+    )
+    .await
 }
 #[tauri::command]
 #[specta::specta]

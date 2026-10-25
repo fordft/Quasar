@@ -3,6 +3,8 @@ import * as m from "$shared/i18n/messages";
 
 export function explainAccountFault(fault: AccountFaultV1): string {
   switch (fault) {
+    case "browser":
+      return m.chatgpt_error_open();
     case "offline":
       return m.chatgpt_error_offline();
     case "denied":
