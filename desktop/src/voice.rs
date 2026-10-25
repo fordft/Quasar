@@ -298,7 +298,7 @@ mod product {
     }
 
     pub(super) async fn resolve() -> Resolved {
-        tauri::async_runtime::spawn(zephium_app::work_models::refresh_cloud_catalog());
+        tauri::async_runtime::spawn(zephium_app::work_models::refresh_catalog());
         let chosen = voice::chosen();
         let language = voice::language();
         let cloud = voice::cloud_engines().await;

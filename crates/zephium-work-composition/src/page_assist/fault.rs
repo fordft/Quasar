@@ -70,6 +70,13 @@ pub(crate) fn provider_name(provider: WorkModelProvider) -> &'static str {
 pub(crate) fn cost(entry: &WorkModelEntry, usage: &WorkModelUsage) -> PageAssistCostV1 {
     let model = entry.display_name.clone();
     match entry.model.provider {
+        // Preserve the existing direct-call wire shape for stored histories.
+        // ChatGPT plan usage has no API dollar price or Zephium credit charge.
+        WorkModelProvider::OpenAi => PageAssistCostV1::Byok {
+            model,
+            provider: "ChatGPT".into(),
+            usd: None,
+        },
         WorkModelProvider::Cloud => PageAssistCostV1::Hosted {
             model,
             credits: None,

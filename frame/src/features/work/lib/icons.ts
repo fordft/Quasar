@@ -32,7 +32,6 @@ export { default as GlobalIcon } from "@hugeicons/core-free-icons/GlobalIcon";
 export { default as HandIcon } from "@hugeicons/core-free-icons/HandIcon";
 export { default as HelpCircleIcon } from "@hugeicons/core-free-icons/HelpCircleIcon";
 export { default as Image01Icon } from "@hugeicons/core-free-icons/Image01Icon";
-export { default as Key01Icon } from "@hugeicons/core-free-icons/Key01Icon";
 export { default as LayoutGridIcon } from "@hugeicons/core-free-icons/LayoutGridIcon";
 export { default as Link04Icon } from "@hugeicons/core-free-icons/Link04Icon";
 export { default as LockIcon } from "@hugeicons/core-free-icons/LockIcon";

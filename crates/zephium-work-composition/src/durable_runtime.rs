@@ -16,7 +16,6 @@ use std::{
 use zephium_agent_controller::{
     AgentBrowserModel, AgentBrowserModelAccess, AgentWorkEventKind, AgentWorkFailure,
 };
-use zephium_agent_provider_transport::AgentProviderCredential;
 use zephium_agentic::*;
 use zephium_app::{
     work_agent::{
@@ -3456,77 +3455,13 @@ async fn configure_decisions(
         return Err(WorkError::Capacity);
     }
     let provider = match preference {
-        WorkDecisionPreference::Recommended => {
-            match load_decision_credential(
-                load_development_typesafe_credential,
-                deadline.min(Instant::now() + DECISION_CREDENTIAL_WAIT),
-            )
-            .await
-            {
-                Ok(credential) => AgentBrowserDecisionProvider::TypeSafe(credential),
-                Err(cause) => {
-                    zephium_app::work_trace::record(format_args!(
-                        "work: phase=decisions requested=recommended backend=emulation cause={cause}"
-                    ));
-                    AgentBrowserDecisionProvider::Emulation
-                }
-            }
+        WorkDecisionPreference::Recommended | WorkDecisionPreference::Emulation => {
+            AgentBrowserDecisionProvider::Emulation
         }
-        WorkDecisionPreference::Interactions => {
-            match load_decision_credential(
-                load_development_typesafe_credential,
-                deadline.min(Instant::now() + DECISION_CREDENTIAL_WAIT),
-            )
-            .await
-            {
-                Ok(credential) => AgentBrowserDecisionProvider::TypeSafeActions(credential),
-                Err(cause) => {
-                    zephium_app::work_trace::record(format_args!("work: phase=decisions requested=interactions backend=planner cause={cause}"));
-                    return Ok(());
-                }
-            }
-        }
-        WorkDecisionPreference::Emulation => AgentBrowserDecisionProvider::Emulation,
-        WorkDecisionPreference::Disabled => return Ok(()),
+        WorkDecisionPreference::Interactions | WorkDecisionPreference::Disabled => return Ok(()),
     };
     invocation.input.set_decision_provider(provider);
     Ok(())
-}
-/// How long a page waits for the decision key before reading with the
-/// emulated decisions instead. A Keychain that stalls (a locked keychain, an
-/// access prompt nobody answers) must not spend the page's time to get ready.
-const DECISION_CREDENTIAL_WAIT: Duration = Duration::from_secs(5);
-
-/// A Keychain that stalled once is not waited on again by the pages after it.
-static DECISION_CREDENTIAL_STALLED: std::sync::atomic::AtomicBool =
-    std::sync::atomic::AtomicBool::new(false);
-
-async fn load_decision_credential<T, E>(
-    load: fn() -> Result<T, E>,
-    until: Instant,
-) -> Result<T, String>
-where
-    T: Send + 'static,
-    E: std::fmt::Debug + Send + 'static,
-{
-    use std::sync::atomic::Ordering;
-    if DECISION_CREDENTIAL_STALLED.load(Ordering::Acquire) {
-        return Err("Stalled".into());
-    }
-    match tokio::time::timeout_at(
-        tokio::time::Instant::from_std(until),
-        tokio::task::spawn_blocking(load),
-    )
-    .await
-    {
-        Ok(Ok(Ok(credential))) => Ok(credential),
-        Ok(Ok(Err(error))) => Err(format!("{error:?}")),
-        Ok(Err(_)) => Err("Join".into()),
-        Err(_) => {
-            DECISION_CREDENTIAL_STALLED.store(true, Ordering::Release);
-            Err("Timeout".into())
-        }
-    }
 }
 
 struct ResumeCompile {
@@ -3594,20 +3529,7 @@ async fn resume_access(
 ) -> Result<AgentBrowserModelAccess, WorkError> {
     match chosen {
         Some(model) => Ok(AgentBrowserModelAccess::Chosen(model.clone())),
-        None => load_resume_credential().await.map(Into::into),
-    }
-}
-async fn load_resume_credential() -> Result<AgentProviderCredential, WorkError> {
-    #[cfg(any(target_os = "macos", target_os = "windows"))]
-    {
-        tokio::task::spawn_blocking(zephium_agentic::load_development_openai_credential)
-            .await
-            .map_err(|_| WorkError::Unavailable)?
-            .map_err(|_| WorkError::Unavailable)
-    }
-    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
-    {
-        Err(WorkError::Unavailable)
+        None => Err(WorkError::Unavailable),
     }
 }
 fn add_usage(a: WorkUsage, b: WorkUsage) -> Option<WorkUsage> {
@@ -4448,29 +4370,6 @@ mod page_objective_tests {
         let objective = fit_objective(&overall, &step, None).expect("fits");
         assert!(objective.len() <= MAX_PAGE_OBJECTIVE_BYTES);
         assert!(admitted(&objective));
-    }
-}
-
-#[cfg(test)]
-mod decision_credential_tests {
-    use super::*;
-
-    fn stalls() -> Result<u8, ()> {
-        std::thread::sleep(Duration::from_secs(2));
-        Ok(1)
-    }
-
-    #[tokio::test]
-    async fn a_stalled_keychain_falls_back_at_once_and_is_not_waited_on_again() {
-        let started = Instant::now();
-        let first =
-            load_decision_credential(stalls, Instant::now() + Duration::from_millis(50)).await;
-        assert_eq!(first, Err("Timeout".to_owned()));
-        assert!(started.elapsed() < Duration::from_secs(1));
-        let again =
-            load_decision_credential(stalls, Instant::now() + Duration::from_secs(30)).await;
-        assert_eq!(again, Err("Stalled".to_owned()));
-        assert!(started.elapsed() < Duration::from_secs(1));
     }
 }
 

@@ -7,23 +7,9 @@ import type {
   WorkModelsV1,
 } from "$shared/ipc/bindings";
 
-/** Providers that take the person's own key, in the order they are shown. */
-export const keyedProviders: readonly WorkModelProvider[] = [
-  "anthropic",
-  "open_ai",
-  "google",
-  "xai",
-  "mistral",
-  "deep_seek",
-  "groq",
-  "cerebras",
-  "open_router",
-  "compatible",
-];
-
 const names: Record<WorkModelProvider, string> = {
   anthropic: "Anthropic",
-  open_ai: "OpenAI",
+  open_ai: "ChatGPT",
   google: "Google",
   deep_seek: "DeepSeek",
   open_router: "OpenRouter",
@@ -32,7 +18,7 @@ const names: Record<WorkModelProvider, string> = {
   groq: "Groq",
   cerebras: "Cerebras",
   compatible: "Custom",
-  cloud: "Zephium AI",
+  cloud: "Retired account",
 };
 
 export function providerName(provider: WorkModelProvider): string {
@@ -48,47 +34,26 @@ export function shortName(entry: WorkModelEntry): string {
   return name;
 }
 
-export function keyState(models: WorkModelsV1 | null, provider: WorkModelProvider): WorkKeyStateV1 {
+function keyState(models: WorkModelsV1 | null, provider: WorkModelProvider): WorkKeyStateV1 {
   return models?.providers.find((row) => row.provider === provider)?.key ?? "missing";
 }
 
-/** A provider can run calls now: its key is set and not refused. */
+/** Only the connected ChatGPT account can authorize current model calls. */
 export function usable(models: WorkModelsV1 | null, provider: WorkModelProvider): boolean {
-  if (!models) return false;
-  if (provider === "cloud")
-    return (
-      models.cloud.signed_in &&
-      models.entries.some(
-        (entry) => entry.model.provider === "cloud" && !models.cloud.locked.includes(entry.id),
-      )
-    );
-  if (provider === "compatible")
-    return (
-      !!models.providers.find((row) => row.provider === "compatible")?.base &&
-      keyState(models, provider) !== "invalid"
-    );
-  const key = keyState(models, provider);
-  return key === "set" || key === "valid";
+  return provider === "open_ai" && keyState(models, provider) === "valid";
 }
 
 type ModelGroup = { provider: WorkModelProvider; entries: WorkModelEntry[] };
 
-/** Without a key, only these appear in the picker; Settings → AI offers every provider. */
-const suggested: readonly WorkModelProvider[] = ["anthropic", "open_ai", "google"];
-
-/**
- * The picker's list for a role: every curated model of usable providers,
- * recommended first, grouped by provider, the signed-in account's hosted
- * models first. The person's own server adds the models it serves.
- * The best-known providers without a key are listed apart, as needing one.
- */
+/** Preserve the account's discovered model order. Other providers in saved
+ * history or stale projections can never become selectable. */
 export function pickerGroups(
   models: WorkModelsV1 | null,
   role: WorkModelRole,
   endpoint: readonly WorkModelEntry[] = [],
 ) {
   const entries = [...(models?.entries ?? []), ...endpoint];
-  const order: readonly WorkModelProvider[] = ["cloud", ...keyedProviders];
+  const order: readonly WorkModelProvider[] = ["open_ai"];
   const ready: ModelGroup[] = [];
   const needsKey: WorkModelProvider[] = [];
   for (const provider of order) {
@@ -107,8 +72,6 @@ export function pickerGroups(
       .sort((a, b) => Number(b.recommended) - Number(a.recommended));
     if (usable(models, provider)) {
       if (offered.length) ready.push({ provider, entries: offered });
-    } else if (suggested.includes(provider)) {
-      needsKey.push(provider);
     }
   }
   return { ready, needsKey };
@@ -116,12 +79,16 @@ export function pickerGroups(
 
 /** A hosted model the account's plan does not include: listed to explain the plan, never chosen. */
 export function locked(models: WorkModelsV1 | null, id: string): boolean {
-  return !!models?.cloud.locked.includes(id);
+  void models;
+  void id;
+  return false;
 }
 
 /** The plan a locked hosted model needs, as the server names it; null when it does not say. */
 export function requiredPlan(models: WorkModelsV1 | null, id: string): string | null {
-  return models?.cloud.required.find((row) => row.id === id)?.plan ?? null;
+  void models;
+  void id;
+  return null;
 }
 
 export function entryOf(models: WorkModelsV1 | null, id: string | null | undefined) {
@@ -172,7 +139,7 @@ export function searchEntries(groups: readonly ModelGroup[], query: string): Wor
   return groups.flatMap((group) =>
     group.entries.filter((entry) => {
       const text =
-        `${entry.display_name} ${providerName(group.provider)} ${entry.model.model}`.toLocaleLowerCase();
+        `${entry.display_name} ${providerName(group.provider)} ${entry.model.model} ${entry.id}`.toLocaleLowerCase();
       return words.every((word) => text.includes(word));
     }),
   );

@@ -3,7 +3,7 @@ import { afterEach, test, vi } from "vitest";
 import { render } from "vitest-browser-svelte";
 import { page } from "vitest/browser";
 import type { AccountV1, ProfileEntryView, ProfilesView } from "$shared/ipc/bindings";
-import { accountFixture, usageFixture } from "$shared/testing/account";
+import { accountFixture } from "$shared/testing/account";
 import { preferences } from "$domain/preferences";
 import * as settings from "../lib/settings-state.svelte";
 import type { SettingsSection } from "../lib/settings-model";
@@ -105,15 +105,6 @@ const signedIn = (): AccountV1 => ({
   signed_in: true,
   email: "ada@example.com",
   name: "Ada Lovelace",
-  plan: "pro",
-  usage: usageFixture({ used_percent: 38, allowance_used: "760000" }),
-  subscription: {
-    status: "active",
-    plan: null,
-    interval: "monthly",
-    paid_until: "2026-11-02T00:00:00Z",
-    cancel_at_period_end: false,
-  },
 });
 
 const shots = "../../../../../target/look/profiles";
@@ -182,7 +173,7 @@ test("Account: signed out, the code step, and signed in with a plan", async () =
   await look("account-signed-out", async () => {});
   await screen.unmount();
 
-  native.account = { ...accountFixture(), pending_email: "ada@example.com", resend_in: 42 };
+  native.account = { ...accountFixture(), pending: true };
   screen = await settingsAt("account");
   await look("account-code", async () => {});
   await screen.unmount();

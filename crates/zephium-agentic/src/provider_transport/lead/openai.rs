@@ -187,18 +187,11 @@ impl Decoder {
                 let item = data.get("item").ok_or(WorkModelError::Protocol)?;
                 self.item(item, out)?;
             }
-            "response.completed" | "response.incomplete" => {
+            "response.incomplete" => return Err(WorkModelError::Protocol),
+            "response.completed" => {
                 let response = data.get("response").ok_or(WorkModelError::Protocol)?;
                 self.read_usage(response);
-                self.stop = Some(if kind == "response.incomplete" {
-                    match response
-                        .pointer("/incomplete_details/reason")
-                        .and_then(Value::as_str)
-                    {
-                        Some("content_filter") => WorkModelStop::Refused,
-                        _ => WorkModelStop::MaxTokens,
-                    }
-                } else if self.tool_calls > 0 {
+                self.stop = Some(if self.tool_calls > 0 {
                     WorkModelStop::ToolUse
                 } else if self.refused {
                     WorkModelStop::Refused

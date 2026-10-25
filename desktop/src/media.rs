@@ -333,9 +333,6 @@ fn resolve(
     if let Some(rest) = path.strip_prefix("avatar/") {
         return super::profiles::serve_avatar(app, rest);
     }
-    if let Some(rest) = path.strip_prefix("account-avatar/") {
-        return super::account::avatar::serve(rest);
-    }
     let width = thumb::width(query);
     if let Some(rest) = path.strip_prefix("frame/") {
         return serve_page_frame(app, rest, width);

@@ -1642,10 +1642,10 @@ where
                     "The Zephium account's session ended; sign in again in Settings → Account"
                 }
                 CallFailure::Refused(WorkModelError::MissingKey) => {
-                    "No key is set for the chosen model; add one in Settings → AI"
+                    "Connect ChatGPT and allow plan usage in Settings → Account"
                 }
                 CallFailure::Refused(WorkModelError::Unauthorized) => {
-                    "The model provider refused the key; check it in Settings → AI"
+                    "The ChatGPT session was refused; reconnect in Settings → Account"
                 }
                 CallFailure::Refused(WorkModelError::RateLimited { .. }) => {
                     "The model provider is limiting requests right now"

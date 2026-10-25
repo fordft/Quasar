@@ -21,9 +21,7 @@ it("finds the agent destinations without exposing unimplemented controls", async
   expect(searchSections("site access").some((section) => section.id === "sites")).toBe(true);
   expect(searchSections("MCP").some((section) => section.id === "mcp")).toBe(true);
   for (const query of ["API key", "Jev", "TypeSafe"]) {
-    expect(searchSettings(query).map(({ section, target }) => ({ section, target }))).toEqual([
-      { section: "ai", target: "work.decisions.key" },
-    ]);
+    expect(searchSettings(query)).toEqual([]);
   }
   expect(searchSettings("Decisions").some((result) => result.section === "work")).toBe(false);
   expect(searchSettings("reset settings").some((result) => result.target === "about.reset")).toBe(

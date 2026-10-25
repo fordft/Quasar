@@ -1,2 +1,2 @@
-/** Where Work's model can come from, as onboarding offers it. */
-export type Mind = "zephium" | "key" | "local";
+/** ChatGPT is the only AI account offered by Quasar. */
+export type Mind = "chatgpt";

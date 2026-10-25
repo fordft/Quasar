@@ -36,8 +36,8 @@
     search: Snippet;
     /** Opens this page's settings. */
     oncustomize?: () => void;
-    /** Opens the account in Settings, or straight onto buying credits. */
-    onaccount?: (intent: "account" | "credits") => void;
+    /** Opens the ChatGPT connection in Settings. */
+    onaccount?: () => void;
     /** Opens Tasks. */
     ontasks?: () => void;
     /** Opens Time. */

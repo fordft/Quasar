@@ -64,7 +64,6 @@ test("Settings pages in their final shape, both themes", async () => {
     signed_in: true,
     email: "ada@example.com",
     name: "Ada Lovelace",
-    plan: "pro",
   });
   screen = await render(SettingsLookStage);
   await settle();

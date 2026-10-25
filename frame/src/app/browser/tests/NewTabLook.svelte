@@ -4,10 +4,7 @@
   import { loadNewTabSearch } from "$features/search";
   import LazyView from "$shared/ui/LazyView";
 
-  let {
-    ontasks,
-    onaccount,
-  }: { ontasks?: () => void; onaccount?: (intent: "account" | "credits") => void } = $props();
+  let { ontasks, onaccount }: { ontasks?: () => void; onaccount?: () => void } = $props();
   const rows = ["Terax", "Proton VPN", "Wikipedia", "Figma", "ChatGPT", "New Tab"];
 </script>
 

@@ -426,8 +426,9 @@ pub enum PageAssistCostV1 {
         model: String,
         credits: Option<String>,
     },
-    /// The person's own key. `usd` is an estimate as a decimal string such
-    /// as "0.004"; null when no price is known.
+    /// Direct provider usage; the legacy `byok` tag preserves saved histories.
+    /// For new ChatGPT plan calls, `provider` is "ChatGPT" and `usd` is null.
+    /// Historical API-key estimates are decimal strings such as "0.004".
     Byok {
         model: String,
         provider: String,

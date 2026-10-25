@@ -1,292 +1,124 @@
-/**
- * The optional Zephium account, one per install. Rust owns the session, the
- * vault and every outcome; this mirrors its last answer. Codes and addresses
- * pass through once and are not kept here.
- */
+/** Native ChatGPT session projection. Tokens and authorization URLs stay native. */
 import {
   commands,
-  type AccountAvatarCropV1,
   type AccountFaultV1,
-  type AccountHistoryV1,
-  type AccountPurchaseV1,
   type AccountReplyV1,
-  type AccountRequestV1,
-  type AccountSessionV1,
   type AccountV1,
 } from "$shared/ipc/bindings";
 import { events } from "$shared/ipc/native-events";
 import { observe } from "$shared/lib/observe";
 
-const TIMEOUT = 15_000;
-/** Signing out tells the server first, and must not hang on it. */
-const SIGN_OUT_TIMEOUT = 30_000;
-/** Export waits on the person choosing where to save. */
-const EXPORT_TIMEOUT = 10 * 60_000;
-/** The picture is uploaded, converted by the service, then fetched again. */
-const AVATAR_TIMEOUT = 60_000;
-
-type AccountAction =
-  | "send"
-  | "verify"
-  | "sign_out"
-  | "sign_out_all"
-  | "buy"
-  | "manage"
-  | "revoke"
-  | "server"
-  | "deletion_code"
-  | "delete"
-  | "name"
-  | "reauth"
-  | "email_code"
-  | "email_change"
-  | "limit"
-  | "plan_preview"
-  | "plan_confirm"
-  | "plan_dismiss"
-  | "export"
-  | "avatar"
-  | "avatar_remove";
-
-type AccountFault = {
-  action: AccountAction;
-  fault: AccountFaultV1;
-  /** With `rate_limited`, seconds until another try. */
-  retryAfter: number | null;
-};
-
+type Action = "sign_in" | "cancel" | "select" | "sign_out" | "cleanup";
 let current = $state.raw<AccountV1 | null>(null);
 let unreachable = $state(false);
-let busy = $state<AccountAction | null>(null);
-let lastFault = $state.raw<AccountFault | null>(null);
-let moved = $state<string | null>(null);
+let busy = $state<Action | null>(null);
+let lastFault = $state.raw<{ action: Action; fault: AccountFaultV1 } | null>(null);
 let users = 0;
-let stop: (() => void) | null = null;
 let generation = 0;
-let reads = 0;
+let sequence = 0;
+let stop: (() => void) | null = null;
+let queued = false;
+let reading = false;
 
 export const account = () => current;
-export const unavailable = () => unreachable || (current !== null && !current.available);
+export const unavailable = () => unreachable || current?.available === false;
 export const pending = () => busy;
 export const fault = () => lastFault;
 
 function adopt(reply: AccountReplyV1 | undefined) {
-  if (reply?.account?.version !== 1) {
+  if (reply?.account?.version !== 1 || !Array.isArray(reply.account.profiles)) {
     unreachable = true;
     return;
   }
   unreachable = false;
   current = reply.account;
-  if (current.signed_in) moved = null;
 }
-
 async function read() {
-  const sequence = ++reads;
-  const started = generation;
-  const response = await observe(
-    Promise.resolve().then(() => commands.accountGet()),
-    TIMEOUT,
-  );
-  if (started !== generation || sequence !== reads) return;
-  if (response.state !== "received") {
-    if (!current) unreachable = true;
+  if (busy || reading) {
+    queued = true;
     return;
   }
-  adopt(response.value);
+  reading = true;
+  const started = generation;
+  const turn = ++sequence;
+  const result = await observe(
+    Promise.resolve().then(() => commands.accountGet()),
+    15000,
+  );
+  if (started !== generation) return;
+  reading = false;
+  if (turn === sequence) {
+    if (result.state === "received") adopt(result.value);
+    else unreachable = true;
+  }
+  if (queued && !busy) {
+    queued = false;
+    void read();
+  }
 }
-
-/**
- * Starts mirroring; each user calls `release` when done. The listener is in
- * place before the first read, so a change in between is never lost.
- */
 export async function retain() {
-  users += 1;
+  users++;
   if (users > 1) {
-    // A first read that failed is retried by the next user.
-    if (!current) await read();
+    if (!current || unreachable) void read();
     return;
   }
   const started = ++generation;
-  const unlisten = await events.accountChanged.listen(() => void read());
+  const listener = await events.accountChanged.listen(() => void read());
   if (started !== generation || users === 0) {
-    unlisten();
+    listener();
     return;
   }
-  stop = unlisten;
+  stop = listener;
   await read();
 }
-
 export function release() {
   users = Math.max(0, users - 1);
-  if (users > 0) return;
-  generation += 1;
+  if (users) return;
+  generation++;
+  sequence++;
   stop?.();
   stop = null;
+  reading = false;
+  queued = false;
   busy = null;
   lastFault = null;
-  moved = null;
+  current = null;
+  unreachable = false;
 }
-
-async function act(
-  action: AccountAction,
-  request: () => Promise<AccountReplyV1>,
-  timeout = TIMEOUT,
-): Promise<boolean> {
+async function act(action: Action, request: () => Promise<AccountReplyV1>) {
   if (busy) return false;
+  const started = generation;
+  sequence++;
   busy = action;
   lastFault = null;
-  reads += 1;
-  const started = generation;
-  const response = await observe(Promise.resolve().then(request), timeout);
+  const result = await observe(Promise.resolve().then(request), 30000);
   if (started !== generation) return false;
   busy = null;
-  if (response.state !== "received" || !response.value?.account) {
-    lastFault = { action, fault: "offline", retryAfter: null };
-    return false;
+  if (result.state === "received") {
+    adopt(result.value);
+    lastFault = result.value.fault ? { action, fault: result.value.fault } : null;
+  } else {
+    lastFault = { action, fault: "timed_out" };
+    // The native action may have completed; read the durable result.
+    queued = true;
   }
-  adopt(response.value);
-  const failed = response.value.fault;
-  if (failed) lastFault = { action, fault: failed, retryAfter: response.value.retry_after };
-  return !failed;
+  if (queued) {
+    queued = false;
+    void read();
+  }
+  return result.state === "received" && !result.value.fault;
 }
-
-export function clearFault() {
-  lastFault = null;
+export function signIn(profileId: string | null = null, newProfile = false, consent = false) {
+  return act("sign_in", () => commands.accountSignIn(profileId, newProfile, consent));
 }
-
-export const sendCode = (email: string) => act("send", () => commands.accountSendCode(email));
-export const verify = (code: string) => act("verify", () => commands.accountVerify(code));
-/**
- * Asks the server now; opening Account is the person choosing to. It holds
- * no action slot, so signing in is never blocked behind it.
- */
-export async function refresh() {
-  const started = generation;
-  const response = await observe(
-    Promise.resolve().then(() => commands.accountRefresh()),
-    TIMEOUT,
+export const cancel = () => act("cancel", () => commands.accountCancelSignIn());
+export const select = (id: string) => act("select", () => commands.accountSelect(id));
+export const signOut = () => act("sign_out", () => commands.accountSignOut());
+export const retryCleanup = () => act("cleanup", () => commands.accountRetryCleanup());
+export async function manageUsage() {
+  const result = await observe(
+    Promise.resolve().then(() => commands.accountManageUsage()),
+    10000,
   );
-  if (started !== generation || busy) return;
-  if (response.state === "received" && response.value?.account) adopt(response.value);
-}
-export const buy = (purchase: AccountPurchaseV1) => act("buy", () => commands.accountBuy(purchase));
-export const manage = () => act("manage", () => commands.accountManage());
-/** The daily limit in units, or null to remove it. */
-export const setDailyLimit = (limit: string | null) =>
-  act("limit", () => commands.accountSetDailyLimit(limit));
-/** Asks for a quote to move to another paid plan; nothing is charged. */
-export const previewPlanChange = (plan: string, interval: string) =>
-  act("plan_preview", () => commands.accountPlanPreview(plan, interval));
-export const confirmPlanChange = () => act("plan_confirm", () => commands.accountPlanConfirm());
-export const dismissPlanChange = () => act("plan_dismiss", () => commands.accountPlanDismiss());
-export const setServer = (server: string | null) =>
-  act("server", () => commands.accountSetServer(server));
-export const sendDeletionCode = () => act("deletion_code", () => commands.accountDeletionCode());
-export const deleteAccount = (code: string) => act("delete", () => commands.accountDelete(code));
-export const signOut = () => act("sign_out", () => commands.accountSignOut(), SIGN_OUT_TIMEOUT);
-export const signOutEverywhere = () =>
-  act("sign_out_all", () => commands.accountSignOutEverywhere(), SIGN_OUT_TIMEOUT);
-export const revoke = (id: string) => act("revoke", () => commands.accountRevokeSession(id));
-export const setName = (name: string | null) => act("name", () => commands.accountSetName(name));
-/** Emails a sign-in code to the account's own address, for a change that needs a fresh session. */
-export const sendReauthCode = () => act("reauth", () => commands.accountReauthCode());
-export const sendEmailCode = (email: string) =>
-  act("email_code", () => commands.accountEmailCode(email));
-
-/** The address the account just moved to, until signing in again. */
-export const movedTo = () => moved;
-
-/**
- * Moves the account to `email`. The server ends every session when it does,
- * so a sign-in code goes to the new address straight away.
- */
-export async function changeEmail(email: string, code: string): Promise<boolean> {
-  if (!(await act("email_change", () => commands.accountChangeEmail(email, code)))) return false;
-  moved = email;
-  await sendCode(email);
-  return true;
-}
-
-/** Saves the account's export where the person chooses. */
-export async function exportData(): Promise<"saved" | "cancelled" | AccountFaultV1> {
-  if (busy) return "cancelled";
-  busy = "export";
-  lastFault = null;
-  const started = generation;
-  const response = await observe(
-    Promise.resolve().then(() => commands.accountExport()),
-    EXPORT_TIMEOUT,
-  );
-  if (started !== generation) return "cancelled";
-  busy = null;
-  if (response.state !== "received") return "offline";
-  if (response.value.fault) return response.value.fault;
-  return response.value.saved ? "saved" : "cancelled";
-}
-
-export async function usageHistory(cursor: string | null): Promise<AccountHistoryV1> {
-  const response = await observe(
-    Promise.resolve().then(() => commands.accountUsageHistory(cursor)),
-    TIMEOUT,
-  );
-  if (response.state === "received") return response.value;
-  return { requests: [], next_cursor: null, fault: "offline" };
-}
-
-export async function receipt(id: string): Promise<AccountRequestV1 | AccountFaultV1> {
-  const response = await observe(
-    Promise.resolve().then(() => commands.accountReceipt(id)),
-    TIMEOUT,
-  );
-  if (response.state !== "received") return "offline";
-  return response.value.request ?? response.value.fault ?? "server";
-}
-
-export type AvatarPick =
-  { token: string; width: number; height: number } | "cancelled" | "unsupported" | "unavailable";
-
-/** Opens the system's picker; the picture is staged natively for framing. */
-export async function pickAvatar(): Promise<AvatarPick> {
-  const reply = await observe(
-    Promise.resolve().then(() => commands.accountAvatarPick()),
-    10 * 60_000,
-  );
-  if (reply.state !== "received" || reply.value?.status !== "ok") return "unavailable";
-  const pick = reply.value.data;
-  return pick.kind === "picked"
-    ? { token: pick.token, width: pick.width, height: pick.height }
-    : pick.kind;
-}
-
-/** Uploads the framed square of a staged picture as the account's picture. */
-export const saveAvatar = (token: string, crop: AccountAvatarCropV1) =>
-  act("avatar", () => commands.accountAvatarSave(token, crop), AVATAR_TIMEOUT);
-/** Removes the picture on every device; an upload under way is cancelled first. */
-export const removeAvatar = () => act("avatar_remove", () => commands.accountAvatarRemove());
-
-/** Puts a staged picture away, stopping its upload if one is under way. */
-export async function discardAvatar(token: string) {
-  await observe(
-    Promise.resolve().then(() => commands.accountAvatarDiscard(token)),
-    TIMEOUT,
-  );
-}
-
-/** Goes back to entering an address; nothing is sent. */
-export async function cancelCode() {
-  lastFault = null;
-  const response = await observe(
-    Promise.resolve().then(() => commands.accountCancelCode()),
-    TIMEOUT,
-  );
-  if (response.state === "received") adopt(response.value);
-}
-
-export async function sessions(): Promise<AccountSessionV1[] | AccountFaultV1> {
-  const response = await observe(
-    Promise.resolve().then(() => commands.accountSessions()),
-    TIMEOUT,
-  );
-  if (response.state !== "received") return "offline";
-  return response.value.fault ?? response.value.sessions;
+  return result.state === "received" && result.value;
 }

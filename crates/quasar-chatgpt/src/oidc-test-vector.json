@@ -1,0 +1,16 @@
+{
+  "description": "Public test vector signed by a generated disposable test key, not by OpenAI. No private key is distributed.",
+  "jwks": {
+    "keys": [
+      {
+        "kty": "RSA",
+        "alg": "RS256",
+        "use": "sig",
+        "kid": "quasar-unit-test",
+        "n": "mS7C0b1RYhjSgbXYCJBVABYQunSahjYSVbT4tDHpsu-T80njqzjV8VhTxb5W1utWZqD2As57xoqIRBdUAFdnlI6g6MAl3qMBZIbh6TaPtJf1b5UWavhSz8nEFpKLHUO6VqYaqJ5sp0g-pu03c7W1a41qz_72T3V-IfbLGzBEbE8wV2Ktv335r6Y4Wdilol5Dzcxg0EEK7zSpAuwhGWK9X4KYv_1A5Xxli_0-kN5lTWg02Wlnl3_WNeqaod22TjrYAf2wxXt7IeU6bYy2mo7nDuZvKs3Ly0yGLU2VBXB7kQ7_MGTem4sSIiVeQDZO1x6AT6y-liHQnfi26u_GP7ZrEw",
+        "e": "AQAB"
+      }
+    ]
+  },
+  "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6InF1YXNhci11bml0LXRlc3QifQ.eyJpc3MiOiJodHRwczovL2F1dGgub3BlbmFpLmNvbSIsInN1YiI6InRlc3Qtc3ViamVjdCIsImF1ZCI6Im9haWFwcF9xdWFzYXJfdW5pdF90ZXN0Iiwibm9uY2UiOiJxdWFzYXItdGVzdC1ub25jZSIsImV4cCI6MTgwMDAwMzYwMCwiaWF0IjoxODAwMDAwMDAwLCJlbWFpbCI6InRlc3RAZXhhbXBsZS5pbnZhbGlkIiwiZW1haWxfdmVyaWZpZWQiOnRydWV9.cbSniDeWjJofQ9QvKrZbj0CJACrLUgJDtnKsS53gbuAtRoKniyZHFk2Po5PIn8brJcpC0XqGF-0E7W_XGiH6woglaUxIlle_rsL2PWTMhhvdZDd73XHoxwcwit0tSMvE_QzX01aOPixYZKQpoJbeSZrD-5sK_gTI4-dtG93q7aiZI3WoBvDuma1JyNH_HDFfZMDVQeX3-Hpb55qVFIChtt68NSlbg0qFK4gr4nAJxYzYJn5g-CNcj9ky-dGnOVGgvijs9K9gD9oXHfKK1Cw2U5rT_LLIFZzTiRJfgi1Xr3JUGeitXnC1pfmxxpJi6aDJBsYC5FJ2Cu6nWhBAJP0O5g"
+}

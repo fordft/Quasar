@@ -1,8 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { accountSession as session, avatarUrl, initials, planName } from "$domain/account";
+  import { accountSession as session, initials } from "$domain/account";
   import * as m from "$shared/i18n/messages";
-  import { preferences } from "$domain/preferences";
   import { identityAvatar, profiles } from "$domain/profiles";
   import ProfileAvatar from "$shared/ui/ProfileAvatar";
   import * as settings from "../lib/settings-state.svelte";
@@ -22,15 +21,13 @@
   let title = $derived(
     signedIn ? (account?.name ?? account?.email ?? "") : m.settings_identity_sign_in(),
   );
-  let detail = $derived.by(() => {
-    if (!signedIn)
-      return preferences.aiEnabled()
-        ? m.settings_identity_sign_in_desc()
-        : m.settings_identity_sign_in_desc_plain();
-    const plan = planName(account?.plan);
-    if (plan) return m.account_plan_line({ plan });
-    return account?.name ? (account.email ?? "") : m.settings_identity_account();
-  });
+  let detail = $derived(
+    signedIn
+      ? account?.sharing
+        ? m.chatgpt_plan()
+        : m.chatgpt_connected()
+      : m.chatgpt_sign_in_desc(),
+  );
 </script>
 
 {#if !session.unavailable()}
@@ -45,11 +42,7 @@
         onclick={() => settings.select("account")}
         >{#if signedIn}<ProfileAvatar
             size={30}
-            view={identityAvatar(
-              profiles.current(),
-              initials(account.email, account.name),
-              avatarUrl(account.avatar),
-            )}
+            view={identityAvatar(profiles.current(), initials(account.email, account.name), null)}
           />{:else}<img class="mark" src="/zephium-icon.png" alt="" />{/if}<span class="copy"
           ><strong>{title}</strong><small>{detail}</small></span
         ></button

@@ -9,7 +9,7 @@ license.workspace = true
 # ordinary desktop graph does not enable it until a concrete lifecycle owner
 # and its full platform qualification are integrated.
 work-planning = ["dep:tokio", "dep:zephium-agentic", "zephium-agentic/provider-transport", "dep:lopdf"]
-work-runtime = ["work-planning", "dep:reqwest", "dep:socket2", "dep:serde", "dep:sha2", "dep:sha1", "dep:flate2", "dep:regex", "dep:globset", "dep:libc", "dep:ignore", "dep:grep-searcher", "dep:grep-regex", "dep:grep-matcher", "dep:similar", "dep:zephium-mcp", "dep:tempfile", "dep:zephium-private-fs", "dep:objc2-foundation", "dep:objc2"]
+work-runtime = ["work-planning", "dep:quasar-chatgpt", "dep:reqwest", "dep:socket2", "dep:serde", "dep:sha2", "dep:sha1", "dep:flate2", "dep:regex", "dep:globset", "dep:libc", "dep:ignore", "dep:grep-searcher", "dep:grep-regex", "dep:grep-matcher", "dep:similar", "dep:zephium-mcp", "dep:tempfile", "dep:zephium-private-fs", "dep:objc2-foundation", "dep:objc2"]
 # Explicit public synthesis diagnostics; agentic refuses probe-harness in optimized builds.
 work-synthesis-probe = ["work-runtime", "zephium-agentic/probe-harness"]
 agentic-browser = ["dep:zephium-agentic"]
@@ -20,6 +20,7 @@ work-execution-probe = ["work-execution", "zephium-agent-controller/probe-harnes
 macos-page-permission-prompts = []
 
 [dependencies]
+quasar-chatgpt = { workspace = true, optional = true }
 socket2 = { version = "=0.6.4", optional = true }
 reqwest = { version = "=0.13.4", default-features = false, features = ["rustls", "stream"], optional = true }
 serde = { workspace = true, optional = true }

@@ -18,27 +18,27 @@ test("the daily limit resets at the next 00:00 UTC on the person's clock", () =>
   expect(dailyResetTime(new Date("2026-10-20T23:59:59Z"))).toBe(expected);
 });
 
-test("every hosted refusal has its own message and one clear action", () => {
-  const cases: [VoiceFaultV1, string, string | null][] = [
-    ["plan_required", "Dictation needs a different Zephium plan.", "plans"],
-    ["billing_review", "Your Zephium account is under billing review.", "account"],
-    ["free_usage_paused", "Free Zephium AI usage is paused right now.", "plans"],
-    ["hosted_paused", "Zephium AI is paused for now.", "settings"],
-    ["invalid_audio", "Couldn’t read that recording. Try again.", "retry"],
-    ["unsupported_audio", "That recording’s format isn’t supported.", "retry"],
-    ["audio_too_long", "Recordings can be up to 4 minutes.", "retry"],
+test("retired cloud dictation never points to billing or provider key setup", () => {
+  const cases: VoiceFaultV1[] = [
+    "plan_required",
+    "billing_review",
+    "free_usage_paused",
+    "hosted_paused",
+    "daily_limit",
+    "out_of_credit",
+    "key_refused",
+    "signed_out",
   ];
-  for (const [fault, message, remedy] of cases) {
-    const problem = voiceProblem(fault, "zephium");
-    expect(problem.message, fault).toContain(message);
-    expect(problem.remedy, fault).toBe(remedy);
+  for (const engine of ["zephium", "open_ai", "groq"] as const) {
+    for (const fault of cases) {
+      const problem = voiceProblem(fault, engine);
+      expect(problem.message).toContain("Cloud dictation has been retired");
+      expect(problem.remedy).toBe("settings");
+    }
   }
-  const daily = voiceProblem("daily_limit", "zephium");
-  expect(daily.message).toContain(`resets at ${dailyResetTime()}`);
-  expect(daily.remedy).toBe("limit");
 });
-
-test("running out of Quasar credit points at plans, and a key's credit at settings", () => {
-  expect(voiceProblem("out_of_credit", "zephium").remedy).toBe("plans");
-  expect(voiceProblem("out_of_credit", "open_ai").remedy).toBe("settings");
+test("on-device recording problems still offer a retry", () => {
+  for (const fault of ["invalid_audio", "unsupported_audio", "audio_too_long"] as const) {
+    expect(voiceProblem(fault, "on_device").remedy).toBe("retry");
+  }
 });

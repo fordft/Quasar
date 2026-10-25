@@ -285,14 +285,21 @@ mod tests {
         );
         assert_eq!(groq.model(), GROQ_MODEL);
         assert!(TranscriptionTarget::direct(WorkModelProvider::Anthropic).is_err());
-        let cloud =
-            TranscriptionTarget::cloud("https://api.zephium.app", "transcribe-1", None).unwrap();
+        let cloud = TranscriptionTarget::cloud(
+            "https://legacy-gateway.example.invalid",
+            "transcribe-1",
+            None,
+        )
+        .unwrap();
         assert_eq!(
             cloud.url().as_str(),
-            "https://api.zephium.app/openai/v1/audio/transcriptions"
+            "https://legacy-gateway.example.invalid/openai/v1/audio/transcriptions"
         );
         assert!(TranscriptionTarget::cloud("http://example.com", "m", None).is_err());
-        assert!(TranscriptionTarget::cloud("https://api.zephium.app", "a b", None).is_err());
+        assert!(
+            TranscriptionTarget::cloud("https://legacy-gateway.example.invalid", "a b", None)
+                .is_err()
+        );
     }
 
     #[test]
@@ -490,9 +497,12 @@ mod tests {
 
     #[tokio::test]
     async fn an_oversized_take_is_refused_before_it_is_sent() {
-        let mut target =
-            TranscriptionTarget::cloud("https://api.zephium.app", "transcribe-1", Some(1_024))
-                .unwrap();
+        let mut target = TranscriptionTarget::cloud(
+            "https://legacy-gateway.example.invalid",
+            "transcribe-1",
+            Some(1_024),
+        )
+        .unwrap();
         assert_eq!(target.max_bytes, 1_024);
         let wav = vec![0_u8; 2_048];
         assert_eq!(

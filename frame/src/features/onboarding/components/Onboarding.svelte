@@ -5,7 +5,7 @@
   import { browserImport } from "$domain/browser-import";
   import { tabs } from "$domain/tabs";
   import { preferences } from "$domain/preferences";
-  import { commands, type WorkLocalServerV1 } from "$shared/ipc/bindings";
+  import { commands } from "$shared/ipc/bindings";
   import Button from "$shared/ui/Button";
   import Icon from "$shared/ui/Icon";
   import KeyHint from "$shared/ui/KeyHint";
@@ -62,7 +62,6 @@
   let flights = $state<HTMLElement>();
 
   let mind = $state<Mind | null>(null);
-  let server = $state.raw<WorkLocalServerV1 | null>(null);
 
   let kept = $derived(keptSites(tabs.sidebarNodes(), tabs.tabs(), SITE_URLS));
   let sites = $derived([...kept.keys()].flatMap((id) => SITES.filter((site) => site.id === id)));
@@ -139,13 +138,9 @@
   async function finish() {
     if (leaving) return;
     leaving = true;
-    const profile = tabs.profile()?.id;
     // The scene ends on the new tab, so the browser opens on one: a tab left
     // on a page from before is set aside for a new one.
     if (tabs.activeTab()?.url) tabs.open();
-    // A server already running here is connected now, so Work opens ready.
-    if (mind === "local" && server && profile)
-      await commands.workSetModelEndpoint(profile, server.base).catch(() => null);
     // The words go, and the camera goes back into the new tab until its sky
     // is all there is; the browser then arrives on that sky, with its own
     // launch.
@@ -279,7 +274,7 @@
         {:else if step === "launcher"}
           <Launcher />
         {:else if step === "ai"}
-          <Models bind:mind bind:server onsubmit={advance} />
+          <Models bind:mind onsubmit={advance} />
         {/if}
       </div>
     {/key}

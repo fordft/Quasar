@@ -101,7 +101,7 @@ async fn search_engine() -> (zephium_core::search::SearchEngine, String) {
 /// own search, the light model first since searches are many and short;
 /// else the person's OpenAI key's fixed public search; else none.
 async fn provider_search(
-    profile: ProfileId,
+    _profile: ProfileId,
     models: &WorkLeadModels,
 ) -> Result<
     Option<(
@@ -110,7 +110,6 @@ async fn provider_search(
     )>,
     WorkError,
 > {
-    use zephium_agentic::{AgentProviderTransport, AgentProviderTransportConfig};
     use zephium_core::work::search::{WorkSearchFallbackV1, WorkSearchProvider};
     for model in [&models.light, &models.lead, &models.page] {
         if let Ok(search) =
@@ -131,32 +130,7 @@ async fn provider_search(
             )));
         }
     }
-    let Ok(credential) = credential().await else {
-        return Ok(None);
-    };
-    let transport = AgentProviderTransport::try_new(AgentProviderTransportConfig::STANDARD)
-        .map_err(|_| WorkError::Unavailable)?;
-    let config = zephium_agentic::OpenAiPublicSearchConfig::try_new(
-        zephium_agent_model_catalog::try_public_search_provider_exact_call_config(
-            zephium_core::work::search::PUBLIC_SEARCH_MODEL,
-            4096,
-        )
-        .map_err(|_| WorkError::Unavailable)?,
-    )?;
-    let search =
-        zephium_agentic::OpenAiPublicSearch::try_new(transport.clone(), credential, config)?;
-    record_diagnostic(format_args!(
-        "work: phase=lead state=search provider=openai"
-    ));
-    let search: Box<dyn zephium_core::work::search::WorkPublicSearchProvider> =
-        Box::new(configure_search_ranking(search, profile, transport).await?);
-    Ok(Some((
-        search,
-        WorkSearchFallbackV1 {
-            provider: WorkSearchProvider::OpenAi,
-            model: zephium_core::work::search::PUBLIC_SEARCH_MODEL.into(),
-        },
-    )))
+    Ok(None)
 }
 
 /// The page agent runs on the page model the person chose; a page model that

@@ -1,6 +1,4 @@
-//! Models and keys for the lead agent: the picker's catalog and choices, and
-//! Settings → AI. Keys cross this boundary only inbound; the frame sees
-//! missing / set / valid / invalid, never a key.
+//! Account-authorized ChatGPT models and profile-scoped choices.
 use super::*;
 use zephium_core::ids::ProfileId;
 use zephium_core::work::model::{
@@ -159,6 +157,7 @@ mod product {
                 "zephium:work-models-changed",
                 &WorkModelsChanged { version: 1 },
             );
+            super::super::account::emit_changed(&app);
         }));
     }
 
@@ -182,18 +181,6 @@ mod product {
             models::WorkKeyFault::KeychainWaiting => WorkModelsFaultV1::KeychainWaiting,
             models::WorkKeyFault::Request => WorkModelsFaultV1::Request,
         }
-    }
-
-    fn checked(
-        profile: ProfileId,
-        provider: WorkModelProvider,
-        status: models::WorkKeyStatus,
-    ) -> Option<WorkModelsFaultV1> {
-        models::fill_defaults(profile, provider);
-        if status == models::WorkKeyStatus::Invalid {
-            return Some(WorkModelsFaultV1::KeyRefused);
-        }
-        models::provider_failure(provider).map(provider_fault)
     }
 
     pub(super) fn fault(error: WorkModelError) -> WorkModelsFaultV1 {
@@ -254,23 +241,11 @@ mod product {
     pub(super) async fn act(profile: ProfileId, action: Action) -> Option<WorkModelsFaultV1> {
         let result = match action {
             Action::Read => {
-                // Refreshes only a stale hosted catalog, at most hourly.
-                tauri::async_runtime::spawn(models::refresh_cloud_catalog());
+                models::refresh_catalog().await;
                 Ok(())
             }
             Action::Choose(role, id) => models::choose(profile, role, id.as_deref()),
             Action::Effort(effort) => models::set_effort(profile, effort),
-            Action::SetKey(provider, secret) => match models::set_key(provider, secret).await {
-                Ok(status) => return checked(profile, provider, status),
-                Err(WorkModelError::BadRequest) => return Some(WorkModelsFaultV1::Invalid),
-                Err(error) => Err(error),
-            },
-            Action::TestKey(provider) => match models::test_key(provider).await {
-                Ok(status) => return checked(profile, provider, status),
-                Err(error) => Err(error),
-            },
-            Action::ClearKey(provider) => models::clear_key(provider).await,
-            Action::Endpoint(base) => models::set_compatible_base(base.as_deref()).await,
         };
         result.err().map(fault)
     }
@@ -292,10 +267,6 @@ pub(crate) enum Action {
     Read,
     Choose(WorkModelRole, Option<String>),
     Effort(Option<WorkModelReasoning>),
-    SetKey(WorkModelProvider, String),
-    TestKey(WorkModelProvider),
-    ClearKey(WorkModelProvider),
-    Endpoint(Option<String>),
 }
 
 pub(crate) fn install(app: &tauri::AppHandle) {
@@ -310,10 +281,6 @@ fn action_name(action: &Action) -> &'static str {
         Action::Read => "read",
         Action::Choose(..) => "choose",
         Action::Effort(..) => "effort",
-        Action::SetKey(..) => "set_key",
-        Action::TestKey(..) => "test_key",
-        Action::ClearKey(..) => "clear_key",
-        Action::Endpoint(..) => "endpoint",
     }
 }
 
@@ -473,71 +440,6 @@ pub(crate) async fn work_set_model_effort(
 
 #[tauri::command]
 #[specta::specta]
-pub(crate) async fn work_set_provider_key(
-    caller: WebviewWindow,
-    expected_profile: String,
-    provider: WorkModelProvider,
-    key: String,
-) -> WorkModelsV1 {
-    respond(
-        caller,
-        expected_profile,
-        Action::SetKey(provider, key),
-        "work_set_provider_key",
-    )
-    .await
-}
-
-#[tauri::command]
-#[specta::specta]
-pub(crate) async fn work_test_provider_key(
-    caller: WebviewWindow,
-    expected_profile: String,
-    provider: WorkModelProvider,
-) -> WorkModelsV1 {
-    respond(
-        caller,
-        expected_profile,
-        Action::TestKey(provider),
-        "work_test_provider_key",
-    )
-    .await
-}
-
-#[tauri::command]
-#[specta::specta]
-pub(crate) async fn work_clear_provider_key(
-    caller: WebviewWindow,
-    expected_profile: String,
-    provider: WorkModelProvider,
-) -> WorkModelsV1 {
-    respond(
-        caller,
-        expected_profile,
-        Action::ClearKey(provider),
-        "work_clear_provider_key",
-    )
-    .await
-}
-
-#[tauri::command]
-#[specta::specta]
-pub(crate) async fn work_set_model_endpoint(
-    caller: WebviewWindow,
-    expected_profile: String,
-    base: Option<String>,
-) -> WorkModelsV1 {
-    respond(
-        caller,
-        expected_profile,
-        Action::Endpoint(base),
-        "work_set_model_endpoint",
-    )
-    .await
-}
-
-#[tauri::command]
-#[specta::specta]
 pub(crate) async fn work_more_models(
     caller: WebviewWindow,
     expected_profile: String,
@@ -575,48 +477,6 @@ pub(crate) async fn work_more_models(
     }
     #[cfg(not(feature = "work-product"))]
     refused(WorkModelsFaultV1::Unavailable)
-}
-
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, specta::Type, Eq, PartialEq)]
-#[serde(rename_all = "snake_case")]
-pub(crate) enum WorkLocalServerKindV1 {
-    Ollama,
-    LmStudio,
-}
-
-/// A model server found running on this Mac.
-#[derive(Clone, Debug, Serialize, Deserialize, specta::Type)]
-pub(crate) struct WorkLocalServerV1 {
-    pub(crate) kind: WorkLocalServerKindV1,
-    pub(crate) base: String,
-    pub(crate) models: u32,
-}
-
-/// Ollama and LM Studio on their default ports, for one-click setup.
-#[tauri::command]
-#[specta::specta]
-pub(crate) async fn work_local_servers(caller: WebviewWindow) -> Vec<WorkLocalServerV1> {
-    if !authorize(&caller, CallerPolicy::Main, "work_local_servers") {
-        return Vec::new();
-    }
-    #[cfg(feature = "work-product")]
-    {
-        use zephium_agentic::lead::{detect_local_servers, LocalServerKind};
-        detect_local_servers()
-            .await
-            .into_iter()
-            .map(|server| WorkLocalServerV1 {
-                kind: match server.kind {
-                    LocalServerKind::Ollama => WorkLocalServerKindV1::Ollama,
-                    LocalServerKind::LmStudio => WorkLocalServerKindV1::LmStudio,
-                },
-                base: server.base.to_owned(),
-                models: u32::try_from(server.models).unwrap_or(u32::MAX),
-            })
-            .collect()
-    }
-    #[cfg(not(feature = "work-product"))]
-    Vec::new()
 }
 
 #[cfg(test)]

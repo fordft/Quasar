@@ -6,8 +6,6 @@ export {
   dollars,
   effortLevels,
   entryOf,
-  keyState,
-  keyedProviders,
   locked,
   pickerGroups,
   providerName,

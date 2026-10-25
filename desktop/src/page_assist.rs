@@ -1109,48 +1109,10 @@ mod product {
         });
         let _ = SERVICE.set(service);
     }
-
-    /// Hosted requests of assistant replies, until their charge is known.
-    static HOSTED: Mutex<Vec<(String, String, u32)>> = Mutex::new(Vec::new());
-
-    pub(crate) fn hosted_sourced(request_id: &str, conversation: &str, reply: u32) {
-        let mut hosted = HOSTED.lock().unwrap_or_else(|p| p.into_inner());
-        if hosted.len() >= 64 {
-            hosted.remove(0);
-        }
-        hosted.push((request_id.to_owned(), conversation.to_owned(), reply));
-    }
-
-    /// A hosted request's charge is final: it joins its reply's cost.
-    pub(crate) fn hosted_charged(
-        request_id: &str,
-        charged_units: Option<u64>,
-        units_per_credit: Option<u64>,
-    ) {
-        let entry = {
-            let mut hosted = HOSTED.lock().unwrap_or_else(|p| p.into_inner());
-            let Some(index) = hosted.iter().position(|(id, ..)| id == request_id) else {
-                return;
-            };
-            hosted.remove(index)
-        };
-        let (Some(charged), Some(per), Some(service)) =
-            (charged_units, units_per_credit, service())
-        else {
-            return;
-        };
-        if let Some(credits) =
-            zephium_work_composition::page_assist::core::cost::credits(charged, per)
-        {
-            service.settle_hosted(&entry.1, entry.2, credits);
-        }
-    }
 }
 
 #[cfg(feature = "work-product")]
-pub(crate) use product::{
-    hosted_charged, hosted_sourced, install, observe_items, observe_tab, preference_changed,
-};
+pub(crate) use product::{install, observe_items, observe_tab, preference_changed};
 
 #[cfg(not(feature = "work-product"))]
 pub(crate) fn observe_items(_state: &zephium_ipc::ItemsState) {}

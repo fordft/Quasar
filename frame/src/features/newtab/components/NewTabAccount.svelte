@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Add01Icon, UserCircleIcon } from "@hugeicons/core-free-icons";
+  import { UserCircleIcon } from "@hugeicons/core-free-icons";
   import type { accountFoot } from "$domain/account";
   import * as m from "$shared/i18n/messages";
   import AccountSummary from "$shared/ui/AccountSummary";
@@ -12,22 +12,12 @@
     signInWidth = $bindable(0),
   }: {
     account: ReturnType<typeof accountFoot>;
-    onaccount: (intent: "account" | "credits") => void;
+    onaccount: () => void;
     /** How wide the words of the signed-out button are, for the pane around them. */
     signInWidth?: number;
   } = $props();
 
-  // The ring is a warning, not decoration: it is drawn only once the
-  // allowance is nearly spent.
-  const ringed = $derived(account.tone !== "calm" && account.used != null);
-  const fill = $derived(Math.min(100, Math.max(0, account.used ?? 0)));
-  let broken = $state<string | null>(null);
-  const photo = $derived(account.avatar && account.avatar !== broken ? account.avatar : null);
-  const tip = $derived(
-    [m.account_menu(), account.email, account.used != null && m.ai_cloud_used({ percent: fill })]
-      .filter(Boolean)
-      .join(" · "),
-  );
+  const tip = $derived([m.account_menu(), account.email].filter(Boolean).join(" · "));
 
   // A dialog in all but name: Tab goes round the actions instead of leaving
   // them behind an open panel.
@@ -53,65 +43,26 @@
     triggerClass="ntp-account"
     panelClass="ntp-account-panel"
   >
-    {#snippet trigger()}<span class="disc" aria-hidden="true"
-        >{#if photo}<img
-            src={photo}
-            alt=""
-            draggable="false"
-            onerror={() => (broken = photo)}
-          />{:else}{account.initials}{/if}</span
-      >{#if ringed}<svg
-          class="usage-ring"
-          data-tone={account.tone}
-          viewBox="0 0 32 32"
-          aria-hidden="true"
-          style:--fill={fill}
-          ><circle class="track" cx="16" cy="16" r="15" pathLength="100" /><circle
-            class="spent"
-            cx="16"
-            cy="16"
-            r="15"
-            pathLength="100"
-            transform="rotate(-90 16 16)"
-          /></svg
-        >{/if}{/snippet}
+    {#snippet trigger()}<span class="disc" aria-hidden="true">{account.initials}</span>{/snippet}
     <div class="body" role="presentation" onkeydown={keep}>
       <div class="summary">
         <AccountSummary
           email={account.email}
           initials={account.initials}
-          avatar={account.avatar}
-          plan={account.plan}
-          used={account.used}
-          metered={account.metered}
-          tone={account.tone}
+          sharing={account.sharing}
         />
       </div>
       <div class="rule" role="separator"></div>
-      {#if account.canTopUp}<button
-          type="button"
-          role="menuitem"
-          class="ui-menu-item row"
-          onclick={() => onaccount("credits")}
-          ><span class="ui-menu-icon"><Icon icon={Add01Icon} size={16} /></span
-          >{m.account_credits_open()}</button
-        >{/if}
-      <button
-        type="button"
-        role="menuitem"
-        class="ui-menu-item row"
-        onclick={() => onaccount("account")}
+
+      <button type="button" role="menuitem" class="ui-menu-item row" onclick={() => onaccount()}
         ><span class="ui-menu-icon"><Icon icon={UserCircleIcon} size={16} /></span
         >{m.account_manage_open()}</button
       >
     </div>
   </Disclosure>
 {:else}
-  <button
-    type="button"
-    class="sign-in"
-    bind:offsetWidth={signInWidth}
-    onclick={() => onaccount("account")}>{m.settings_identity_sign_in()}</button
+  <button type="button" class="sign-in" bind:offsetWidth={signInWidth} onclick={() => onaccount()}
+    >{m.settings_identity_sign_in()}</button
   >
 {/if}
 
@@ -158,50 +109,9 @@
     transition: background-color var(--motion-fast) var(--ease-out);
   }
 
-  .disc:has(img) {
-    overflow: hidden;
-    box-shadow: inset 0 0 0 0.5px var(--avatar-rim);
-  }
-
   :global(.ntp-account:hover) .disc,
   :global(.ntp-account[data-state="open"]) .disc {
     background: var(--color-fill-strong);
-  }
-
-  .disc img {
-    inline-size: 100%;
-    block-size: 100%;
-    object-fit: cover;
-    animation: interface-fade var(--motion-base) var(--ease-out);
-    transition: filter var(--motion-fast) var(--ease-out);
-  }
-
-  :global(.ntp-account:hover) .disc img,
-  :global(.ntp-account[data-state="open"]) .disc img {
-    filter: brightness(1.08);
-  }
-
-  .usage-ring {
-    position: absolute;
-    inset: 0;
-    overflow: visible;
-    fill: none;
-    stroke-width: 1.5;
-  }
-
-  .track {
-    stroke: var(--color-track);
-  }
-
-  .spent {
-    stroke: var(--color-warning);
-    stroke-dasharray: 100 100;
-    stroke-dashoffset: calc(100 - var(--fill));
-    stroke-linecap: round;
-  }
-
-  .usage-ring[data-tone="full"] .spent {
-    stroke: var(--color-danger);
   }
 
   /* Down out of the corner, close to it and quick: the panel belongs to the
@@ -295,8 +205,7 @@
 
   @media (prefers-reduced-motion: reduce) {
     :global(.ntp-account),
-    .sign-in,
-    .disc img {
+    .sign-in {
       animation: none;
       transition: none;
     }
@@ -304,16 +213,6 @@
     :global(.ntp-account-panel.ui-disclosure-panel) {
       scale: 1;
       translate: 0 0;
-    }
-  }
-
-  @media (forced-colors: active) {
-    .track {
-      stroke: GrayText;
-    }
-
-    .spent {
-      stroke: CanvasText;
     }
   }
 </style>

@@ -1,11 +1,10 @@
 <script lang="ts">
   import type { WorkModelProvider } from "$shared/ipc/bindings";
   import ProviderMark from "$shared/ui/ProviderMark";
-  import ZephiumTile from "$shared/ui/ZephiumTile";
   import Button from "$shared/ui/Button";
   import Icon from "$shared/ui/Icon";
   import "$shared/ui/Shine/shine.css";
-  import { Key01Icon, UserIcon } from "../../lib/icons";
+  import { UserIcon } from "../../lib/icons";
   import * as m from "$shared/i18n/messages";
   import type { Standing } from "./ModelRail.svelte";
 
@@ -20,40 +19,16 @@
     standing: Exclude<Standing, "ready">;
     onact: () => void;
   } = $props();
-
-  const body = $derived(
-    standing === "sign_in"
-      ? m.model_hosted()
-      : standing === "refused"
-        ? m.model_key_refused({ provider: name })
-        : standing === "server"
-          ? m.model_server_needed()
-          : m.model_key_needed({ provider: name }),
-  );
-  const action = $derived(
-    standing === "sign_in"
-      ? m.work_model_sign_in()
-      : standing === "server"
-        ? m.model_add_server()
-        : m.model_add_key(),
-  );
 </script>
 
-<div class="ask">
-  <span class="tile ui-shine" aria-hidden="true"
-    >{#if provider === "cloud"}<ZephiumTile size={30} />{:else}<ProviderMark
-        {provider}
-        size={26}
-      />{/if}</span
-  >
+<div class="ask" data-state={standing}>
+  <span class="tile ui-shine" aria-hidden="true"><ProviderMark {provider} size={26} /></span>
   <h3 class="title">{name}</h3>
-  <p class="body" data-refused={standing === "refused" ? "" : undefined}>{body}</p>
+  <p class="body" data-refused={standing === "refused" ? "" : undefined}>
+    {m.chatgpt_sign_in_desc()}
+  </p>
   <Button onclick={onact}
-    ><Icon
-      icon={standing === "sign_in" ? UserIcon : Key01Icon}
-      size={14}
-      strokeWidth={1.8}
-    />{action}</Button
+    ><Icon icon={UserIcon} size={14} strokeWidth={1.8} />{m.chatgpt_continue()}</Button
   >
 </div>
 

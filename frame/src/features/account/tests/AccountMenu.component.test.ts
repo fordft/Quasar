@@ -2,7 +2,7 @@ import { expect, test, vi } from "vitest";
 import { page } from "vitest/browser";
 import { render } from "vitest-browser-svelte";
 import type { AccountV1, ProfileEntryView, ProfilesView } from "$shared/ipc/bindings";
-import { accountFixture, usageFixture } from "$shared/testing/account";
+import { accountFixture } from "$shared/testing/account";
 import AccountMenuStage from "./AccountMenuStage.svelte";
 
 const native = vi.hoisted(() => ({
@@ -61,9 +61,8 @@ async function open(account: AccountV1, profiles: ProfileEntryView[], name = "Ac
 
 const signedIn = accountFixture({
   signed_in: true,
+  sharing: true,
   email: "ada@example.com",
-  plan: "pro",
-  usage: usageFixture(),
 });
 
 test("the menu leads with who you are, then account, models and settings", async () => {
@@ -86,10 +85,7 @@ test("the menu leads with who you are, then account, models and settings", async
   ]);
   await expect
     .element(page.getByRole("menuitem", { name: /^Account/u }))
-    .toHaveTextContent(/ada@example\.com.*Pro.*42% used/u);
-  await expect
-    .element(page.getByRole("meter", { name: "Included usage used" }))
-    .toHaveAttribute("aria-valuenow", "42");
+    .toHaveTextContent(/ada@example\.com.*Using ChatGPT plan/u);
   expect(page.getByText("History").query()).toBeNull();
   expect(page.getByText("Downloads").query()).toBeNull();
 
@@ -119,7 +115,7 @@ test("a lone profile has no one to switch to, and signed out offers to sign in",
   await open(accountFixture(), solo);
   expect(page.getByRole("menuitem", { name: /Switch to/u }).query()).toBeNull();
   await expect
-    .element(page.getByRole("menuitem", { name: "Sign in to Quasar", exact: true }))
+    .element(page.getByRole("menuitem", { name: "Continue with ChatGPT", exact: true }))
     .toBeVisible();
   expect(page.getByRole("menuitem", { name: /^Account/u }).query()).toBeNull();
 });
@@ -155,9 +151,8 @@ test(
         "usage-high",
         accountFixture({
           signed_in: true,
+          sharing: true,
           email: "ada@example.com",
-          plan: "pro",
-          usage: usageFixture({ used_percent: 91 }),
         }),
         three,
       ],
@@ -165,9 +160,8 @@ test(
         "usage-full",
         accountFixture({
           signed_in: true,
+          sharing: true,
           email: "ada@example.com",
-          plan: "pro",
-          usage: usageFixture({ used_percent: 100 }),
         }),
         three,
       ],
@@ -175,9 +169,8 @@ test(
         "in-long",
         accountFixture({
           signed_in: true,
+          sharing: true,
           email: "ada.lovelace@analytical-engine.example",
-          plan: "pro",
-          usage: usageFixture(),
         }),
         three,
       ],

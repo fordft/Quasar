@@ -32,7 +32,6 @@
   const who = $derived(tabs.profile()?.name || profiles.current()?.name || name);
   const shown = $derived(who || m.browse_profile_settings());
   const others = $derived(profiles.others());
-  const tone = $derived(foot.tone);
 
   function keysFor(command: string) {
     const accelerator = keymap.all().find((entry) => entry.id === command)?.accelerator;
@@ -78,8 +77,7 @@
         icon={UserIcon}
         size={16}
         strokeWidth={1.7}
-      />{/if}{#if tone !== "calm"}<span class="pip" data-tone={tone} aria-hidden="true"
-      ></span>{/if}{/snippet}
+      />{/if}{/snippet}
   <div class="head" role="presentation" style:--step={3}>
     <button
       type="button"
@@ -118,11 +116,7 @@
         ><AccountSummary
           email={foot.email}
           initials={foot.initials}
-          avatar={foot.avatar}
-          plan={foot.plan}
-          used={foot.used}
-          metered={foot.metered}
-          tone={foot.tone}
+          sharing={foot.sharing}
         /></button
       >{:else}{@render row(UserCircleIcon, m.settings_sign_in(), null, 2, () =>
         run("settings.account"),
@@ -208,20 +202,6 @@
   }
 
   /* The agent stops when the included usage runs out, so the figure says so from the rail. */
-  .pip {
-    position: absolute;
-    inset-block-end: 0;
-    inset-inline-end: 0;
-    inline-size: 9px;
-    block-size: 9px;
-    border-radius: 50%;
-    background: var(--color-warning, var(--color-soft-lemon));
-    box-shadow: 0 0 0 2px var(--color-chrome);
-  }
-
-  .pip[data-tone="full"] {
-    background: var(--color-danger);
-  }
 
   .plain {
     display: grid;

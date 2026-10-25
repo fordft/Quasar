@@ -1,0 +1,19 @@
+[package]
+name = "quasar-chatgpt"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+base64.workspace = true
+ring.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+subtle = "=2.6.1"
+tokio = { workspace = true, features = ["net", "io-util", "time"] }
+url.workspace = true
+zeroize = { version = "=1.9.0", features = ["serde"] }
+tempfile.workspace = true
+reqwest = { version = "=0.13.4", default-features = false, features = ["http2", "rustls", "system-proxy"] }
+zephium-credentials.workspace = true

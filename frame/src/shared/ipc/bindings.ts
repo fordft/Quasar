@@ -80,22 +80,12 @@ export const commands = {
 	workHumanCheck: (expectedProfile: string, work: WorkId, page: WorkHumanPageIdV1) => __TAURI_INVOKE<WorkHumanCheckResponseV1>("work_human_check", { expectedProfile, work, page }),
 	workDecisionPreference: (expectedProfile: string) => __TAURI_INVOKE<WorkDecisionPreferenceV1>("work_decision_preference", { expectedProfile }),
 	workSetDecisionPreference: (expectedProfile: string, choice: WorkDecisionChoiceV1) => __TAURI_INVOKE<WorkDecisionPreferenceV1>("work_set_decision_preference", { expectedProfile, choice }),
-	/**  Inbound-only Jev key setup, authorized against the current regular profile. */
-	workSetDecisionKey: (expectedProfile: string, secret: string) => __TAURI_INVOKE<WorkDecisionPreferenceV1>("work_set_decision_key", { expectedProfile, secret }),
-	/**  Removes the separate native decision key without reading it back. */
-	workClearDecisionKey: (expectedProfile: string) => __TAURI_INVOKE<WorkDecisionPreferenceV1>("work_clear_decision_key", { expectedProfile }),
 	workModels: (expectedProfile: string) => __TAURI_INVOKE<WorkModelsV1_Serialize>("work_models", { expectedProfile }),
 	workModelsReady: (expectedProfile: string) => __TAURI_INVOKE<WorkModelsReadyV1>("work_models_ready", { expectedProfile }),
 	workChooseModel: (expectedProfile: string, role: WorkModelRole, id: string | null) => __TAURI_INVOKE<WorkModelsV1_Serialize>("work_choose_model", { expectedProfile, role, id }),
 	/**  The lead's reasoning effort for this profile; null returns it to each model's default. */
 	workSetModelEffort: (expectedProfile: string, effort: "low" | "medium" | "high" | "xhigh" | "max" | null) => __TAURI_INVOKE<WorkModelsV1_Serialize>("work_set_model_effort", { expectedProfile, effort }),
-	workSetProviderKey: (expectedProfile: string, provider: WorkModelProvider, key: string) => __TAURI_INVOKE<WorkModelsV1_Serialize>("work_set_provider_key", { expectedProfile, provider, key }),
-	workTestProviderKey: (expectedProfile: string, provider: WorkModelProvider) => __TAURI_INVOKE<WorkModelsV1_Serialize>("work_test_provider_key", { expectedProfile, provider }),
-	workClearProviderKey: (expectedProfile: string, provider: WorkModelProvider) => __TAURI_INVOKE<WorkModelsV1_Serialize>("work_clear_provider_key", { expectedProfile, provider }),
-	workSetModelEndpoint: (expectedProfile: string, base: string | null) => __TAURI_INVOKE<WorkModelsV1_Serialize>("work_set_model_endpoint", { expectedProfile, base }),
 	workMoreModels: (expectedProfile: string, provider: WorkModelProvider) => __TAURI_INVOKE<WorkMoreModelsV1_Serialize>("work_more_models", { expectedProfile, provider }),
-	/**  Ollama and LM Studio on their default ports, for one-click setup. */
-	workLocalServers: () => __TAURI_INVOKE<WorkLocalServerV1[]>("work_local_servers"),
 	voiceStatus: () => __TAURI_INVOKE<VoiceStatusV1>("voice_status"),
 	voiceChooseEngine: (engine: "on_device" | "zephium" | "open_ai" | "groq" | null) => __TAURI_INVOKE<VoiceStatusV1>("voice_choose_engine", { engine }),
 	voiceChooseLanguage: (language: string | null) => __TAURI_INVOKE<VoiceStatusV1>("voice_choose_language", { language }),
@@ -160,67 +150,13 @@ export const commands = {
 	pageStyleToggleFor: (profile: string, site: string, style: string, enabled: boolean) => __TAURI_INVOKE<PageStylesAllV1>("page_style_toggle_for", { profile, site, style, enabled }),
 	/**  Deletes one of a site's styles from Settings. */
 	pageStyleRemoveFor: (profile: string, site: string, style: string) => __TAURI_INVOKE<PageStylesAllV1>("page_style_remove_for", { profile, site, style }),
-	/**
-	 *  The account now, refreshing what is stale in the background. Asks no
-	 *  server unless the person is signed in or chose one.
-	 */
 	accountGet: () => __TAURI_INVOKE<AccountReplyV1>("account_get"),
-	accountSendCode: (email: string) => __TAURI_INVOKE<AccountReplyV1>("account_send_code", { email }),
-	accountVerify: (code: string) => __TAURI_INVOKE<AccountReplyV1>("account_verify", { code }),
-	accountCancelCode: () => __TAURI_INVOKE<AccountReplyV1>("account_cancel_code"),
+	accountSignIn: (profileId: string | null, newProfile: boolean, consent: boolean) => __TAURI_INVOKE<AccountReplyV1>("account_sign_in", { profileId, newProfile, consent }),
+	accountCancelSignIn: () => __TAURI_INVOKE<AccountReplyV1>("account_cancel_sign_in"),
+	accountSelect: (id: string) => __TAURI_INVOKE<AccountReplyV1>("account_select", { id }),
 	accountSignOut: () => __TAURI_INVOKE<AccountReplyV1>("account_sign_out"),
-	accountRefresh: () => __TAURI_INVOKE<AccountReplyV1>("account_refresh"),
-	/**
-	 *  Opens the billing provider's checkout in a new tab and watches for the
-	 *  purchase to land, so the plan updates without the person coming back.
-	 */
-	accountBuy: (purchase: AccountPurchaseV1) => __TAURI_INVOKE<AccountReplyV1>("account_buy", { purchase }),
-	/**  Opens the billing provider's portal, where the subscription is managed. */
-	accountManage: () => __TAURI_INVOKE<AccountReplyV1>("account_manage"),
-	/**  Sets the daily spending limit, in units, or removes it with null. */
-	accountSetDailyLimit: (limit: string | null) => __TAURI_INVOKE<AccountReplyV1>("account_set_daily_limit", { limit }),
-	/**  Asks for a quote to move to another paid plan. Nothing is charged. */
-	accountPlanPreview: (plan: string, interval: string) => __TAURI_INVOKE<AccountReplyV1>("account_plan_preview", { plan, interval }),
-	/**  Confirms the quote on the account page and follows the change to its end. */
-	accountPlanConfirm: () => __TAURI_INVOKE<AccountReplyV1>("account_plan_confirm"),
-	/**  Puts away a quote or a finished change. */
-	accountPlanDismiss: () => __TAURI_INVOKE<AccountReplyV1>("account_plan_dismiss"),
-	accountSessions: () => __TAURI_INVOKE<AccountSessionsV1>("account_sessions"),
-	accountRevokeSession: (id: string) => __TAURI_INVOKE<AccountReplyV1>("account_revoke_session", { id }),
-	/**  Points accounts at another server, or back at Zephium's with null. */
-	accountSetServer: (server: string | null) => __TAURI_INVOKE<AccountReplyV1>("account_set_server", { server }),
-	accountDeletionCode: () => __TAURI_INVOKE<AccountReplyV1>("account_deletion_code"),
-	accountDelete: (code: string) => __TAURI_INVOKE<AccountReplyV1>("account_delete", { code }),
-	/**  Renames the account; null or blank clears the name. */
-	accountSetName: (name: string | null) => __TAURI_INVOKE<AccountReplyV1>("account_set_name", { name }),
-	/**
-	 *  Sends a sign-in code to the account's own address, for a change that
-	 *  needs a session from the last few minutes.
-	 */
-	accountReauthCode: () => __TAURI_INVOKE<AccountReplyV1>("account_reauth_code"),
-	/**  Sends a code to the address the account would move to. */
-	accountEmailCode: (email: string) => __TAURI_INVOKE<AccountReplyV1>("account_email_code", { email }),
-	/**  Moves the account to `email`. Every session ends, this one included. */
-	accountChangeEmail: (email: string, code: string) => __TAURI_INVOKE<AccountReplyV1>("account_change_email", { email, code }),
-	/**  Ends every session of the account, on every device. */
-	accountSignOutEverywhere: () => __TAURI_INVOKE<AccountReplyV1>("account_sign_out_everywhere"),
-	/**
-	 *  Saves the server's account export where the person chooses. The file
-	 *  holds what the server sent: no bearer, no browsing data.
-	 */
-	accountExport: () => __TAURI_INVOKE<AccountExportV1>("account_export"),
-	/**  One page of the account's hosted requests, newest first. */
-	accountUsageHistory: (cursor: string | null) => __TAURI_INVOKE<AccountHistoryV1>("account_usage_history", { cursor }),
-	/**  One hosted request's receipt. */
-	accountReceipt: (id: string) => __TAURI_INVOKE<AccountReceiptV1>("account_receipt", { id }),
-	/**  Opens the system's picker and stages the picture for framing. */
-	accountAvatarPick: () => typedError<AccountAvatarPickV1, null>(__TAURI_INVOKE("account_avatar_pick")),
-	/**  Uploads the framed square of the staged picture as the account's picture. */
-	accountAvatarSave: (token: string, crop: AccountAvatarCropV1) => __TAURI_INVOKE<AccountReplyV1>("account_avatar_save", { token, crop }),
-	/**  Puts a staged picture away, and stops its upload if one is under way. */
-	accountAvatarDiscard: (token: string) => __TAURI_INVOKE<AccountReplyV1>("account_avatar_discard", { token }),
-	/**  Removes the account's picture everywhere it is signed in. */
-	accountAvatarRemove: () => __TAURI_INVOKE<AccountReplyV1>("account_avatar_remove"),
+	accountManageUsage: () => __TAURI_INVOKE<boolean>("account_manage_usage"),
+	accountRetryCleanup: () => __TAURI_INVOKE<AccountReplyV1>("account_retry_cleanup"),
 	workSites: (expectedProfile: string) => __TAURI_INVOKE<WorkSiteAccessResponseV1>("work_sites", { expectedProfile }),
 	workSetSite: (expectedProfile: string, change: WorkSiteChangeV1) => __TAURI_INVOKE<WorkSiteAccessResponseV1>("work_set_site", { expectedProfile, change }),
 	workScreenshotSites: (expectedProfile: string) => __TAURI_INVOKE<WorkScreenshotSitesResponseV1>("work_screenshot_sites", { expectedProfile }),
@@ -651,258 +587,37 @@ export type AboutInfo = {
 	arch: string,
 };
 
-/**  The square the person framed, in the preview's pixels. */
-export type AccountAvatarCropV1 = {
-	x: number,
-	y: number,
-	side: number,
-};
-
-export type AccountAvatarPickV1 =
-/**
- *  Staged under `token`; `width` and `height` are the preview's pixels,
- *  which the framing is stated in.
- */
-{ kind: "picked"; token: string; width: number; height: number } | { kind: "cancelled" } |
-/**  Not a still PNG, JPEG or WebP picture that could be read. */
-{ kind: "unsupported" } | { kind: "unavailable" };
-
-export type AccountCallSourceV1 = { kind: "task"; profile: string; work: string } | { kind: "voice" } | { kind: "page" };
-
-/**  The account changed; read it again. */
 export type AccountChanged = {
 	version: number,
 };
 
-export type AccountExportV1 = {
-	/**  The export was written where the person chose. */
-	saved: boolean,
-	fault: AccountFaultV1 | null,
-};
+export type AccountFaultV1 = "offline" | "protocol" | "invalid_identity" | "invalid_callback" | "denied" | "cancelled" | "timed_out" | "busy" | "vault" | "unavailable" | "signed_out" | "plan_permission_required" | "usage_limit" | "rate_limited" | "remote_revocation_unconfirmed";
 
-export type AccountFaultV1 = "offline" |
-/**  The session ended; sign in again. */
-"signed_out" | "rate_limited" | "invalid_code" | "signup_closed" |
-/**  The service, or the part asked for, is off. */
-"unavailable" |
-/**  Nothing has been bought, so there is nothing to manage. */
-"no_billing_account" | "server" |
-/**  The Keychain or Credential Manager refused. */
-"vault" | "invalid" |
-/**  The change needs a fresh sign-in; the session itself is still valid. */
-"reauth_required" |
-/**  Another account already uses that address. */
-"email_taken" | "not_found" |
-/**
- *  Under billing review: no purchase or upgrade; export, the portal and
- *  downgrades still work.
- */
-"billing_review" |
-/**  A subscription checkout is already open. */
-"checkout_in_progress" |
-/**  There is a subscription already: change it instead of buying another. */
-"subscription_change_required" |
-/**  Billing is read again before another try. */
-"billing_refresh_required" | "plan_change_in_progress" | "plan_change_expired" | "plan_change_unavailable" |
-/**  The picture is missing, empty or could not be read. */
-"avatar_invalid" |
-/**  The picture's upload took too long. */
-"avatar_timeout" |
-/**  The picture is over 2 MiB. */
-"avatar_too_large" |
-/**  Not a still PNG, JPEG or WebP picture. */
-"avatar_unsupported" |
-/**  The picture has more pixels than the service takes. */
-"avatar_dimensions" |
-/**  The service could not convert the picture. */
-"avatar_processing" |
-/**  The service is busy with pictures; try again after `retry_after`. */
-"avatar_busy" |
-/**  The upload was stopped here; nothing to tell the person. */
-"avatar_cancelled";
-
-export type AccountHistoryV1 = {
-	requests: AccountRequestV1[],
-	/**  Opaque; passed back unchanged for the next page. */
-	next_cursor: string | null,
-	fault: AccountFaultV1 | null,
-};
-
-export type AccountNoticeV1 = {
+export type AccountProfileV1 = {
 	id: string,
-	text: string,
-	warning: boolean,
-};
-
-export type AccountOfferV1 = { kind: "plan"; plan: string; interval: string; name: string | null; price: AccountPriceV1 | null; features: string[] } | { kind: "top_up"; id: string; name: string | null;
-/**  Credit it adds, in units of the usage's scale. */
-units: string | null; price: AccountPriceV1 | null; expires_days: number | null };
-
-/**  A Pro/Max change: a quote to confirm, or the operation after it. */
-export type AccountPlanChangeV1 = {
-	id: string,
-	/**  `quoted`, `queued`, `executing`, `uncertain`, `applied`, `scheduled` or `failed`. */
-	status: string,
-	current_plan: string,
-	target_plan: string,
-	interval: string,
-	/**  `upgrade` or `downgrade`. */
-	direction: string,
-	/**  Null for an immediate upgrade; the renewal for a downgrade. */
-	effective_at: string | null,
-	/**  An estimate before tax; the provider decides the final charge. */
-	charge: AccountPriceV1 | null,
-	recurring: AccountPriceV1 | null,
-	expires_at: string | null,
-	/**  The stable code of a failed change. */
-	error: string | null,
-};
-
-export type AccountPriceV1 = {
-	/**  In the currency's minor unit, as the billing provider states it. */
-	amount_minor: number,
-	currency: string,
-};
-
-export type AccountPurchaseV1 = { kind: "plan"; plan: string; interval: string } | { kind: "top_up"; id: string };
-
-export type AccountReceiptV1 = {
-	request: AccountRequestV1 | null,
-	fault: AccountFaultV1 | null,
+	label: string,
+	email: string | null,
+	signed_in: boolean,
+	sharing: boolean,
 };
 
 export type AccountReplyV1 = {
 	account: AccountV1,
 	fault: AccountFaultV1 | null,
-	/**  Seconds to wait before trying again, with `rate_limited` or `avatar_busy`. */
-	retry_after: number | null,
-};
-
-/**  One hosted request's accounting; never its content. */
-export type AccountRequestV1 = {
-	id: string,
-	model_id: string | null,
-	/**  `settled` is final; anything else is still held or being checked. */
-	state: string,
-	/**  Charged, in units; final only when settled. */
-	charged: string | null,
-	reserved: string | null,
-	started_at: string | null,
-	finished_at: string | null,
-	error_class: string | null,
-	/**  Which balance paid: `allowance`, `purchased` or `mixed`. */
-	funding: string | null,
-	/**  What the call was made for, from this computer's own record. */
-	source: AccountCallSourceV1 | null,
-};
-
-export type AccountSessionV1 = {
-	id: string,
-	device: string | null,
-	created_at: string | null,
-	last_used_at: string | null,
-	current: boolean,
-};
-
-export type AccountSessionsV1 = {
-	sessions: AccountSessionV1[],
-	fault: AccountFaultV1 | null,
-};
-
-/**  How the server takes new accounts. */
-export type AccountSignupModeV1 = "open" |
-/**  By invitation only. */
-"allowlist" | "closed" | "unknown";
-
-export type AccountSubscriptionV1 = {
-	/**  `active`, `inactive` or `unknown`. */
-	status: string,
-	/**  The paid plan held; null with no paid subscription. Model access follows `plan`, not this. */
-	plan: string | null,
-	/**  `monthly` or `yearly`; null with no paid subscription. */
-	interval: string | null,
-	paid_until: string | null,
-	cancel_at_period_end: boolean,
-};
-
-/**
- *  Usage as the server counts it. Amounts are decimal strings of integer
- *  units, `unit_scale` to one credit; they are shown divided, never summed
- *  into a charge. Held units are for calls still running.
- */
-export type AccountUsageV1 = {
-	/**  Share of the plan's allowance used or held, 0–100; null without an allowance. */
-	used_percent: number | null,
-	/**  When the allowance renews, as the server states it (ISO 8601). */
-	resets_at: string | null,
-	/**  Bought usage remains beyond the plan's allowance. */
-	extra: boolean,
-	unit_scale: number,
-	remaining: string | null,
-	allowance_total: string | null,
-	allowance_used: string | null,
-	held: string | null,
-	bonus_remaining: string | null,
-	bonus_expires_at: string | null,
-	purchased_remaining: string | null,
-	spent_today: string | null,
-	/**  The daily cap; null when there is none. */
-	daily_limit: string | null,
-	/**
-	 *  Units to one credit as the server states it. Null: show percentages
-	 *  only, never credit numbers.
-	 */
-	credit_units: string | null,
-	/**  What the plan's allowance still holds, in units. */
-	allowance_left: string | null,
-	/**  The allowance is a one-time grant that never refills. */
-	one_time: boolean,
-	/**  The free allowance is used up for now; purchased credit still works. */
-	free_paused: boolean,
-	/**  Purchased credit can be spent while the free allowance is paused. */
-	purchased_usable: boolean | null,
 };
 
 export type AccountV1 = {
 	version: number,
-	/**  Accounts work on this platform and build. */
 	available: boolean,
-	server: string,
-	custom_server: boolean,
-	/**  What the server offers; null until it has answered once. */
-	hosted_models: boolean | null,
-	/**  Purchases and the billing portal are offered here. */
-	billing: boolean | null,
-	signup_open: boolean | null,
-	/**  The server asks for a newer Zephium than this one. */
-	update_required: boolean,
 	signed_in: boolean,
-	/**  The address a sign-in code was sent to, while waiting for it. */
-	pending_email: string | null,
-	resend_in: number | null,
+	sharing: boolean,
+	pending: boolean,
+	active: string | null,
 	email: string | null,
 	name: string | null,
-	/**
-	 *  The account picture's revision, served by `zephium-media` at
-	 *  `account-avatar/<revision>`; null shows initials. Never the service's
-	 *  address for it.
-	 */
-	avatar: number | null,
-	plan: string | null,
-	usage: AccountUsageV1 | null,
-	subscription: AccountSubscriptionV1 | null,
-	offers: AccountOfferV1[],
-	/**  A checkout was opened and is being watched for completion. */
-	checkout_open: boolean,
-	/**  The billing portal was opened and billing is being read until it changes. */
-	portal_open: boolean,
-	signup_mode: AccountSignupModeV1 | null,
-	/**  Under billing review: a calm state in place of purchase buttons. */
-	billing_review: boolean,
-	plan_change: AccountPlanChangeV1 | null,
-	notice: AccountNoticeV1 | null,
-	/**  Hosted calls whose charge was not confirmed when they ended. */
-	unsettled: AccountRequestV1[],
+	profiles: AccountProfileV1[],
+	migration_pending: boolean,
+	fault: AccountFaultV1 | null,
 };
 
 /**
@@ -1970,8 +1685,9 @@ export type PageAssistCostV1 =
  */
 { kind: "hosted"; model: string; credits: string | null } |
 /**
- *  The person's own key. `usd` is an estimate as a decimal string such
- *  as "0.004"; null when no price is known.
+ *  Direct provider usage; the legacy `byok` tag preserves saved histories.
+ *  For new ChatGPT plan calls, `provider` is "ChatGPT" and `usd` is null.
+ *  Historical API-key estimates are decimal strings such as "0.004".
  */
 { kind: "byok"; model: string; provider: string; usd: string | null } |
 /**  A model on this device or network; no charge. */
@@ -5215,15 +4931,6 @@ export type WorkListItemV1_Serialize = {
 export type WorkListPriorityV1 = "high";
 
 export type WorkListStyleV1 = "todo" | "messages" | "reading" | "requirements" | "questions";
-
-export type WorkLocalServerKindV1 = "ollama" | "lm_studio";
-
-/**  A model server found running on this Mac. */
-export type WorkLocalServerV1 = {
-	kind: WorkLocalServerKindV1,
-	base: string,
-	models: number,
-};
 
 export type WorkLocalStepV1 = WorkLocalStepV1_Serialize | WorkLocalStepV1_Deserialize;
 

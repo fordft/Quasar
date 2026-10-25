@@ -47,8 +47,9 @@ const XAI_BASE: &str = "https://api.x.ai/v1";
 const MISTRAL_BASE: &str = "https://api.mistral.ai/v1";
 const GROQ_BASE: &str = "https://api.groq.com/openai/v1";
 const CEREBRAS_BASE: &str = "https://api.cerebras.ai/v1";
-/// Zephium Cloud's production base; each wire appends its provider's own path.
-pub const ZEPHIUM_CLOUD_BASE: &str = "https://api.zephium.app";
+// Legacy gateway codecs are retained for stored records and protocol fixtures.
+#[cfg(test)]
+const ZEPHIUM_CLOUD_BASE: &str = "https://legacy-gateway.example.invalid";
 const ANTHROPIC_VERSION: &str = "2023-06-01";
 const USER_AGENT: &str = "Quasar/1 (lead)";
 
@@ -62,7 +63,7 @@ const MAX_PAUSE_CONTINUATIONS: u32 = 3;
 const TRAILER_WAIT: Duration = Duration::from_secs(10);
 const MAX_ERROR_BODY_BYTES: usize = 16 * 1024;
 const MAX_IMAGE_BYTES: usize = 20 * 1024 * 1024;
-const MAX_SECRET_BYTES: usize = 4 * 1024;
+const MAX_SECRET_BYTES: usize = 16 * 1024;
 
 pub(crate) const MAX_TEXT_BYTES: usize = 2 * 1024 * 1024;
 pub(crate) const MAX_TOOL_ARGUMENT_BYTES: usize = 2 * 1024 * 1024;

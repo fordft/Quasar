@@ -3,7 +3,6 @@ import { afterEach, test, vi } from "vitest";
 import { render } from "vitest-browser-svelte";
 import { page, userEvent } from "vitest/browser";
 import type {
-  AccountV1,
   WorkModelProvider,
   WorkModelReasoning,
   WorkModelRole,
@@ -48,8 +47,8 @@ vi.mock("$shared/ipc/bindings", async () => {
     },
     accountGet: vi.fn(async () => ({
       account: native.hosted
-        ? accountFixture({ available: true, hosted_models: true, signed_in: false })
-        : (null as unknown as AccountV1),
+        ? accountFixture({ available: true, signed_in: false })
+        : accountFixture({ signed_in: true, sharing: true, email: "ada@example.com" }),
       fault: null,
       retry_after: null,
     })),
@@ -58,17 +57,15 @@ vi.mock("$shared/ipc/bindings", async () => {
 
 const shots = "../../../../../target/look/model-picker";
 const settle = (ms = 450) => new Promise((done) => setTimeout(done, ms));
-const keyed = (lead: string) =>
-  models({
-    keys: {
-      anthropic: "valid",
-      open_ai: "valid",
-      deep_seek: "valid",
-      open_router: "valid",
-      google: "invalid",
-    },
-    lead,
-  });
+const keyed = (lead: string) => {
+  const view = models({ keys: { open_ai: "valid" }, lead });
+  return {
+    ...view,
+    entries: view.entries
+      .filter((entry) => entry.model.provider === "open_ai")
+      .map((entry) => ({ ...entry, price: null })),
+  };
+};
 
 /** Glass is the menus' own material; solid is the opaque policy a Windows sidebar asks for. */
 async function shoot(name: string, materials: readonly ("glass" | "solid")[] = ["glass"]) {
@@ -94,46 +91,21 @@ afterEach(() => {
   preferences.dispose();
 });
 
-const rail = (name: RegExp) => page.getByRole("tab", { name });
-
-test(
-  "the chip, the card, a row's star, favourites, search, and the providers that wait on a step",
-  { timeout: 60_000 },
-  async () => {
-    await page.viewport(1100, 700);
-    native.hosted = true;
-    native.view = keyed("anthropic/claude-opus-5-5");
-    native.settings["work.favourite-models"] = "anthropic/claude-sonnet-5-5\nopenai/gpt-6-sol";
-    await preferences.init();
-    const screen = await render(ModelPickerStage, { profile: PROFILE });
-    await shoot("rest");
-    await screen.getByRole("button", { name: /Model: Claude Opus 5\.5/u }).click();
-    await shoot("card", ["glass", "solid"]);
-    await userEvent.hover(page.getByRole("option", { name: /Claude Fable 5\.1/u }));
-    await shoot("hover-row");
-    await userEvent.unhover(page.getByRole("listbox"));
-    await page.getByRole("button", { name: /^Effort: Medium/u }).click();
-    await shoot("effort-face");
-    await userEvent.keyboard("{Escape}");
-    await page.getByRole("button", { name: "Favourites", exact: true }).click();
-    await shoot("favourites");
-    await rail(/^OpenAI/u).click();
-    await shoot("openai");
-    await rail(/^DeepSeek/u).click();
-    await shoot("deepseek-key");
-    await rail(/^Google/u).click();
-    await shoot("google-refused");
-    await rail(/^Custom/u).click();
-    await shoot("server");
-    await rail(/^Zephium AI/u).click();
-    await shoot("hosted");
-    await rail(/^OpenRouter/u).click();
-    await userEvent.keyboard("son");
-    await shoot("search");
-    await userEvent.keyboard("zzz");
-    await shoot("search-empty");
-  },
-);
+test("ChatGPT model list, favourites and search in both themes", { timeout: 60000 }, async () => {
+  await page.viewport(1100, 700);
+  native.view = keyed("openai/gpt-6-luna");
+  native.settings["work.favourite-models"] = "openai/gpt-6-sol";
+  await preferences.init();
+  const screen = await render(ModelPickerStage, { profile: PROFILE });
+  await shoot("chatgpt-rest");
+  await screen.getByRole("button", { name: /Model: GPT-6 Luna/u }).click();
+  await shoot("chatgpt-card", ["glass", "solid"]);
+  await page.getByRole("button", { name: "Favourites", exact: true }).click();
+  await shoot("chatgpt-favourites");
+  await page.getByRole("button", { name: "Favourites", exact: true }).click();
+  await userEvent.keyboard("astra");
+  await shoot("chatgpt-search");
+});
 
 test("the effort at every level, from the slider's keys", async () => {
   await page.viewport(1100, 700);
@@ -150,34 +122,7 @@ test("the effort at every level, from the slider's keys", async () => {
   await shoot("rest-max");
 });
 
-test("a model with two efforts, and one with none", async () => {
-  await page.viewport(1100, 700);
-  native.view = keyed("deepseek/deepseek-v4-pro");
-  const screen = await render(ModelPickerStage, { profile: PROFILE });
-  await screen.getByRole("button", { name: /Model: DeepSeek V4 Pro/u }).click();
-  await shoot("two-levels");
-  await page.getByRole("button", { name: /^Effort:/u }).click();
-  await userEvent.keyboard("{ArrowRight}");
-  await shoot("two-levels-high");
-  await userEvent.keyboard("{Escape}");
-  await screen.unmount();
-
-  native.view = models({
-    keys: { mistral: "valid" },
-    lead: "mistral/mistral-medium-3-5",
-  });
-  native.view.entries.push({
-    ...native.view.entries[0]!,
-    id: "mistral/mistral-medium-3-5",
-    model: { provider: "mistral", wire: "chat_completions", model: "mistral-medium-3-5" },
-    display_name: "Mistral Medium 3.5",
-  });
-  const plain = await render(ModelPickerStage, { profile: PROFILE });
-  await plain.getByRole("button", { name: /Model: Mistral Medium 3\.5/u }).click();
-  await shoot("no-effort");
-});
-
-test("keyless", async () => {
+test("ChatGPT connection required", async () => {
   await page.viewport(1100, 700);
   native.view = models({});
   native.ready = false;

@@ -1,6 +1,10 @@
 # Zephium product system
 
-Status: product and target-architecture source of truth
+Status: inherited upstream product and target-architecture reference
+
+Quasar uses [Sign in with ChatGPT](chatgpt.md) as its sole product AI
+connection. The local-model, BYOK and Zephium-hosted account paths described
+below are upstream design history and are retired in this fork.
 Last reviewed: 2026-09-13
 
 This document defines what Zephium is, what the first public release must be,

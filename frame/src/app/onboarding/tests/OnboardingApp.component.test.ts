@@ -3,7 +3,7 @@ import { page, userEvent } from "vitest/browser";
 import { render } from "vitest-browser-svelte";
 import "$styles/global.css";
 import { emitNativeEvent } from "$shared/testing/native-events";
-import type { AccountReplyV1, Material, WorkModelsV1 } from "$shared/ipc/bindings";
+import type { AccountReplyV1, Material } from "$shared/ipc/bindings";
 import { browserImport, type ImportAdapter, type ImportJob } from "$domain/browser-import";
 import { fakeTabs } from "./onboarding-tabs.svelte";
 import OnboardingApp from "../OnboardingApp.svelte";
@@ -42,13 +42,6 @@ vi.mock("$shared/ipc/bindings", async () => {
         fault: null,
         retry_after: null,
       }) as unknown as AccountReplyV1,
-    workLocalServers: async () => [
-      { kind: "ollama", base: "http://localhost:11434/v1", models: 3 },
-    ],
-    workSetModelEndpoint: async (_profile: string, base: string | null) => {
-      native.endpoint = base;
-      return {} as WorkModelsV1;
-    },
     onboardingPlayIntro: async () => {
       native.intro++;
       return true;
@@ -263,10 +256,10 @@ test("the first run, from the name in the air to the browser", { timeout: 180_00
   await expect
     .element(page.getByRole("heading", { name: "Choose how Work thinks." }))
     .toBeVisible();
-  // Nothing is chosen for the person; a server already running here is named.
+  // ChatGPT is the only AI source; connection is completed later in Settings.
   await expect.element(page.getByRole("button", { name: /^Not now/u })).toBeVisible();
-  await expect.element(page.getByText("Ollama is running")).toBeVisible();
-  await page.getByRole("radio", { name: /A local model/u }).click();
+  await expect.element(page.getByText("Ollama is running")).not.toBeInTheDocument();
+  await page.getByRole("radio", { name: /ChatGPT/u }).click();
   await expect.element(page.getByRole("button", { name: /^Continue/u })).toBeVisible();
   await capture("10b-ai");
 
@@ -278,9 +271,8 @@ test("the first run, from the name in the air to the browser", { timeout: 180_00
   // nothing of onboarding stays mounted.
   await page.getByRole("button", { name: /Start browsing/u }).click();
   await expect.poll(() => native.finished, { timeout: 4000 }).toBe(1);
-  // The running server is connected here, and the browser opens on the new
-  // tab the scene ended on, with no other tab opened for it.
-  expect(native.endpoint).toBe("http://localhost:11434/v1");
+  // No provider endpoint is configured; the browser opens on the new tab.
+  expect(native.endpoint).toBeNull();
   expect(fakeTabs.opened()).toBe(0);
   await expect.poll(() => document.querySelector(".onboarding")).toBeNull();
 });

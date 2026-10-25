@@ -24,10 +24,11 @@ assistant and a persistent workspace for agent-assisted work.
   on a canvas as documents, tables, charts, plans and other structured objects.
   Work includes 25 built-in skills and connections to configured MCP servers.
 
-Use your own provider API keys or an OpenAI-compatible local server such as
-Ollama or LM Studio. **Zephium AI remains an optional external service** using
-its original account, endpoints, terms and provider identity; this fork does
-not supply a Quasar-hosted AI backend.
+AI connects through **Sign in with ChatGPT**. Eligible ChatGPT Plus and Pro
+accounts can authorize plan usage without API keys. Quasar calls OpenAI's
+public API directly; the upstream Zephium account, billing service, provider
+keys and local model endpoints have been retired. See [ChatGPT setup and
+implementation notes](docs/chatgpt.md). Linux currently remains a browsing-only preview.
 
 General shell execution and coding-agent hand-offs are currently gated in the
 source pending a confined native runner. Some platform-specific capabilities

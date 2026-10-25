@@ -9,6 +9,8 @@ import type {
 /** What a reply cost, as its footer's tooltip says it. */
 export function costLine(cost: PageAssistCostV1): string {
   if (cost.kind === "local") return m.assist_cost_local({ model: cost.model });
+  if (cost.kind === "byok" && cost.provider === "ChatGPT")
+    return m.chatgpt_cost({ model: cost.model });
   if (cost.kind === "byok")
     return cost.usd === null
       ? m.assist_cost_confirming({ model: cost.model })

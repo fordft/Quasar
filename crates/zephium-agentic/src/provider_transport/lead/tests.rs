@@ -278,10 +278,7 @@ fn openai_limits_and_failures_close() {
             "usage": {"input_tokens": 5, "output_tokens": 9}}}),
     )]);
     let (_, decoded) = decode(WorkModelWire::OpenAiResponses, &incomplete);
-    assert_eq!(
-        decoded.unwrap().stop,
-        DecodedStop::End(WorkModelStop::MaxTokens)
-    );
+    assert_eq!(decoded.err(), Some(WorkModelError::Protocol));
 
     let failed = sse(&[(
         "response.failed",
@@ -409,12 +406,12 @@ fn targets_build_exact_urls_for_direct_and_cloud() {
     let cloud = LeadTarget::cloud(ZEPHIUM_CLOUD_BASE, WorkModelProvider::DeepSeek).unwrap();
     assert_eq!(
         cloud.call_url("deepseek-flash", false).unwrap().as_str(),
-        "https://api.zephium.app/deepseek/v1/chat/completions"
+        "https://legacy-gateway.example.invalid/deepseek/v1/chat/completions"
     );
     let cloud = LeadTarget::cloud(ZEPHIUM_CLOUD_BASE, WorkModelProvider::OpenAi).unwrap();
     assert_eq!(
         cloud.call_url("gpt-6-sol", false).unwrap().as_str(),
-        "https://api.zephium.app/openai/v1/responses"
+        "https://legacy-gateway.example.invalid/openai/v1/responses"
     );
     assert!(LeadTarget::compatible("http://example.com/v1").is_err());
     assert!(LeadTarget::compatible("http://localhost:11434/v1").is_ok());
@@ -1050,7 +1047,7 @@ fn another_providers_reasoning_is_never_replayed() {
 }
 
 fn cloud_target(upstream: WorkModelProvider, calls: Option<u32>) -> LeadTarget {
-    let mut target = LeadTarget::cloud("https://api.zephium.app", upstream).unwrap();
+    let mut target = LeadTarget::cloud("https://legacy-gateway.example.invalid", upstream).unwrap();
     target.search_calls = calls;
     target
 }

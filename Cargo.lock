@@ -3910,6 +3910,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d55d956fa96f5ec02be2e13af0e20391a5aa83d6a074e3ad368959d0fab299ea"
 
 [[package]]
+name = "quasar-chatgpt"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "reqwest",
+ "ring",
+ "serde",
+ "serde_json",
+ "subtle",
+ "tempfile",
+ "tokio",
+ "url",
+ "zephium-credentials",
+ "zeroize",
+]
+
+[[package]]
 name = "quick-error"
 version = "1.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7283,19 +7300,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "zephium-account"
-version = "0.1.0"
-dependencies = [
- "reqwest",
- "serde",
- "serde_json",
- "tokio",
- "url",
- "zephium-credentials",
- "zeroize",
-]
-
-[[package]]
 name = "zephium-agent-controller"
 version = "0.1.0"
 dependencies = [
@@ -7379,6 +7383,7 @@ dependencies = [
  "objc2",
  "objc2-foundation",
  "psl",
+ "quasar-chatgpt",
  "regex",
  "reqwest",
  "serde",
@@ -7521,6 +7526,7 @@ dependencies = [
  "objc2-service-management",
  "objc2-user-notifications",
  "objc2-web-kit",
+ "quasar-chatgpt",
  "raw-window-handle",
  "reqwest",
  "rfd",
@@ -7538,6 +7544,7 @@ dependencies = [
  "tauri-utils",
  "tempfile",
  "tokio",
+ "url",
  "webkit2gtk",
  "webview2-com",
  "window-vibrancy 0.8.0",
@@ -7545,7 +7552,6 @@ dependencies = [
  "x11rb",
  "xkeysym",
  "zbus",
- "zephium-account",
  "zephium-agent-controller",
  "zephium-agent-model-catalog",
  "zephium-agent-provider-transport",
@@ -7555,6 +7561,7 @@ dependencies = [
  "zephium-blocker",
  "zephium-blocker-service",
  "zephium-core",
+ "zephium-credentials",
  "zephium-engine",
  "zephium-import",
  "zephium-ipc",
@@ -7868,6 +7875,9 @@ name = "zeroize"
 version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e13c156562582aa81c60cb29407084cdb54c4164760106ab78e6c5b0858cf64e"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "zerotrie"

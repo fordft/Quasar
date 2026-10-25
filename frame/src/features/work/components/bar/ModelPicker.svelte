@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Popover } from "bits-ui";
   import { onDestroy, onMount, tick, untrack } from "svelte";
-  import { accountSession, planName } from "$domain/account";
+  import { accountSession } from "$domain/account";
   import type { WorkModelEntry, WorkModelProvider, WorkModelReasoning } from "$shared/ipc/bindings";
   import { commands } from "$shared/ipc/bindings";
   import {
@@ -10,8 +10,6 @@
     effortName,
     entryOf,
     favourites,
-    keyState,
-    keyedProviders,
     locked,
     pickerGroups,
     providerName,
@@ -26,7 +24,6 @@
   import { menuMaterialFor } from "$shared/ui/Menu/material";
   import {
     Cancel01Icon,
-    Key01Icon,
     Search01Icon,
     Settings02Icon,
     StarIcon,
@@ -68,10 +65,6 @@
     return () => accountSession.release();
   });
   const account = $derived(accountSession.account());
-  /** Hosted models this server offers to someone not yet signed in. */
-  const hostedOffer = $derived(
-    !!account?.available && !account.signed_in && account.hosted_models === true,
-  );
 
   let open = $state(false);
   let trigger = $state<HTMLElement | null>(null);
@@ -83,7 +76,7 @@
   const models = $derived(session?.models ?? null);
   const current = $derived(entryOf(models, models?.effective[role]));
   const chosen = $derived(models?.effective[role] ?? null);
-  const groups = $derived(pickerGroups(models, role, session?.endpoint ?? []));
+  const groups = $derived(pickerGroups(models, role, []));
   const tierOf = $derived(tiers(groups.ready));
 
   type Item = { id: string; entry: WorkModelEntry };
@@ -98,29 +91,8 @@
 
   /** Every provider Settings offers: Quasar's own first, then the ready ones, then each with the one step that readies it. */
   const seats = $derived.by<Seat[]>(() => {
-    const own: Seat[] = [];
-    const ready: Seat[] = [];
-    const rest: Seat[] = [];
-    for (const provider of ["cloud", ...keyedProviders] as const) {
-      if (provider === "cloud") {
-        if (usable(models, provider) || account?.signed_in)
-          own.push({ provider, standing: "ready" });
-        else if (account?.available && account.hosted_models === true)
-          own.push({ provider, standing: "sign_in" });
-      } else if (usable(models, provider)) ready.push({ provider, standing: "ready" });
-      else
-        rest.push({
-          provider,
-          standing:
-            provider === "compatible" &&
-            !models?.providers.find((row) => row.provider === provider)?.base
-              ? "server"
-              : keyState(models, provider) === "invalid"
-                ? "refused"
-                : "key",
-        });
-    }
-    return [...own, ...ready, ...rest];
+    if (usable(models, "open_ai")) return [{ provider: "open_ai", standing: "ready" }];
+    return account?.available ? [{ provider: "open_ai", standing: "sign_in" }] : [];
   });
 
   const starred = $derived(new Set(favourites()));
@@ -328,7 +300,7 @@
     }
     material = menuMaterialFor(trigger);
     // The person's own server says which models it serves; the rest is the curated list.
-    if (usable(models, "compatible")) void session?.listEndpoint();
+
     active = home;
   }
 
@@ -570,11 +542,11 @@
 </script>
 
 {#if keyless}
-  <button type="button" class="model-trigger add-key ui-shine ui-shine-press" onclick={settings}>
-    <span class="trigger-mark" aria-hidden="true"><Icon icon={Key01Icon} size={14} /></span>
-    <span class="trigger-name"
-      >{hostedOffer ? m.work_model_start() : m.work_model_add_model_key()}</span
+  <button type="button" class="model-trigger connect ui-shine ui-shine-press" onclick={settings}>
+    <span class="trigger-mark" aria-hidden="true"
+      ><ProviderMark provider="open_ai" size={16} /></span
     >
+    <span class="trigger-name">{m.chatgpt_continue()}</span>
   </button>
 {:else}<Popover.Root {open} onOpenChange={(next) => void opened(next)}>
     <Popover.Trigger
@@ -767,7 +739,7 @@
                         ? needed
                           ? m.work_model_upgrade_plan_label({
                               model: item.entry.display_name,
-                              plan: planName(needed) ?? needed,
+                              plan: needed,
                             })
                           : m.work_model_upgrade_label({ model: item.entry.display_name })
                         : undefined}
@@ -776,7 +748,7 @@
                     >
                       <span class="option-name">{item.entry.display_name}</span>
                       {#if closed}<span class="upgrade" data-plan={needed ?? undefined}
-                          >{needed ? (planName(needed) ?? needed) : m.work_model_upgrade()}</span
+                          >{needed ? needed : m.work_model_upgrade()}</span
                         >{/if}
                       <span class="slot">
                         <span class="check" aria-hidden="true"
@@ -865,7 +837,7 @@
     opacity: 0;
   }
 
-  .add-key {
+  .connect {
     align-items: center;
     gap: 7px;
     padding-inline: 10px 12px;

@@ -9,7 +9,7 @@
       <div class="settings-view">
         <header class="settings-page-heading">
           <h1>Account</h1>
-          <p>Your optional connection to Quasar services.</p>
+          <p>Connect your ChatGPT account and manage plan usage.</p>
         </header>
         <AccountPage />
       </div>

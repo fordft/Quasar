@@ -1,10 +1,9 @@
 import { describe, expect, test } from "vitest";
-import type { WorkModelEntry, WorkModelsV1 } from "$shared/ipc/bindings";
+import type { WorkModelEntry } from "$shared/ipc/bindings";
 import {
   contextSize,
   dollars,
   effortLevels,
-  locked,
   pickerGroups,
   priceTier,
   searchEntries,
@@ -14,58 +13,29 @@ import {
 import { entry, models } from "$shared/testing/work-models";
 
 describe("the picker's list", () => {
-  test("groups the curated models of usable providers, recommended first, hosted first", () => {
+  test("only ChatGPT account models can become selectable, including with stale provider state", () => {
     const view = models({
-      keys: { anthropic: "valid", open_ai: "set", google: "invalid" },
+      keys: { anthropic: "valid", open_ai: "valid", google: "valid" },
       cloud: true,
+      base: "http://localhost:11434/v1",
     });
-    const { ready, needsKey } = pickerGroups(view, "lead");
-    expect(ready.map((group) => group.provider)).toEqual(["cloud", "anthropic", "open_ai"]);
-    expect(ready[1]!.entries.map((item) => item.id)).toEqual([
-      "anthropic/claude-opus-5-5",
-      "anthropic/claude-sonnet-5-5",
-      "anthropic/claude-fable-5-1",
-    ]);
-    expect(ready[2]!.entries.map((item) => item.id)).toEqual([
+    const served = [entry("compatible", "qwen4:32b", "Local model", false)];
+    const { ready, needsKey } = pickerGroups(view, "lead", served);
+    expect(ready.map((group) => group.provider)).toEqual(["open_ai"]);
+    expect(ready[0]!.entries.map((item) => item.id)).toEqual([
       "openai/gpt-6-luna",
       "openai/gpt-6-sol",
       "openai/gpt-6-astra",
     ]);
-    // A refused key reads as needing one, not as broken; only the best-known
-    // providers ask, and the rest wait in Settings.
-    expect(needsKey).toEqual(["google"]);
-    // Signed out, hosted models are neither offered nor listed as needing a key.
-    const signedOut = pickerGroups(
-      { ...view, cloud: { signed_in: false, plan: null, locked: [], required: [] } },
-      "lead",
-    );
-    expect(signedOut.ready.map((group) => group.provider)).toEqual(["anthropic", "open_ai"]);
-    expect(signedOut.needsKey).not.toContain("cloud");
-    // A plan-locked hosted model stays listed to explain the plan, but a
-    // catalog of only locked models cannot run anything.
-    const id = view.entries.find((item) => item.model.provider === "cloud")!.id;
-    const lockedView = { ...view, cloud: { ...view.cloud, locked: [id] } };
-    expect(locked(lockedView, id)).toBe(true);
-    expect(usable(lockedView, "cloud")).toBe(false);
-    expect(usable(view, "cloud")).toBe(true);
+    expect(needsKey).toEqual([]);
+    expect(usable(view, "cloud")).toBe(false);
+    expect(usable(view, "compatible")).toBe(false);
+    expect(usable(view, "anthropic")).toBe(false);
   });
-
-  test("a custom server adds the models it serves", () => {
-    const view = models({ base: "http://localhost:11434/v1" });
-    const served = [entry("compatible", "qwen4:32b", "qwen4:32b", false)];
-    const { ready } = pickerGroups(view, "lead", served);
-    expect(ready.map((group) => group.provider)).toEqual(["compatible"]);
-    expect(ready[0]!.entries[0]!.display_name).toBe("qwen4:32b");
-  });
-
-  test("a custom server is usable once it has an address, keys only when set or valid", () => {
-    const view: WorkModelsV1 = models({
-      keys: { deep_seek: "invalid" },
-      base: "http://localhost:11434/v1",
-    });
-    expect(usable(view, "compatible")).toBe(true);
-    expect(usable(view, "deep_seek")).toBe(false);
-    expect(usable(null, "anthropic")).toBe(false);
+  test("an unconfirmed legacy OpenAI key cannot authorize models", () => {
+    const view = models({ keys: { open_ai: "set" } });
+    expect(pickerGroups(view, "lead").ready).toEqual([]);
+    expect(usable(null, "open_ai")).toBe(false);
   });
 
   test("the trigger drops a family name the mark already says", () => {
@@ -96,9 +66,7 @@ describe("the picker's details", () => {
   test("search finds models across providers by name, maker or id", () => {
     const view = models({ keys: { anthropic: "valid", open_ai: "valid" } });
     const { ready } = pickerGroups(view, "lead");
-    expect(searchEntries(ready, "sonnet").map((item) => item.id)).toEqual([
-      "anthropic/claude-sonnet-5-5",
-    ]);
+    expect(searchEntries(ready, "sonnet")).toEqual([]);
     expect(searchEntries(ready, "openai astra").map((item) => item.id)).toEqual([
       "openai/gpt-6-astra",
     ]);

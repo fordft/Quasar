@@ -36,7 +36,7 @@
 
   import { onMount } from "svelte";
   import { events } from "$shared/ipc/native-events";
-  import { askSettings, handleNativeSection } from "$features/settings";
+  import { handleNativeSection } from "$features/settings";
   import * as m from "$shared/i18n/messages";
   import { surface as browserPage } from "$domain/surface";
   import { loadToolSlot } from "$features/tools";
@@ -77,8 +77,7 @@
     handleNativeSection("settings.section.newtab");
     void browserPage.open("settings");
   }
-  function openAccount(intent: "account" | "credits") {
-    askSettings(intent === "credits" ? "credits" : null);
+  function openAccount() {
     handleNativeSection("settings.section.account");
     void browserPage.open("settings");
   }

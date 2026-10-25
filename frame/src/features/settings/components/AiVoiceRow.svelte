@@ -72,7 +72,7 @@
   });
 </script>
 
-<SettingsGroup title={m.voice_group()} description={m.voice_group_note()}>
+<SettingsGroup title={m.voice_group()} description={m.chatgpt_voice_note()}>
   {#if settings.unavailable && !status}<p class="voice-note" role="alert">
       {m.voice_unavailable()}
     </p>{:else}

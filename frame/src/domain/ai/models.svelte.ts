@@ -1,7 +1,5 @@
 import { commands } from "$shared/ipc/bindings";
 import type {
-  WorkModelEntry,
-  WorkModelProvider,
   WorkModelReasoning,
   WorkModelRole,
   WorkModelsFaultV1,
@@ -11,14 +9,8 @@ import { events } from "$shared/ipc/native-events";
 import { observe } from "$shared/lib/observe";
 
 const TIMEOUT = 9000;
-/** A key check asks the provider over the network. */
-const KEY_TIMEOUT = 20000;
 
-/**
- * The picker's and Settings → AI's view of models and keys. Rust owns the
- * catalog, the choices and the Keychain; this mirrors its last answer. A key
- * passes through once on its way to the Keychain and is never kept here.
- */
+/** Native account-authorized models and profile-scoped choices. */
 export class ModelsSession {
   models = $state.raw<WorkModelsV1 | null>(null);
   unavailable = $state(false);
@@ -26,12 +18,6 @@ export class ModelsSession {
   busy = $state<string | null>(null);
   /** What the last action could not do, with the action it belongs to. */
   fault = $state.raw<{ action: string; fault: WorkModelsFaultV1 } | null>(null);
-  /** The models the person's own server serves, once asked. */
-  endpoint = $state.raw<WorkModelEntry[]>([]);
-  more = $state.raw<WorkModelEntry[]>([]);
-  listingMore = $state(false);
-  /** The server address last asked for its models; each is asked once. */
-  private listed: string | null = null;
   private readSequence = 0;
   private readPending = false;
   private reading = false;
@@ -92,9 +78,6 @@ export class ModelsSession {
       return;
     }
     this.unavailable = false;
-    const previousBase = this.models?.providers.find((row) => row.provider === "compatible")?.base;
-    const nextBase = response.providers.find((row) => row.provider === "compatible")?.base;
-    if (previousBase !== nextBase) this.endpoint = [];
     // An identical answer is not a change: dependants would ask again for nothing.
     if (this.models && JSON.stringify(this.models) === JSON.stringify(response)) return;
     this.models = response;
@@ -136,77 +119,15 @@ export class ModelsSession {
     return this.act("effort", () => commands.workSetModelEffort(this.profile, effort));
   }
 
-  /** The key goes straight to Rust, which checks it with the provider first. */
-  setKey(provider: WorkModelProvider, key: string) {
+  refresh() {
     return this.act(
-      `key:${provider}`,
-      () => commands.workSetProviderKey(this.profile, provider, key),
-      KEY_TIMEOUT,
+      "refresh",
+      async () => {
+        await commands.workMoreModels(this.profile, "open_ai");
+        return commands.workModels(this.profile);
+      },
+      30000,
     );
-  }
-
-  testKey(provider: WorkModelProvider) {
-    return this.act(
-      `test:${provider}`,
-      () => commands.workTestProviderKey(this.profile, provider),
-      KEY_TIMEOUT,
-    );
-  }
-
-  clearKey(provider: WorkModelProvider) {
-    return this.act(`clear:${provider}`, () =>
-      commands.workClearProviderKey(this.profile, provider),
-    );
-  }
-
-  setEndpoint(base: string | null) {
-    return this.act("endpoint", () => commands.workSetModelEndpoint(this.profile, base));
-  }
-
-  /** The person's own server's models, asked once per address it is set to.
-   *  An empty answer or a fault settles it; a new address asks again. */
-  async listEndpoint() {
-    const base =
-      this.models?.providers.find((provider) => provider.provider === "compatible")?.base ?? null;
-    if (base === null || base === this.listed) return;
-    this.listed = base;
-    this.endpoint = [];
-    const generation = this.generation;
-    const response = await observe(
-      Promise.resolve().then(() => commands.workMoreModels(this.profile, "compatible")),
-      KEY_TIMEOUT,
-      this.lifetime.signal,
-    );
-    if (generation !== this.generation || base !== this.listed) return;
-    if (response.state === "received" && !response.value.fault)
-      this.endpoint = response.value.entries;
-  }
-
-  async listMore(providers: readonly WorkModelProvider[]) {
-    if (this.listingMore) return;
-    this.listingMore = true;
-    const generation = this.generation;
-    const results = await Promise.all(
-      providers.map((provider) =>
-        observe(
-          Promise.resolve().then(() => commands.workMoreModels(this.profile, provider)),
-          KEY_TIMEOUT,
-          this.lifetime.signal,
-        ),
-      ),
-    );
-    if (generation !== this.generation) return;
-    this.listingMore = false;
-    const entries = results.flatMap((result) =>
-      result.state === "received" && !result.value.fault ? result.value.entries : [],
-    );
-    this.more = entries;
-    const failed = results.find((result) => result.state !== "received" || result.value.fault);
-    if (failed)
-      this.fault = {
-        action: "more",
-        fault: failed.state === "received" ? (failed.value.fault ?? "unreachable") : "unreachable",
-      };
   }
 
   dispose() {
@@ -218,10 +139,6 @@ export class ModelsSession {
     this.models = null;
     this.busy = null;
     this.fault = null;
-    this.endpoint = [];
-    this.more = [];
-    this.listingMore = false;
-    this.listed = null;
     this.readPending = false;
     this.reading = false;
     this.readSequence++;

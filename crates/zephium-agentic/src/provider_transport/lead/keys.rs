@@ -29,6 +29,30 @@ pub fn service(provider: WorkModelProvider) -> Option<&'static str> {
     })
 }
 
+/// Retires upstream and fork API keys without reading their secret values.
+/// This never touches ChatGPT registrations, website passwords or MCP OAuth.
+pub fn retire_legacy_keys() -> Result<(), LeadKeyError> {
+    cache().lock().unwrap_or_else(|p| p.into_inner()).clear();
+    for prefix in ["app.quasar.agent-provider", "app.zephium.agent-provider"] {
+        for slug in [
+            "openai",
+            "anthropic",
+            "google",
+            "deepseek",
+            "openrouter",
+            "xai",
+            "mistral",
+            "groq",
+            "cerebras",
+            "compatible",
+            "typesafe",
+        ] {
+            platform::delete(&format!("{prefix}.{slug}"))?;
+        }
+    }
+    Ok(())
+}
+
 /// Content-free Keychain failures.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum LeadKeyError {

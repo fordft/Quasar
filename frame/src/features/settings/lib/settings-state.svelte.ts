@@ -4,15 +4,9 @@ export const selectionRevision = () => revision;
 let current = $state<SettingsSection>("general");
 let search = $state("");
 let target = $state<string | null>(null);
-let asked = $state<"credits" | null>(null);
 export const section = () => current;
 export const query = () => search;
 export const highlighted = () => target;
-/** A dialog another surface asked Settings to open as it shows, until it opens. */
-export const asking = () => asked;
-export function ask(dialog: "credits" | null) {
-  asked = dialog;
-}
 export function setQuery(value: string) {
   search = value;
   target = null;

@@ -21,7 +21,7 @@ vi.mock("$shared/ipc/bindings", async () => {
   const known: Record<string, (...args: never[]) => Promise<unknown>> = {
     settingGet: async (key: string) => native.settings[key] ?? null,
     accountGet: async () => ({
-      account: accountFixture({ signed_in: true, email: "ada@example.com", plan: "pro" }),
+      account: accountFixture({ signed_in: true, email: "ada@example.com" }),
       fault: null,
       retry_after: null,
     }),

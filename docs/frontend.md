@@ -263,8 +263,9 @@ share one UI kit and gain folders only with their real runtime contracts.
 
 Quasar’s icon and wordmark sources live in `assets/brand/quasar-icon.svg` and
 `assets/brand/quasar-wordmark.svg`. Run `pnpm brand:assets` to regenerate native
-icons, frontend icon rasters and the shared vector wordmark. The retained
-Zephium icon identifies the external Zephium AI provider only.
+icons, frontend icon rasters and the shared vector wordmark. The AI connection
+uses the ChatGPT mark and native account projection; upstream provider identifiers
+remain readable only for history. See [ChatGPT integration](chatgpt.md).
 
 `UiInfo.material` reports a per-window enum. Native material updates still use the
 scoped `material.*` UI-command transport until typed appearance projections land.

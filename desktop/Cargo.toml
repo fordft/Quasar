@@ -123,7 +123,9 @@ tauri.workspace = true
 zephium-core.workspace = true
 zephium-ipc.workspace = true
 zephium-app.workspace = true
-zephium-account.workspace = true
+quasar-chatgpt.workspace = true
+url.workspace = true
+zephium-credentials.workspace = true
 zephium-agent-model-catalog = { workspace = true, optional = true }
 zephium-agentic = { workspace = true, optional = true }
 zephium-agent-controller = { workspace = true, optional = true }

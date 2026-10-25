@@ -486,12 +486,6 @@ export const fields = {
     description: m.settings_decisions_desc,
     initial: "recommended",
   },
-  "work.decisions.key": {
-    section: "ai",
-    label: m.ai_jev_key_title,
-    description: m.ai_jev_key_desc,
-    initial: "",
-  },
   "ai.enabled": {
     section: "features",
     label: m.feature_ai_title,

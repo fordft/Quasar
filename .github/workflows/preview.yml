@@ -218,6 +218,7 @@ jobs:
 
           - macOS: Apple Silicon; ad-hoc signed, not Apple-notarized. macOS may require approval in Privacy & Security.
           - Linux: x86_64 AppImage for Ubuntu 26.04 or newer (glibc 2.43+), with WebKitGTK 2.54.2 included. AI and Work are unavailable in this browsing preview.
+          - AI on macOS uses Continue with ChatGPT only; Zephium sign-in and provider API keys have been removed. An eligible ChatGPT Plus or Pro account and plan-usage consent are required. Live account testing remains manual.
           - Automatic updates remain disabled. Install a later preview manually.
 
           Checksums are in SHA256SUMS. These are test builds, not a production release.
