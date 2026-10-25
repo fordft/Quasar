@@ -1,0 +1,176 @@
+name: Preview
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Platforms to build
+        type: choice
+        options: [both, macos, linux]
+        default: both
+      publish:
+        description: Publish both platforms as a GitHub pre-release
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preview-${{ github.ref }}-${{ inputs.platform || 'both' }}-${{ inputs.publish || false }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_BUILD_JOBS: 2
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: rustup toolchain install --profile minimal
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - run: pnpm install --frozen-lockfile
+      - run: cargo fmt --all -- --check
+      - run: pnpm -C frame check
+      - run: pnpm -C frame build
+      - run: cargo test -p zephium-core --lib --locked
+      - run: cargo xtask check-frame-styles
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: preview-frame
+          path: frame/dist/
+          retention-days: 7
+
+  build:
+    name: Build (${{ matrix.platform }})
+    needs: check
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(inputs.platform == 'macos' && '{"include":[{"platform":"macos","os":"macos-15"}]}' || inputs.platform == 'linux' && '{"include":[{"platform":"linux","os":"ubuntu-22.04"}]}' || '{"include":[{"platform":"linux","os":"ubuntu-22.04"},{"platform":"macos","os":"macos-15"}]}') }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: rustup toolchain install --profile minimal
+      - name: Linux dependencies
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf libxdo-dev xvfb xdotool dbus-x11
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          shared-key: preview-${{ matrix.platform }}
+          cache-on-failure: true
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: preview-frame
+          path: frame/dist
+      - name: Third-party notices
+        run: python3 scripts/release/third_party_notices.py target/THIRD_PARTY_NOTICES.txt
+      - name: Build Linux browsing preview
+        if: matrix.platform == 'linux'
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: '1'
+        run: >-
+          pnpm -C desktop build --bundles deb,appimage
+          --config '{"build":{"beforeBuildCommand":null},"bundle":{"createUpdaterArtifacts":false,"resources":{"../target/THIRD_PARTY_NOTICES.txt":"licenses/THIRD_PARTY_NOTICES.txt"}}}'
+      - name: Build macOS preview
+        if: matrix.platform == 'macos'
+        run: >-
+          pnpm -C desktop build --target aarch64-apple-darwin --bundles app,dmg
+          --config '{"build":{"beforeBuildCommand":null},"bundle":{"createUpdaterArtifacts":false,"macOS":{"signingIdentity":"-"},"resources":{"../target/THIRD_PARTY_NOTICES.txt":"licenses/THIRD_PARTY_NOTICES.txt"}}}'
+      - name: Smoke Linux startup
+        if: matrix.platform == 'linux'
+        run: xvfb-run -a dbus-run-session -- python3 scripts/ci/smoke-desktop.py target/release/Quasar
+      - name: Smoke macOS startup
+        if: matrix.platform == 'macos'
+        run: |
+          app=target/aarch64-apple-darwin/release/bundle/macos/Quasar.app
+          codesign --verify --deep --strict "$app"
+          python3 scripts/ci/smoke-desktop.py "$app/Contents/MacOS/Quasar"
+      - name: Stage downloads
+        shell: bash
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          mkdir -p dist
+          if [[ "$PLATFORM" == linux ]]; then
+            cp target/release/bundle/deb/*.deb dist/Quasar-Linux-x86_64.deb
+            cp target/release/bundle/appimage/*.AppImage dist/Quasar-Linux-x86_64.AppImage
+          else
+            cp target/aarch64-apple-darwin/release/bundle/dmg/*.dmg dist/Quasar-macOS-arm64.dmg
+          fi
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: preview-${{ matrix.platform }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 30
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: smoke-${{ matrix.platform }}
+          path: target/preview-smoke/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  publish:
+    name: Publish pre-release
+    needs: [check, build]
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish && inputs.platform == 'both' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: preview-linux
+          path: dist
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: preview-macos
+          path: dist
+      - name: Publish preview downloads
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          REVISION: ${{ github.sha }}
+          TAG: quasar-preview-${{ github.run_number }}
+        run: |
+          cd dist
+          sha256sum Quasar-* > SHA256SUMS
+          cat > "$RUNNER_TEMP/preview-notes.md" <<EOF
+          Experimental Quasar builds from ${REVISION}.
+
+          - macOS: Apple Silicon; ad-hoc signed, not Apple-notarized. macOS may require approval in Privacy & Security.
+          - Linux: x86_64 browsing preview. AI and Work are unavailable in this build. Use the .deb on Ubuntu/Debian, or the AppImage.
+          - Automatic updates remain disabled. Install a later preview manually.
+
+          Checksums are in SHA256SUMS. These are test builds, not a production release.
+          EOF
+          if gh release view "$TAG" --repo "$REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" Quasar-* SHA256SUMS --repo "$REPOSITORY" --clobber
+          else
+            gh release create "$TAG" Quasar-* SHA256SUMS --repo "$REPOSITORY" --target "$REVISION" --title "Quasar Preview $TAG" --prerelease --latest=false --notes-file "$RUNNER_TEMP/preview-notes.md"
+          fi

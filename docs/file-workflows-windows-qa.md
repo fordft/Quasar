@@ -17,7 +17,7 @@ using the normal repository setup, then run in PowerShell:
 
 The script runs native library/desktop tests, Chromium component tests, frontend
 checks/build/CSS gate, then builds a debug executable without an installer. It
-uses `app.zephium.files-integration-qa` and the explicit Windows QA configuration.
+uses `app.quasar.files-integration-qa` and the explicit Windows QA configuration.
 The default output is `target/debug/zephium-desktop.exe`; respect
 `CARGO_TARGET_DIR` if configured. The script does not launch it. The QA feature
 cannot be used in release builds or combined with another QA identity. 

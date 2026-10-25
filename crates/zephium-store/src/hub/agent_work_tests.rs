@@ -59,8 +59,7 @@ pub(crate) fn work_test_storage(directory: &std::path::Path) -> super::super::Wi
             ));
         }
     }
-    super::super::WindowsWorkStorage::for_application("app.zephium.webext-qa", Some(&label))
-        .unwrap()
+    super::super::WindowsWorkStorage::for_application("app.quasar.webext-qa", Some(&label)).unwrap()
 }
 
 pub(crate) fn open_hub(directory: impl AsRef<std::path::Path>) -> rusqlite::Result<Hub> {

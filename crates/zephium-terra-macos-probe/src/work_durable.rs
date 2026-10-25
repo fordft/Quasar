@@ -2368,7 +2368,7 @@ async fn agent_workflow(
     };
     let files_objective = folder.as_ref().map(|folder| {
         format!(
-            "In the granted folder {}: read README.md and place the three product names it mentions as cited findings from that file. Then edit NOTES.md, replacing the exact line Review pending with Reviewed by Zephium, and finish once the change is applied. Do not search the web or read web pages.",
+            "In the granted folder {}: read README.md and place the three product names it mentions as cited findings from that file. Then edit NOTES.md, replacing the exact line Review pending with Reviewed by Quasar, and finish once the change is applied. Do not search the web or read web pages.",
             folder.display()
         )
     });
@@ -2734,7 +2734,7 @@ async fn agent_workflow(
                 && step.kind.file_decision() == Some(true)
         });
         let notes = std::fs::read_to_string(folder.join("NOTES.md")).unwrap_or_default();
-        let applied = notes.contains("Reviewed by Zephium") && !notes.contains("Review pending");
+        let applied = notes.contains("Reviewed by Quasar") && !notes.contains("Review pending");
         let cited = execution.artifacts.iter().any(|artifact| {
             artifact.evidence.iter().any(|link| {
                 execution
@@ -2760,7 +2760,7 @@ async fn agent_workflow(
 fn probe_folder() -> Result<std::path::PathBuf, &'static str> {
     let home = std::env::var_os("HOME").ok_or("home")?;
     let folder = std::path::PathBuf::from(home)
-        .join("Library/Caches/app.zephium.probe")
+        .join("Library/Caches/app.quasar.probe")
         .join(format!("files-{}", std::process::id()));
     std::fs::create_dir_all(&folder).map_err(|_| "probe_folder")?;
     std::fs::write(

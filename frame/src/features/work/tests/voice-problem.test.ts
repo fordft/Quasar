@@ -38,7 +38,7 @@ test("every hosted refusal has its own message and one clear action", () => {
   expect(daily.remedy).toBe("limit");
 });
 
-test("running out of Zephium credit points at plans, and a key's credit at settings", () => {
+test("running out of Quasar credit points at plans, and a key's credit at settings", () => {
   expect(voiceProblem("out_of_credit", "zephium").remedy).toBe("plans");
   expect(voiceProblem("out_of_credit", "open_ai").remedy).toBe("settings");
 });

@@ -135,9 +135,9 @@ fn rendering_probe_cannot_use_real_application_identity_or_a_development_server(
         serde_json::from_str(include_str!("../tauri.work-rendering-probe.conf.json")).unwrap();
     contract::validate(&valid).unwrap();
     for (pointer, value) in [
-        ("/identifier", serde_json::json!("app.zephium")),
-        ("/productName", serde_json::json!("Zephium")),
-        ("/app/windows/0/title", serde_json::json!("Zephium")),
+        ("/identifier", serde_json::json!("app.quasar")),
+        ("/productName", serde_json::json!("Quasar")),
+        ("/app/windows/0/title", serde_json::json!("Quasar")),
         ("/build/devUrl", serde_json::json!("http://localhost:1420")),
     ] {
         let mut changed = valid.clone();

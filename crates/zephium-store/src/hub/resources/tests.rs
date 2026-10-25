@@ -626,7 +626,7 @@ fn task_lists_preserve_tasks_and_replay_creation_exactly() {
     let create = command(
         "list-create",
         ResourceIntent::CreateTaskList {
-            title: "Zephium".into(),
+            title: "Quasar".into(),
         },
     );
     let ResourceResponse::TaskListApplied { list, .. } =

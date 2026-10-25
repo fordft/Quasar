@@ -41,7 +41,7 @@ impl WorkAlerts {
                 continue;
             }
             let (title, body) = words(page);
-            crate::focus_alerts::notify(&format!("app.zephium.work.{}", page.key), &title, &body);
+            crate::focus_alerts::notify(&format!("app.quasar.work.{}", page.key), &title, &body);
             #[cfg(target_os = "windows")]
             if let Some(window) = app.get_webview_window(crate::MAIN_LABEL) {
                 let _ =

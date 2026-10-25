@@ -679,7 +679,7 @@ fn verify_prepared_result(result: &zephium_agentic::SemanticOwnedExtractionResul
     else {
         return false;
     };
-    value.as_str() == "Zephium open source browser"
+    value.as_str() == "Quasar open source browser"
         && text == value.as_str()
         && *source_bytes == text.len()
         && !truncated

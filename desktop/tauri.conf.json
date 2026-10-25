@@ -1,7 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Zephium",
-  "identifier": "app.zephium",
+  "productName": "Quasar",
+  "mainBinaryName": "Quasar",
+  "identifier": "app.quasar",
   "build": {
     "beforeDevCommand": "pnpm --dir ../frame dev",
     "devUrl": "http://localhost:1420",
@@ -14,7 +15,7 @@
       {
         "label": "main",
         "create": false,
-        "title": "Zephium",
+        "title": "Quasar",
         "width": 1200,
         "height": 800,
         "minWidth": 680,
@@ -67,14 +68,15 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "publisher": "Zephium",
+    "publisher": "Quasar",
     "copyright": "Copyright © 2026 Zephium",
     "category": "Productivity",
     "shortDescription": "A fast, private browser with a built-in place to get work done.",
-    "homepage": "https://zephium.app",
+    "homepage": "https://github.com/fordft/Quasar",
     "license": "MPL-2.0 AND CC-BY-SA-3.0",
     "resources": {
       "../LICENSE": "licenses/Zephium-MPL-2.0.txt",
+      "../assets/brand/WORDMARK-LICENSE.txt": "licenses/Quasar-wordmark.txt",
       "../assets/blocker-seed/v1/LICENSE-CC-BY-SA-3.0.txt": "licenses/blocker/CC-BY-SA-3.0.txt",
       "../assets/blocker-seed/v1/NOTICE": "licenses/blocker/EasyList-EasyPrivacy-NOTICE.txt"
     },
@@ -96,10 +98,8 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDYwNjc0MThEQzlFNEJGMTEKUldRUnYrVEpqVUZuWUVGVDVHekNib1B5VnQzSzBxWFZnNmlHUDFiNGFyWkdOejhGc0NLT3NVSUoK",
-      "endpoints": [
-        "https://github.com/zephium-browser/Zephium/releases/latest/download/latest.json"
-      ]
+      "pubkey": "",
+      "endpoints": []
     }
   }
 }

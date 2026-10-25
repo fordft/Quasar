@@ -30,16 +30,16 @@ impl WindowsWorkStorage {
         qa_session: Option<&str>,
     ) -> Result<Self, PrivateFsError> {
         let application = match identifier {
-            "app.zephium" => NativeApplication::Product,
-            "app.zephium.dev" => NativeApplication::Development,
-            "app.zephium.review-qa" => NativeApplication::ReviewQa,
-            "app.zephium.webext-qa" => NativeApplication::ExtensionQa,
-            "app.zephium.files-integration-qa" => NativeApplication::FilesIntegrationQa,
-            "app.zephium.performance" => NativeApplication::Performance,
-            "app.zephium.protection-qa" => NativeApplication::ProtectionQa,
-            "app.zephium.work-integration" => NativeApplication::WorkIntegration,
-            "app.zephium.work-navigation-probe" => NativeApplication::WorkNavigationProbe,
-            "app.zephium.work-rendering-probe" => NativeApplication::WorkRenderingProbe,
+            "app.quasar" => NativeApplication::Product,
+            "app.quasar.dev" => NativeApplication::Development,
+            "app.quasar.review-qa" => NativeApplication::ReviewQa,
+            "app.quasar.webext-qa" => NativeApplication::ExtensionQa,
+            "app.quasar.files-integration-qa" => NativeApplication::FilesIntegrationQa,
+            "app.quasar.performance" => NativeApplication::Performance,
+            "app.quasar.protection-qa" => NativeApplication::ProtectionQa,
+            "app.quasar.work-integration" => NativeApplication::WorkIntegration,
+            "app.quasar.work-navigation-probe" => NativeApplication::WorkNavigationProbe,
+            "app.quasar.work-rendering-probe" => NativeApplication::WorkRenderingProbe,
             _ => return Err(PrivateFsError::Unsafe),
         };
         if qa_session.is_some() && application != NativeApplication::ExtensionQa {

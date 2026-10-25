@@ -8,12 +8,16 @@ mod foreground_probe_config;
 mod navigation_probe_config;
 
 const MAIN_LABEL: &str = "main";
-const LINUX_APP_ID: &str = "app.zephium";
-const DEVELOPMENT_IDENTIFIER: &str = "app.zephium.dev";
-const LINUX_DESKTOP_TEMPLATE: &str = "linux/zephium.desktop.hbs";
+const LINUX_APP_ID: &str = "app.quasar";
+const DEVELOPMENT_IDENTIFIER: &str = "app.quasar.dev";
+const LINUX_DESKTOP_TEMPLATE: &str = "linux/quasar.desktop.hbs";
 const PACKAGE_LICENSE: &str = "MPL-2.0 AND CC-BY-SA-3.0";
-const LEGAL_RESOURCES: [(&str, &str); 3] = [
+const LEGAL_RESOURCES: [(&str, &str); 4] = [
     ("../LICENSE", "licenses/Zephium-MPL-2.0.txt"),
+    (
+        "../assets/brand/WORDMARK-LICENSE.txt",
+        "licenses/Quasar-wordmark.txt",
+    ),
     (
         "../assets/blocker-seed/v1/LICENSE-CC-BY-SA-3.0.txt",
         "licenses/blocker/CC-BY-SA-3.0.txt",
@@ -160,8 +164,8 @@ fn validate_privileged_window_ownership() -> Result<(), Box<dyn Error>> {
         let config = config_override
             .as_ref()
             .ok_or("the extensions QA app requires its isolated configuration override")?;
-        if config.get("identifier").and_then(Value::as_str) != Some("app.zephium.webext-qa")
-            || config.get("productName").and_then(Value::as_str) != Some("Zephium Extensions QA")
+        if config.get("identifier").and_then(Value::as_str) != Some("app.quasar.webext-qa")
+            || config.get("productName").and_then(Value::as_str) != Some("Quasar Extensions QA")
         {
             return Err("the extensions QA app must use its exact isolated identity".into());
         }
@@ -192,16 +196,16 @@ fn validate_privileged_window_ownership() -> Result<(), Box<dyn Error>> {
             return Err("product UI QA requires an isolated supported-platform debug build".into());
         }
         let (qa_id, qa_name) = if adblock_qa {
-            ("app.zephium.protection-qa", "Zephium Protection QA")
+            ("app.quasar.protection-qa", "Quasar Protection QA")
         } else if file_workflows_qa {
             (
-                "app.zephium.files-integration-qa",
-                "Zephium Files Integration QA",
+                "app.quasar.files-integration-qa",
+                "Quasar Files Integration QA",
             )
         } else if work_integration_qa {
-            ("app.zephium.work-integration", "Zephium Work Integration")
+            ("app.quasar.work-integration", "Quasar Work Integration")
         } else {
-            ("app.zephium.resources-qa", "Zephium Resources QA")
+            ("app.quasar.resources-qa", "Quasar Resources QA")
         };
         let config = config_override
             .as_ref()
@@ -342,9 +346,9 @@ fn validate_linux_desktop_template(path: &Path) -> io::Result<()> {
     // `%U` is how the desktop hands a clicked link to the default browser.
     for exact in [
         "Exec={{exec}} %U",
-        "StartupWMClass=app.zephium",
+        "StartupWMClass=app.quasar",
         "Icon={{icon}}",
-        "Name=Zephium",
+        "Name=Quasar",
         "Terminal=false",
         "Type=Application",
     ] {

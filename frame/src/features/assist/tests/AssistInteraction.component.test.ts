@@ -99,7 +99,7 @@ async function open(next: PageAssistStatusV1) {
   native.status = next;
   await page.viewport(400, 820);
   const screen = await render(PanelStage, { profile: PROFILE });
-  const field = screen.getByRole("textbox", { name: "Ask Zephium…" });
+  const field = screen.getByRole("textbox", { name: "Ask Quasar…" });
   await expect.element(field).toBeVisible();
   await expect.poll(() => native.statusCalls).toBeGreaterThan(0);
   return { screen, field };
@@ -147,7 +147,7 @@ test("while a reply works, Send is Stop, and Escape stops it before closing anyt
   native.status = status([person(1, "Summarize"), reply(2, [], { state: "working", cost: null })]);
   await page.viewport(400, 820);
   const screen = await render(PanelStage, { profile: PROFILE, onclose });
-  const field = screen.getByRole("textbox", { name: "Ask Zephium…" });
+  const field = screen.getByRole("textbox", { name: "Ask Quasar…" });
   await expect.element(screen.getByRole("button", { name: "Stop" })).toBeVisible();
   await field.click();
   await userEvent.keyboard("{Escape}");
@@ -195,7 +195,7 @@ test("+ attaches another tab of the Space alongside the page in front", async ()
   setTabs({
     tabs: [
       tab(TAB, "https://news.ycombinator.com/", "Hacker News"),
-      tab("tab-2", "https://github.com/zephium", "Zephium · GitHub"),
+      tab("tab-2", "https://github.com/zephium", "Quasar · GitHub"),
       tab("tab-3", "about:blank", ""),
     ],
   });
@@ -205,7 +205,7 @@ test("+ attaches another tab of the Space alongside the page in front", async ()
   await expect
     .element(page.getByRole("menuitem", { name: /about:blank/u }))
     .not.toBeInTheDocument();
-  await page.getByRole("menuitem", { name: /Zephium · GitHub/u }).click();
+  await page.getByRole("menuitem", { name: /Quasar · GitHub/u }).click();
   await expect.element(screen.getByRole("button", { name: "Remove github.com" })).toBeVisible();
   await field.fill("Compare these");
   await userEvent.keyboard("{Enter}");

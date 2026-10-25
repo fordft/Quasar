@@ -35,7 +35,7 @@ impl ChromeStoreTransport {
             .referer(false)
             .connect_timeout(Duration::from_secs(10))
             .timeout(Duration::from_secs(45))
-            .user_agent("Zephium/0.1 ExtensionInstaller")
+            .user_agent("Quasar/0.1 ExtensionInstaller")
             .build()
             .map_err(|_| FixedOriginTransportConfigError::ClientUnavailable)?;
         Ok(Self {

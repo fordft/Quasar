@@ -181,7 +181,7 @@ pub(crate) fn error(message: &str) -> Retained<NSError> {
     }
     unsafe {
         NSError::errorWithDomain_code_userInfo(
-            &NSString::from_str("app.zephium.webext"),
+            &NSString::from_str("app.quasar.webext"),
             1,
             Some(&info),
         )

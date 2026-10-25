@@ -200,7 +200,7 @@ fn run(
     };
     // SAFETY: retained owner handles release after child teardown.
     unsafe { window.setReleasedWhenClosed(false) };
-    window.setTitle(&NSString::from_str("Zephium Liveness Probe"));
+    window.setTitle(&NSString::from_str("Quasar Liveness Probe"));
     window.setAccessibilityIdentifier(Some(&NSString::from_str(challenge_ax::WINDOW_ID)));
     let host = Host(window.contentView().ok_or("content_view")?);
     let owned_stage = matches!(

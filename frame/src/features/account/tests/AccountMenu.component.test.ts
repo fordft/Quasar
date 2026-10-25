@@ -119,7 +119,7 @@ test("a lone profile has no one to switch to, and signed out offers to sign in",
   await open(accountFixture(), solo);
   expect(page.getByRole("menuitem", { name: /Switch to/u }).query()).toBeNull();
   await expect
-    .element(page.getByRole("menuitem", { name: "Sign in to Zephium", exact: true }))
+    .element(page.getByRole("menuitem", { name: "Sign in to Quasar", exact: true }))
     .toBeVisible();
   expect(page.getByRole("menuitem", { name: /^Account/u }).query()).toBeNull();
 });

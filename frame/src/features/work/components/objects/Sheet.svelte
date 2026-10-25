@@ -22,7 +22,7 @@
   import { vendorHost } from "../../lib/vendors";
   import Title from "./Title.svelte";
   import Mark, { hasMark } from "./Mark.svelte";
-  import ZephiumMark, { isZephium } from "./ZephiumMark.svelte";
+  import QuasarMark, { isQuasar } from "./QuasarMark.svelte";
   import YesNo from "./YesNo.svelte";
   import Dots from "./Dots.svelte";
   let {
@@ -138,7 +138,7 @@
         width={size + 8}
         height={size + 8}
       /></span
-    >{:else if isZephium(row?.cells[0] ?? "")}<ZephiumMark {size} />{:else if logo(index)}<Mark
+    >{:else if isQuasar(row?.cells[0] ?? "")}<QuasarMark {size} />{:else if logo(index)}<Mark
       address={logo(index)!}
       {size}
     />{/if}
@@ -162,7 +162,7 @@
   {:else if column.kind === "entity"}
     {@const known = vendorHost(undefined, text)}
     <span class="subject"
-      >{#if isZephium(text)}<ZephiumMark size={16} />{:else if known}<Mark
+      >{#if isQuasar(text)}<QuasarMark size={16} />{:else if known}<Mark
           address={known}
           size={16}
         />{/if}<span class="name">{text}</span></span

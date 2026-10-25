@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Zephium popup qualifier",
+  "name": "Quasar popup qualifier",
   "version": "1.0",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA1ahBC9SK1iB0ADbCn2wFkWsX9dexpatGfIbLaysbiMIemqFPPDa6BVTKqzf1QWFu82El3g05dBR0WQ8lQu2ISXVMmZk61l7z1+Ye7yZ7uQL81/xODWR0+jHpD+77NUB+SdIND44/OFdP2XKWWIRvp76Fjnmjezbbb/QO8IHaz83pXdYvpojWO9FC4IJkedA5rqsExx4X5FKUHqV3/KF83Cu3ElQPy2S1WbTNtUFOPWNRQNO44Dk2kpXvdToGpuWk5VcADPNP4bsVdxYg6rDXEbj4Mr29vgvqf2IHKyJ2bKat3u9VskozgQmNP9jDE3+ehoTS9gFBKAuRcd1ioFnA0QIDAQAB",
   "permissions": [

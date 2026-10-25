@@ -26,7 +26,7 @@ const MAX_SEARCH_FILES: usize = 2000;
 const MAX_SEARCH_HITS: usize = 64;
 const SEARCH_BUDGET: Duration = Duration::from_millis(200);
 const SKIPPED_DIRS: [&str; 6] = [".git", "node_modules", "target", ".cache", "dist", "build"];
-const DENIED_UNDER_HOME: [&str; 8] = [
+const DENIED_UNDER_HOME: [&str; 10] = [
     ".ssh",
     ".gnupg",
     ".aws",
@@ -34,6 +34,8 @@ const DENIED_UNDER_HOME: [&str; 8] = [
     "Library/Keychains",
     "Library/Application Support/app.zephium",
     "Library/Application Support/app.zephium.dev",
+    "Library/Application Support/app.quasar",
+    "Library/Application Support/app.quasar.dev",
     "Library/Cookies",
 ];
 
@@ -687,6 +689,7 @@ pub(crate) fn protected_path(path: &Path) -> bool {
                 | "auth.json" | "tokens.json" | "keychains" | "appdata"
                 | "id_rsa" | "id_dsa" | "id_ecdsa" | "id_ed25519"
                 | "cookies" | "login data" | "web data" | "key4.db" | "logins.json")
+            || name.starts_with("app.quasar")
             || name.starts_with("app.zephium")
             || [".pem", ".key", ".p12", ".pfx", ".kdbx", ".keychain", ".keychain-db"]
                 .iter().any(|extension| name.ends_with(extension))
@@ -1704,6 +1707,32 @@ mod tests {
     }
 
     #[test]
+    fn fork_and_upstream_profiles_cannot_be_granted_to_work() {
+        let _serial = crate::WORK_RUNTIME_TEST_SERIAL
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        let (home, grant, _project) = home_grant();
+        assert!(!grant.is_empty());
+        for application in [
+            "app.quasar",
+            "app.quasar.dev",
+            "app.zephium",
+            "app.zephium.dev",
+        ] {
+            let profile = home
+                .path()
+                .join("Library/Application Support")
+                .join(application);
+            std::fs::create_dir_all(&profile).unwrap();
+            std::fs::write(profile.join("meta.sqlite"), b"profile fixture").unwrap();
+            let (admitted, refused) =
+                WorkFileGrant::admit(&[profile.to_string_lossy().into_owned()]);
+            assert!(admitted.is_empty(), "{}", profile.display());
+            assert_eq!(refused.len(), 1, "{}", profile.display());
+        }
+    }
+
+    #[test]
     fn recognized_secret_content_is_refused_before_excerpt_or_edit() {
         let _serial = crate::WORK_RUNTIME_TEST_SERIAL
             .lock()
@@ -2034,8 +2063,11 @@ mod tests {
             ".ssh/keys",
             ".config/gcloud/accounts",
             "AppData/Roaming/app.zephium",
+            "AppData/Roaming/app.quasar",
+            "Library/Application Support/app.zephium",
+            "Library/Application Support/app.quasar",
             ".zephium-native-v1",
-            ".ZEPHIUM-NATIVE-V1/app.zephium.webext-qa/session",
+            ".ZEPHIUM-NATIVE-V1/app.quasar.webext-qa/session",
         ] {
             let folder = home.path().join(protected);
             std::fs::create_dir_all(&folder).unwrap();

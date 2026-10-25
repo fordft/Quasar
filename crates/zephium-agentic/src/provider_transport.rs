@@ -94,13 +94,13 @@ const OPENAI_RESPONSES_URL: &str = "https://api.openai.com/v1/responses";
 const OPENAI_INPUT_TOKENS_URL: &str = "https://api.openai.com/v1/responses/input_tokens";
 const ANTHROPIC_MESSAGES_URL: &str = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION: &str = "2023-06-01";
-pub(crate) const PRODUCT_USER_AGENT: &str = "Zephium-Agent-Browser/0.1";
+pub(crate) const PRODUCT_USER_AGENT: &str = "Quasar-Agent-Browser/0.1";
 const OPENAI_CLIENT_REQUEST_ID_HEADER: &str = "x-client-request-id";
 const OPENAI_CLIENT_REQUEST_ID_DOMAIN: &[u8] = b"ZEPHIUM-OPENAI-CLIENT-REQUEST-ID-1\0";
 
 /// Login-Keychain service holding the development OpenAI provider credential.
 #[cfg(target_os = "macos")]
-pub const MACOS_OPENAI_KEYCHAIN_SERVICE: &str = "app.zephium.agent-provider.openai";
+pub const MACOS_OPENAI_KEYCHAIN_SERVICE: &str = "app.quasar.agent-provider.openai";
 /// Login-Keychain account holding the development OpenAI provider credential.
 #[cfg(target_os = "macos")]
 pub const MACOS_OPENAI_KEYCHAIN_ACCOUNT: &str = "development";
@@ -272,7 +272,7 @@ pub fn load_development_openai_credential(
     {
         load_windows_credential(
             AgentProviderKind::OpenAiResponses,
-            "app.zephium.agent-provider.openai",
+            "app.quasar.agent-provider.openai",
         )
     }
     #[cfg(not(any(target_os = "macos", target_os = "windows")))]
@@ -292,7 +292,7 @@ pub fn load_development_typesafe_credential(
     {
         load_windows_credential(
             DecisionCredentialProvider::TypeSafe,
-            "app.zephium.agent-provider.typesafe",
+            "app.quasar.agent-provider.typesafe",
         )
     }
     #[cfg(not(any(target_os = "macos", target_os = "windows")))]
@@ -351,7 +351,7 @@ pub fn load_macos_development_openai_credential(
 
 /// Fixed TypeSafe item in the person's login Keychain.
 #[cfg(target_os = "macos")]
-pub const MACOS_TYPESAFE_KEYCHAIN_SERVICE: &str = "app.zephium.agent-provider.typesafe";
+pub const MACOS_TYPESAFE_KEYCHAIN_SERVICE: &str = "app.quasar.agent-provider.typesafe";
 /// Fixed development account for TypeSafe BYOK.
 #[cfg(target_os = "macos")]
 pub const MACOS_TYPESAFE_KEYCHAIN_ACCOUNT: &str = "development";

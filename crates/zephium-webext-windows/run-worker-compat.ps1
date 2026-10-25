@@ -7,7 +7,7 @@ New-Item -ItemType Directory -Path $hostDir -Force | Out-Null
 $utf8 = [Text.UTF8Encoding]::new($false)
 # Reuse the public lab key, never an installed extension's storage or identity.
 $manifest = Get-Content (Join-Path $PSScriptRoot 'fixtures\storage\manifest.json') -Raw | ConvertFrom-Json
-$manifest.name = 'Zephium browser API qualifier'
+$manifest.name = 'Quasar browser API qualifier'
 $manifest.PSObject.Properties.Remove('content_scripts')
 $manifest.action = @{default_title='Action qualifier'}
 [IO.File]::WriteAllText((Join-Path $fixture 'manifest.json'), ($manifest | ConvertTo-Json -Depth 10), $utf8)

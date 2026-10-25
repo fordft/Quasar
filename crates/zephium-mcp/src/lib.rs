@@ -166,7 +166,7 @@ fn content_text(blocks: &[ContentBlock], structured: Option<&Value>) -> (String,
 
 fn client_config() -> ClientConfig {
     let mut info = Implementation::new("zephium", env!("CARGO_PKG_VERSION"));
-    info.title = Some("Zephium".into());
+    info.title = Some("Quasar".into());
     ClientConfig::new(ClientCapabilities::default(), info)
         .with_protocol_version(ProtocolVersion::V_2025_11_25)
 }

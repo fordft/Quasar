@@ -1,9 +1,10 @@
 {
-  "name": "@zephium/desktop",
+  "name": "@quasar/desktop",
   "private": true,
   "scripts": {
-    "dev": "node ../scripts/require-supported-platform.mjs && tauri dev --config tauri.dev.conf.json",
-    "build": "node ../scripts/require-supported-platform.mjs && tauri build"
+    "dev": "node ../scripts/desktop.mjs dev --config tauri.dev.conf.json",
+    "build": "node ../scripts/desktop.mjs build",
+    "brand:icons": "tauri icon ../assets/brand/quasar-icon.svg"
   },
   "devDependencies": {
     "@tauri-apps/cli": "2.11.4"

@@ -16,7 +16,7 @@ describe("versions", () => {
 
   it("links a version's release notes", () => {
     expect(releaseNotesUrl("1.0.0-beta.2")).toBe(
-      "https://github.com/zephium-browser/Zephium/releases/tag/v1.0.0-beta.2",
+      "https://github.com/fordft/Quasar/releases/tag/v1.0.0-beta.2",
     );
   });
 

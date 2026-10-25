@@ -1,6 +1,6 @@
 {
-  "productName": "Zephium Protection QA",
-  "identifier": "app.zephium.protection-qa",
+  "productName": "Quasar Protection QA",
+  "identifier": "app.quasar.protection-qa",
   "build": {
     "devUrl": null
   },
@@ -9,7 +9,7 @@
       {
         "label": "main",
         "create": false,
-        "title": "Zephium Protection QA",
+        "title": "Quasar Protection QA",
         "width": 1200,
         "height": 800,
         "minWidth": 680,

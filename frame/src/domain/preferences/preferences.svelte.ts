@@ -207,7 +207,7 @@ export async function set(key: PreferenceKey, next: string) {
   }
 }
 
-/** Every preference back to how Zephium ships, one validated write at a
+/** Every preference back to how Quasar ships, one validated write at a
  *  time. False when any of them did not land. */
 export async function resetAll(): Promise<boolean> {
   for (const key of Object.keys(defaults) as PreferenceKey[]) {

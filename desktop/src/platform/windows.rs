@@ -81,7 +81,7 @@ pub fn enforce_runtime_security_floor(
         std::env::var_os(name).is_some()
     }) {
         return Err(format!(
-            "security-relevant WebView2 environment override {name} is present; unset it before starting Zephium"
+            "security-relevant WebView2 environment override {name} is present; unset it before starting Quasar"
         ));
     }
     let reported = tauri::webview_version()
@@ -89,7 +89,7 @@ pub fn enforce_runtime_security_floor(
     let (_, advisory) =
         zephium_core::webview2::assess_runtime(&reported, now).map_err(|error| {
             format!(
-                "Zephium needs the latest Microsoft Edge WebView2 Runtime. This PC has WebView2 {reported}.\n\nInstall or update the Evergreen WebView2 Runtime from https://developer.microsoft.com/microsoft-edge/webview2/, then open Zephium again.\n\nDetails: {error}"
+                "Quasar needs the latest Microsoft Edge WebView2 Runtime. This PC has WebView2 {reported}.\n\nInstall or update the Evergreen WebView2 Runtime from https://developer.microsoft.com/microsoft-edge/webview2/, then open Quasar again.\n\nDetails: {error}"
             )
         })?;
     Ok(advisory)

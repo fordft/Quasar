@@ -123,7 +123,7 @@ pub(super) fn run(scenario: &OsStr) -> Result<(), ProbeFailure> {
 pub(super) fn open_store(directory: &Path) -> Result<zephium_store::SqliteStore, ProbeFailure> {
     let label = std::env::var(SESSION_ENV).map_err(|_| ProbeFailure::Authority)?;
     let selector =
-        zephium_store::WindowsWorkStorage::for_application("app.zephium.webext-qa", Some(&label))
+        zephium_store::WindowsWorkStorage::for_application("app.quasar.webext-qa", Some(&label))
             .map_err(|_| ProbeFailure::Authority)?;
     zephium_store::SqliteStore::open_with_windows_work_storage(directory, selector)
         .map_err(|_| ProbeFailure::Runtime)

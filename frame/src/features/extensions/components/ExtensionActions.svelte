@@ -23,7 +23,7 @@
       case "unsupported_platform":
         return "This extension action is not supported on this platform.";
       case "shutting_down":
-        return "Extensions are unavailable while Zephium is closing.";
+        return "Extensions are unavailable while Quasar is closing.";
       case "runtime_superseded":
       case "runtime_unavailable":
       case "tab_unavailable":
@@ -33,7 +33,7 @@
         return "This extension popup is unavailable.";
       case "invalid_request":
       case "native_admission_failed":
-        return "Zephium couldn't open this extension action.";
+        return "Quasar couldn't open this extension action.";
       case null:
         return "";
     }

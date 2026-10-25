@@ -353,7 +353,7 @@ fn enforce_runtime_preconditions(
 ) -> Result<(), String> {
     if let Some(name) = security_override() {
         return Err(format!(
-            "security-relevant WebKitGTK/JavaScriptCore environment override {name} is present; unset it before starting Zephium"
+            "security-relevant WebKitGTK/JavaScriptCore environment override {name} is present; unset it before starting Quasar"
         ));
     }
     if unix_seconds < zephium_core::webkitgtk::SECURITY_FLOOR_PUBLISHED_UNIX_SECONDS {
@@ -377,7 +377,7 @@ fn enforce_runtime_version(
     )
     .map_err(|error| {
         format!(
-            "{error}; latest stable {} was reviewed on {} (security floor source: {}; latest release source: {}). Install a supported stable WebKitGTK runtime before starting Zephium",
+            "{error}; latest stable {} was reviewed on {} (security floor source: {}; latest release source: {}). Install a supported stable WebKitGTK runtime before starting Quasar",
             zephium_core::webkitgtk::LATEST_REVIEWED_TEXT,
             zephium_core::webkitgtk::LATEST_REVIEWED_PUBLISHED_ON,
             zephium_core::webkitgtk::SECURITY_FLOOR_SOURCE_URL,

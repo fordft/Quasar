@@ -3,7 +3,7 @@ param([switch]$Build, [switch]$Release,
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $qaDir = Join-Path $repo 'target\webext-qa'
-$qaExe = Join-Path $qaDir 'Zephium Extensions QA.exe'
+$qaExe = Join-Path $qaDir 'Quasar Extensions QA.exe'
 $buildProfile = if ($Release) { 'release' } else { 'debug' }
 $developmentExe = Join-Path $repo "target\$buildProfile\zephium-desktop.exe"
 $sourceExecutables = @('debug', 'release') | ForEach-Object { Join-Path $repo "target\$_\zephium-desktop.exe" }
@@ -24,7 +24,7 @@ if ($Build) {
         & pnpm.cmd @buildArguments
         if ($LASTEXITCODE -ne 0) { throw 'QA build failed.' }
         $metadata = (Get-Item -LiteralPath $developmentExe).VersionInfo
-        if ($metadata.ProductName -ne 'Zephium Extensions QA') { throw 'Refusing a binary without the QA identity.' }
+        if ($metadata.ProductName -ne 'Quasar Extensions QA') { throw 'Refusing a binary without the QA identity.' }
         New-Item -ItemType Directory -Path $qaDir -Force | Out-Null
         Copy-Item -LiteralPath $developmentExe -Destination $qaExe -Force
         & git rev-parse HEAD | Set-Content -LiteralPath (Join-Path $qaDir 'revision.txt')
@@ -32,7 +32,7 @@ if ($Build) {
     } finally { Pop-Location }
 }
 if (-not (Test-Path -LiteralPath $qaExe)) { throw 'Run this script with -Build first.' }
-if ((Get-Item -LiteralPath $qaExe).VersionInfo.ProductName -ne 'Zephium Extensions QA') {
+if ((Get-Item -LiteralPath $qaExe).VersionInfo.ProductName -ne 'Quasar Extensions QA') {
     throw 'Refusing a binary without the QA identity.'
 }
 $launch = @{FilePath=$qaExe;WorkingDirectory=$repo;WindowStyle='Normal';PassThru=$true;RedirectStandardOutput=(Join-Path $qaDir 'stdout.log');RedirectStandardError=(Join-Path $qaDir 'stderr.log')}
@@ -44,6 +44,6 @@ if ($process.HasExited) {
     Get-Content -LiteralPath (Join-Path $qaDir 'stderr.log') -Tail 20
     throw "QA exited during startup (code $($process.ExitCode))."
 }
-Write-Output "Started Zephium Extensions QA (PID $($process.Id))."
-if ($Session) { Write-Output "Data: %APPDATA%\app.zephium.webext-qa\qa-sessions\session-$Session" }
-else { Write-Output 'Data: %APPDATA%\app.zephium.webext-qa' }
+Write-Output "Started Quasar Extensions QA (PID $($process.Id))."
+if ($Session) { Write-Output "Data: %APPDATA%\app.quasar.webext-qa\qa-sessions\session-$Session" }
+else { Write-Output 'Data: %APPDATA%\app.quasar.webext-qa' }

@@ -1,13 +1,13 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Zephium Work Navigation Probe",
-  "identifier": "app.zephium.work-navigation-probe",
+  "productName": "Quasar Work Navigation Probe",
+  "identifier": "app.quasar.work-navigation-probe",
   "build": { "devUrl": null },
   "app": {
     "windows": [{
       "label": "main",
       "create": false,
-      "title": "Zephium Work Navigation Probe",
+      "title": "Quasar Work Navigation Probe",
       "width": 1200,
       "height": 800,
       "minWidth": 680,

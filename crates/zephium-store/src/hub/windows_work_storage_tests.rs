@@ -3,33 +3,33 @@ use super::*;
 #[test]
 fn application_selection_is_closed_and_sessions_do_not_alias_product() {
     for identifier in [
-        "app.zephium",
-        "app.zephium.dev",
-        "app.zephium.review-qa",
-        "app.zephium.webext-qa",
-        "app.zephium.files-integration-qa",
-        "app.zephium.performance",
-        "app.zephium.protection-qa",
-        "app.zephium.work-integration",
-        "app.zephium.work-navigation-probe",
-        "app.zephium.work-rendering-probe",
+        "app.quasar",
+        "app.quasar.dev",
+        "app.quasar.review-qa",
+        "app.quasar.webext-qa",
+        "app.quasar.files-integration-qa",
+        "app.quasar.performance",
+        "app.quasar.protection-qa",
+        "app.quasar.work-integration",
+        "app.quasar.work-navigation-probe",
+        "app.quasar.work-rendering-probe",
     ] {
         assert!(WindowsWorkStorage::for_application(identifier, None).is_ok());
         assert_eq!(
             WindowsWorkStorage::for_application(identifier, Some("fixture-1")).is_ok(),
-            identifier == "app.zephium.webext-qa"
+            identifier == "app.quasar.webext-qa"
         );
     }
-    assert!(WindowsWorkStorage::for_application("app.zephium.other", None).is_err());
+    assert!(WindowsWorkStorage::for_application("app.quasar.other", None).is_err());
     assert!(
-        WindowsWorkStorage::for_application("app.zephium.webext-qa", Some("../product")).is_err()
+        WindowsWorkStorage::for_application("app.quasar.webext-qa", Some("../product")).is_err()
     );
 }
 
 #[test]
 fn installation_is_lazy_and_legacy_purge_has_no_protected_side_effect() {
     let ordinary = tempfile::tempdir().unwrap();
-    let selector = WindowsWorkStorage::for_application("app.zephium", None).unwrap();
+    let selector = WindowsWorkStorage::for_application("app.quasar", None).unwrap();
     let hub = Hub::open_with_windows_work_storage(ordinary.path().into(), selector).unwrap();
     assert!(hub.windows_work_database.is_none());
     assert!(hub.work.is_none());
@@ -43,7 +43,7 @@ fn fixture() -> (tempfile::TempDir, tempfile::TempDir, Hub) {
     let ordinary = tempfile::tempdir().unwrap();
     let selector = WindowsWorkStorage::for_validation_fixture(
         profile.path(),
-        "app.zephium.work-integration",
+        "app.quasar.work-integration",
         None,
     )
     .unwrap();

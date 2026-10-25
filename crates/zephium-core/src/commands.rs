@@ -274,7 +274,7 @@ pub const REGISTRY: &[CommandSpec] = &[
     ),
     command(
         "tool.ai",
-        "Ask Zephium",
+        "Ask Quasar",
         Keys::same("CmdOrCtrl+E"),
         Group::Window,
     ),

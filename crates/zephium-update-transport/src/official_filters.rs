@@ -82,7 +82,7 @@ impl OfficialFilterClient {
             .referer(false)
             .timeout(Duration::from_secs(30))
             .connect_timeout(Duration::from_secs(10))
-            .user_agent("Zephium-Filter-Updates/1")
+            .user_agent("Quasar-Filter-Updates/1")
             .build()
             .map(Self)
             .map_err(|_| FAILURE)

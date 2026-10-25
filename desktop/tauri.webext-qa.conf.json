@@ -1,13 +1,13 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Zephium Extensions QA",
-  "identifier": "app.zephium.webext-qa",
+  "productName": "Quasar Extensions QA",
+  "identifier": "app.quasar.webext-qa",
   "app": {
     "windows": [
       {
         "label": "main",
         "create": false,
-        "title": "Zephium Extensions QA",
+        "title": "Quasar Extensions QA",
         "width": 1200,
         "height": 800,
         "minWidth": 680,

@@ -1256,7 +1256,7 @@ def main():
     freezing.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST)
     freezing.add_argument("--references", required=True)
     freezing.add_argument("--probe", required=True)
-    freezing.add_argument("--identifier", default="app.zephium.work-integration.probe")
+    freezing.add_argument("--identifier", default="app.quasar.work-integration.probe")
     freezing.add_argument("--source-root", required=True)
     freezing.add_argument("--base-ref", default="3fcd07c5")
     freezing.add_argument("--label", choices=["baseline", "candidate"], required=True)

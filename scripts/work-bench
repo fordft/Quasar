@@ -31,7 +31,7 @@ SCHEMA = 2
 SETUP_ENV = ("ZEPHIUM_PROBE_PAGE_MODEL", "ZEPHIUM_PROBE_SEARCH_ENGINE",
              "ZEPHIUM_PROBE_WORK_MEMORY", "ZEPHIUM_PROBE_WORK_MEMORY_CLEAR",
              "ZEPHIUM_PROBE_PROFILE", "ZEPHIUM_PROBE_SEEDED_PROFILE")
-IDENTIFIER = "app.zephium.work-integration.probe"
+IDENTIFIER = "app.quasar.work-integration.probe"
 
 # name -> (probe arguments, run by default, what it does)
 SCENARIOS = {

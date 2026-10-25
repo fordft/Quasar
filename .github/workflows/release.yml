@@ -212,9 +212,9 @@ jobs:
         run: |
           bundle=target/aarch64-apple-darwin/release/bundle
           {
-            echo "APP=${bundle}/macos/Zephium.app"
-            echo "UPDATER=${bundle}/macos/Zephium.app.tar.gz"
-            echo "DMG=${bundle}/dmg/Zephium_${VERSION}_aarch64.dmg"
+            echo "APP=${bundle}/macos/Quasar.app"
+            echo "UPDATER=${bundle}/macos/Quasar.app.tar.gz"
+            echo "DMG=${bundle}/dmg/Quasar_${VERSION}_aarch64.dmg"
           } >> "${GITHUB_ENV}"
 
       # Tauri notarizes and staples the app, but only signs the DMG.
@@ -283,9 +283,9 @@ jobs:
       - name: Stage release assets
         run: |
           mkdir dist
-          cp "${DMG}" dist/Zephium-macOS-arm64.dmg
-          cp "${UPDATER}" dist/Zephium-macOS-arm64.app.tar.gz
-          cp "${UPDATER}.sig" dist/Zephium-macOS-arm64.app.tar.gz.sig
+          cp "${DMG}" dist/Quasar-macOS-arm64.dmg
+          cp "${UPDATER}" dist/Quasar-macOS-arm64.app.tar.gz
+          cp "${UPDATER}.sig" dist/Quasar-macOS-arm64.app.tar.gz.sig
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -352,12 +352,12 @@ jobs:
 
       - name: Stage release assets
         run: |
-          setup="target/release/bundle/nsis/Zephium_${VERSION}_x64-setup.exe"
+          setup="target/release/bundle/nsis/Quasar_${VERSION}_x64-setup.exe"
           test -s "${setup}"
           test -s "${setup}.sig"
           mkdir dist
-          cp "${setup}" dist/Zephium-Windows-x64-setup.exe
-          cp "${setup}.sig" dist/Zephium-Windows-x64-setup.exe.sig
+          cp "${setup}" dist/Quasar-Windows-x64-setup.exe
+          cp "${setup}.sig" dist/Quasar-Windows-x64-setup.exe.sig
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -394,7 +394,7 @@ jobs:
       - name: Verify the asset set and updater signatures
         working-directory: dist
         run: |
-          expected="Zephium-Windows-x64-setup.exe Zephium-Windows-x64-setup.exe.sig Zephium-macOS-arm64.app.tar.gz Zephium-macOS-arm64.app.tar.gz.sig Zephium-macOS-arm64.dmg"
+          expected="Quasar-Windows-x64-setup.exe Quasar-Windows-x64-setup.exe.sig Quasar-macOS-arm64.app.tar.gz Quasar-macOS-arm64.app.tar.gz.sig Quasar-macOS-arm64.dmg"
           actual="$(printf '%s\n' * | LC_ALL=C sort | paste -sd ' ')"
           if [[ "${actual}" != "${expected}" ]]; then
             echo "::error title=Unexpected release assets::Got [${actual}]."
@@ -403,7 +403,7 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq minisign
           base64 -d <<<"${UPDATER_PUBKEY}" > "${RUNNER_TEMP}/updater.pub"
-          for asset in Zephium-macOS-arm64.app.tar.gz Zephium-Windows-x64-setup.exe; do
+          for asset in Quasar-macOS-arm64.app.tar.gz Quasar-Windows-x64-setup.exe; do
             base64 -d < "${asset}.sig" > "${RUNNER_TEMP}/${asset}.minisig"
             if ! minisign -V -q -p "${RUNNER_TEMP}/updater.pub" -m "${asset}" -x "${RUNNER_TEMP}/${asset}.minisig"; then
               echo "::error title=Updater signature rejected::${asset} does not verify against the public key in desktop/tauri.conf.json."
@@ -419,10 +419,10 @@ jobs:
             --arg version "${VERSION}" \
             --arg notes "https://github.com/${GITHUB_REPOSITORY}/releases/tag/${TAG}" \
             --arg pub_date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            --arg mac_url "${base}/Zephium-macOS-arm64.app.tar.gz" \
-            --arg mac_sig "$(cat Zephium-macOS-arm64.app.tar.gz.sig)" \
-            --arg win_url "${base}/Zephium-Windows-x64-setup.exe" \
-            --arg win_sig "$(cat Zephium-Windows-x64-setup.exe.sig)" \
+            --arg mac_url "${base}/Quasar-macOS-arm64.app.tar.gz" \
+            --arg mac_sig "$(cat Quasar-macOS-arm64.app.tar.gz.sig)" \
+            --arg win_url "${base}/Quasar-Windows-x64-setup.exe" \
+            --arg win_sig "$(cat Quasar-Windows-x64-setup.exe.sig)" \
             '{
               version: $version,
               notes: $notes,
@@ -434,15 +434,15 @@ jobs:
                 "windows-x86_64-nsis": {signature: $win_sig, url: $win_url}
               }
             }' > latest.json
-          sha256sum Zephium-* latest.json > SHA256SUMS
+          sha256sum Quasar-* latest.json > SHA256SUMS
           cat latest.json SHA256SUMS
 
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: |
-            dist/Zephium-macOS-arm64.dmg
-            dist/Zephium-macOS-arm64.app.tar.gz
-            dist/Zephium-Windows-x64-setup.exe
+            dist/Quasar-macOS-arm64.dmg
+            dist/Quasar-macOS-arm64.app.tar.gz
+            dist/Quasar-Windows-x64-setup.exe
 
       - name: Create the draft release
         env:
@@ -456,10 +456,10 @@ jobs:
             gh release delete "${TAG}" --repo "${GITHUB_REPOSITORY}" --yes
           fi
           cat > "${RUNNER_TEMP}/notes.md" <<EOF
-          Download Zephium ${VERSION}:
+          Download Quasar ${VERSION}:
 
-          - macOS (Apple Silicon): [Zephium-macOS-arm64.dmg](https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/Zephium-macOS-arm64.dmg)
-          - Windows (x64): [Zephium-Windows-x64-setup.exe](https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/Zephium-Windows-x64-setup.exe)
+          - macOS (Apple Silicon): [Quasar-macOS-arm64.dmg](https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/Quasar-macOS-arm64.dmg)
+          - Windows (x64): [Quasar-Windows-x64-setup.exe](https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/Quasar-Windows-x64-setup.exe)
 
           Installed copies update themselves. The Windows installer is not yet Authenticode-signed, so SmartScreen may ask for confirmation.
 
@@ -477,5 +477,5 @@ jobs:
             --draft \
             --prerelease="${prerelease}" \
             --verify-tag \
-            --title "Zephium ${VERSION}" \
+            --title "Quasar ${VERSION}" \
             --notes-file "${RUNNER_TEMP}/notes.md"

@@ -58,11 +58,11 @@ pub(crate) const APPS: [DayApp; 6] = [
     },
 ];
 /// Zephium's own tasks and notes, as the person sees the choice.
-const ZEPHIUM: &str = "Zephium tasks and notes";
+const ZEPHIUM: &str = "Quasar tasks and notes";
 /// How a remembered answer begins; the lead reads it in its memory too.
 const REMEMBERED: &str = "Plans the day from";
 const USE_THESE: &str = "Use these";
-const ONLY_ZEPHIUM: &str = "Only my Zephium tasks";
+const ONLY_ZEPHIUM: &str = "Only my Quasar tasks";
 /// Visits older than this don't make an app a daily one.
 const RECENT_DAYS: i64 = 30;
 
@@ -219,7 +219,7 @@ pub(crate) async fn day_sources(
                 {
                     Ok(Some(answer)) => answer,
                     _ => return LeadToolOutcome::ok(
-                        "The person didn't answer; plan from their Zephium tasks and notes only.",
+                        "The person didn't answer; plan from their Quasar tasks and notes only.",
                     ),
                 };
             let answer = answer.trim();
@@ -305,7 +305,7 @@ pub(crate) async fn day_sources(
     LeadToolOutcome::ok(
         json!({
             "sources": sources,
-            "how": "Start one part per app in one turn, with the part given, and read Zephium's tasks yourself meanwhile. Never ask about these sources again."
+            "how": "Start one part per app in one turn, with the part given, and read Quasar's tasks yourself meanwhile. Never ask about these sources again."
         })
         .to_string(),
     )
@@ -385,12 +385,12 @@ mod tests {
             (vec!["calendar", "gmail", "linear"], false)
         );
         assert_eq!(
-            named("Plans the day from Slack and Zephium tasks and notes"),
+            named("Plans the day from Slack and Quasar tasks and notes"),
             (vec!["slack"], true)
         );
         assert_eq!(
             listed(&["Gmail".into(), "Slack".into(), ZEPHIUM.into()]),
-            "Gmail, Slack and Zephium tasks and notes"
+            "Gmail, Slack and Quasar tasks and notes"
         );
         assert_eq!(
             source_name(&DaySource::App {

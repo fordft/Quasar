@@ -3,8 +3,8 @@
 
 use std::sync::atomic::{AtomicU8, Ordering};
 
-const TITLE: &str = "Zephium couldn't start";
-const ISSUES_URL: &str = "https://github.com/zephium-browser/Zephium/issues";
+const TITLE: &str = "Quasar couldn't start";
+const ISSUES_URL: &str = "https://github.com/fordft/Quasar/issues";
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum StartupProblem {
@@ -20,7 +20,7 @@ impl StartupProblem {
     fn title(self) -> &'static str {
         #[cfg(target_os = "windows")]
         if self == Self::RendererFailed {
-            return "Zephium needs to restart";
+            return "Quasar needs to restart";
         }
         TITLE
     }
@@ -41,21 +41,21 @@ impl StartupProblem {
     fn message(self, detail: &str) -> String {
         match self {
             #[cfg(target_os = "windows")]
-            Self::RendererFailed => "Zephium couldn't restore its browser controls. \
-                Close this message and open Zephium again. Your saved browsing data is kept, \
+            Self::RendererFailed => "Quasar couldn't restore its browser controls. \
+                Close this message and open Quasar again. Your saved browsing data is kept, \
                 but edits that hadn't been saved may be lost."
                 .to_owned(),
-            Self::NewerProfile => "Your profile was last opened by a newer version of Zephium. \
+            Self::NewerProfile => "Your profile was last opened by a newer version of Quasar. \
                  Install the latest version from zephium.app to open it. \
                  Nothing in your profile was changed."
                 .to_owned(),
             Self::DamagedProfile => format!(
-                "Zephium couldn't read your profile; it may be damaged. Nothing was deleted.\n\n\
+                "Quasar couldn't read your profile; it may be damaged. Nothing was deleted.\n\n\
                  Please report this at {ISSUES_URL}\n\nDetails: {detail}"
             ),
             Self::UnsupportedSystem => detail.to_owned(),
             Self::Other => format!(
-                "Something went wrong while starting Zephium. Try opening it again.\n\n\
+                "Something went wrong while starting Quasar. Try opening it again.\n\n\
                  If it keeps happening, please report it at {ISSUES_URL}\n\nDetails: {detail}"
             ),
         }

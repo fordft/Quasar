@@ -1,5 +1,9 @@
 //! Media & Files: native import into the profile's media store, bounded
 //! serving of admitted images to privileged chrome, and OS open for the rest.
+#[cfg(feature = "work-product")]
+use super::work_provider::record_diagnostic;
+#[cfg(not(feature = "work-product"))]
+use super::write_diagnostic as record_diagnostic;
 use std::borrow::Cow;
 use std::time::Duration;
 use tauri::{AppHandle, Manager, State, WebviewWindow};
@@ -956,7 +960,7 @@ pub(crate) async fn media_admit_remote(
         Ok(MediaAdmitV1::Refused { error }) => Some(*error),
         _ => None,
     };
-    super::work_provider::record_diagnostic(format_args!(
+    record_diagnostic(format_args!(
         "work: phase=media_admit outcome={outcome} error={error:?} fetch={:?} bytes={} elapsed_ms={}",
         trace.fetch,
         trace.bytes,

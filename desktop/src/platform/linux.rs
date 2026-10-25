@@ -128,10 +128,10 @@ impl fmt::Display for LinuxInitError {
                 "Tauri's composition box is not a direct child of its GTK window",
             ),
             Self::ChromeReparentPostcondition => formatter.write_str(
-                "privileged WebKitGTK view did not enter the Zephium composition container",
+                "privileged WebKitGTK view did not enter the Quasar composition container",
             ),
             Self::FixedParentPostcondition => formatter.write_str(
-                "Zephium composition container did not become the GTK window's direct child",
+                "Quasar composition container did not become the GTK window's direct child",
             ),
             Self::TopLevelAlreadyExposed => formatter.write_str(
                 "privileged GTK window was visible before native hardening completed",

@@ -44,7 +44,7 @@
 
   type Option = {
     id: Mind;
-    /** Zephium shows its own app icon instead. */
+    /** Quasar shows its own app icon instead. */
     icon?: IconSvgElement;
     title: string;
     body: string;

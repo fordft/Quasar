@@ -1745,7 +1745,7 @@ export type WorkInterventionKindV1 =
 "challenge" |
 /**  A permission or operating-system boundary needs a person. */
 "permission" |
-/**  The page needs an interaction Zephium cannot automate safely. */
+/**  The page needs an interaction Quasar cannot automate safely. */
 "unsupported_interaction" |
 /**  The effect or its verification needs the user's review. */
 "review" |

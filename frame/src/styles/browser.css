@@ -250,15 +250,15 @@
   font-size: 13px;
   line-height: 1.7;
 }
-.zephium-wordmark {
+.quasar-wordmark {
   display: block;
   width: 260px;
   height: 38px;
   flex: none;
   background: var(--color-text);
   opacity: 0.9;
-  mask: url(/zephium-wordmark.svg) center / contain no-repeat;
-  -webkit-mask: url(/zephium-wordmark.svg) center / contain no-repeat;
+  mask: url(/quasar-wordmark.svg) center / contain no-repeat;
+  -webkit-mask: url(/quasar-wordmark.svg) center / contain no-repeat;
 }
 .essentials-hint {
   display: flex;
@@ -305,7 +305,7 @@
   .settings-content {
     border-radius: 0;
   }
-  .zephium-wordmark {
+  .quasar-wordmark {
     max-width: 65%;
   }
 }
@@ -316,7 +316,7 @@
   .settings-page .ui-settings-group {
     border: 1px solid CanvasText;
   }
-  .zephium-wordmark {
+  .quasar-wordmark {
     background: CanvasText;
   }
 }

@@ -255,7 +255,7 @@ mod tests {
     #[test]
     fn complete_large_secret_replaces_and_retires_old_chunks() {
         let store = Memory::default();
-        let namespace = prefix("app.zephium.connection.profile.server", "oauth");
+        let namespace = prefix("app.quasar.connection.profile.server", "oauth");
         let bytes = vec![b'x'; MAX_SECRET];
         write_to(&store, &namespace, &bytes).unwrap();
         assert_eq!(&*read_from(&store, &namespace).unwrap(), &bytes);
@@ -267,7 +267,7 @@ mod tests {
     fn each_failed_chunk_or_manifest_keeps_previous_secret_and_cleans_partial_generation() {
         for offset in 1..=4 {
             let store = Memory::default();
-            let namespace = prefix("app.zephium.connection.p.s", "oauth");
+            let namespace = prefix("app.quasar.connection.p.s", "oauth");
             write_to(&store, &namespace, b"previous").unwrap();
             store.fail.set(Some(store.writes.get() + offset));
             assert_eq!(
@@ -281,7 +281,7 @@ mod tests {
     #[test]
     fn corrupt_missing_and_wrong_length_chunks_fail_closed() {
         let store = Memory::default();
-        let namespace = prefix("app.zephium.connection.p.s", "oauth");
+        let namespace = prefix("app.quasar.connection.p.s", "oauth");
         write_to(&store, &namespace, &vec![b'x'; CHUNK + 1]).unwrap();
         let target = store
             .items
@@ -309,15 +309,15 @@ mod tests {
     #[test]
     fn accounts_and_server_prefixes_do_not_overlap() {
         assert_ne!(
-            prefix("app.zephium.connection.p.s", "env.Key"),
-            prefix("app.zephium.connection.p.s", "env.key")
+            prefix("app.quasar.connection.p.s", "env.Key"),
+            prefix("app.quasar.connection.p.s", "env.key")
         );
-        assert!(!prefix("app.zephium.connection.p.server2", "oauth")
-            .starts_with("app.zephium.connection.p.server/"));
+        assert!(!prefix("app.quasar.connection.p.server2", "oauth")
+            .starts_with("app.quasar.connection.p.server/"));
         assert_eq!(
             write_to(
                 &Memory::default(),
-                "app.zephium.test/",
+                "app.quasar.test/",
                 &vec![0; MAX_SECRET + 1]
             ),
             Err(VaultError::Invalid)

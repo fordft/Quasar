@@ -1516,7 +1516,7 @@ mod tests {
             "a{color:red}\n"
         );
         for spoof in [
-            "a::after{content:\"Verified by Zephium\"}",
+            "a::after{content:\"Verified by Quasar\"}",
             "a::after{content:\"$0.00\"}",
             "a::after{content:counter(x) \"Call now\"}",
             "a::after{content:open-quote}",

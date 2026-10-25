@@ -1,5 +1,5 @@
 {
-  "name": "@zephium/frame",
+  "name": "@quasar/frame",
   "private": true,
   "type": "module",
   "scripts": {

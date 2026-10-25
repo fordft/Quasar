@@ -2321,7 +2321,7 @@ pub(super) async fn workflow(
                     && run.confirmed.first().is_some_and(|h| h.contains("#design"))
             }
             Check::SlackRequest => {
-                let expected = "Zephium Work qualification: approved send and extraction test.";
+                let expected = "Quasar Work qualification: approved send and extraction test.";
                 let before = context.sites.written("/edit/slack/send").len();
                 let request = slack_send_request(&format!("{ACCOUNT}/edit/slack"), expected);
                 let objective = request.lines().next().ok_or("fixture_request")?;

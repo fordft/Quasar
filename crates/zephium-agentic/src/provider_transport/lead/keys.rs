@@ -15,16 +15,16 @@ const ACCOUNT: &str = "development";
 /// The Keychain service holding `provider`'s key, if it takes one.
 pub fn service(provider: WorkModelProvider) -> Option<&'static str> {
     Some(match provider {
-        WorkModelProvider::OpenAi => "app.zephium.agent-provider.openai",
-        WorkModelProvider::Anthropic => "app.zephium.agent-provider.anthropic",
-        WorkModelProvider::Google => "app.zephium.agent-provider.google",
-        WorkModelProvider::DeepSeek => "app.zephium.agent-provider.deepseek",
-        WorkModelProvider::OpenRouter => "app.zephium.agent-provider.openrouter",
-        WorkModelProvider::XAi => "app.zephium.agent-provider.xai",
-        WorkModelProvider::Mistral => "app.zephium.agent-provider.mistral",
-        WorkModelProvider::Groq => "app.zephium.agent-provider.groq",
-        WorkModelProvider::Cerebras => "app.zephium.agent-provider.cerebras",
-        WorkModelProvider::Compatible => "app.zephium.agent-provider.compatible",
+        WorkModelProvider::OpenAi => "app.quasar.agent-provider.openai",
+        WorkModelProvider::Anthropic => "app.quasar.agent-provider.anthropic",
+        WorkModelProvider::Google => "app.quasar.agent-provider.google",
+        WorkModelProvider::DeepSeek => "app.quasar.agent-provider.deepseek",
+        WorkModelProvider::OpenRouter => "app.quasar.agent-provider.openrouter",
+        WorkModelProvider::XAi => "app.quasar.agent-provider.xai",
+        WorkModelProvider::Mistral => "app.quasar.agent-provider.mistral",
+        WorkModelProvider::Groq => "app.quasar.agent-provider.groq",
+        WorkModelProvider::Cerebras => "app.quasar.agent-provider.cerebras",
+        WorkModelProvider::Compatible => "app.quasar.agent-provider.compatible",
         WorkModelProvider::Cloud => return None,
     })
 }
@@ -135,13 +135,13 @@ pub fn store_typesafe(secret: LeadSecret) -> Result<(), LeadKeyError> {
     if secret.expose().len() > crate::MAX_AGENT_PROVIDER_CREDENTIAL_BYTES {
         return Err(LeadKeyError::Invalid);
     }
-    platform::write("app.zephium.agent-provider.typesafe", &secret)
+    platform::write("app.quasar.agent-provider.typesafe", &secret)
 }
 
 /// Removes only the fixed TypeSafe/Jev decision credential. Missing succeeds.
 /// Blocking; no secret is read back to perform removal.
 pub fn clear_typesafe() -> Result<(), LeadKeyError> {
-    platform::delete("app.zephium.agent-provider.typesafe")
+    platform::delete("app.quasar.agent-provider.typesafe")
 }
 
 /// Reads the provider's Keychain key once per process, again after a refusal.
@@ -346,7 +346,7 @@ mod tests {
         // This separate target does not alter the closed LLM provider mapping.
         assert_eq!(
             service(WorkModelProvider::OpenAi),
-            Some("app.zephium.agent-provider.openai")
+            Some("app.quasar.agent-provider.openai")
         );
         assert_eq!(service(WorkModelProvider::Cloud), None);
     }

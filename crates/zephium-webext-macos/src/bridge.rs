@@ -16,7 +16,7 @@ use serde_json::Value;
 use crate::runtime::Shared;
 use crate::{error, json, offscreen, LogLevel};
 
-pub(crate) const APPLICATION: &str = "app.zephium.webext";
+pub(crate) const APPLICATION: &str = "app.quasar.webext";
 
 pub(crate) fn handle(
     shared: &Rc<Shared>,

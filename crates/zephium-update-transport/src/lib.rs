@@ -508,7 +508,7 @@ mod tests {
             Url::parse("https://cdn.example/targets/").unwrap(),
             Duration::from_secs(30),
             Duration::from_secs(10),
-            "Zephium-Test-Updater/1",
+            "Quasar-Test-Updater/1",
         )
         .unwrap()
     }
@@ -557,7 +557,7 @@ mod tests {
                     target.clone(),
                     Duration::from_secs(30),
                     Duration::from_secs(10),
-                    "Zephium-Test-Updater/1",
+                    "Quasar-Test-Updater/1",
                 )
                 .unwrap_err(),
                 FixedOriginTransportConfigError::InvalidBaseUrl,
@@ -570,7 +570,7 @@ mod tests {
                 target,
                 Duration::from_secs(5),
                 Duration::from_secs(6),
-                "Zephium-Test-Updater/1",
+                "Quasar-Test-Updater/1",
             )
             .unwrap_err(),
             FixedOriginTransportConfigError::InvalidDeadlines

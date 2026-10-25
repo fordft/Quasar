@@ -125,7 +125,7 @@ fn config(url: &str) -> StreamableHttpClientTransportConfig {
 fn http_client() -> reqwest::Client {
     reqwest::Client::builder()
         .connect_timeout(Duration::from_secs(10))
-        .user_agent(concat!("Zephium/", env!("CARGO_PKG_VERSION")))
+        .user_agent(concat!("Quasar/", env!("CARGO_PKG_VERSION")))
         .build()
         .unwrap_or_default()
 }
@@ -267,9 +267,7 @@ async fn sign_in_inner(
     manager.set_credential_store(Store(store));
     let mut state = OAuthState::Unauthorized(manager);
     state
-        .start_authorization(
-            AuthorizationRequest::new(redirect.clone()).with_client_name("Zephium"),
-        )
+        .start_authorization(AuthorizationRequest::new(redirect.clone()).with_client_name("Quasar"))
         .await
         .map_err(|_| McpError::Protocol)?;
     let page = state
@@ -298,7 +296,7 @@ async fn sign_in_inner(
         .map_err(|_| McpError::Unauthorized)
 }
 
-const DONE_PAGE: &str = "<!doctype html><meta charset=utf-8><title>Returning to Zephium</title><style>body{font:15px -apple-system,system-ui,sans-serif;display:grid;place-items:center;height:90vh;margin:0;color:#1d1d1f;background:#fbfbfd}@media(prefers-color-scheme:dark){body{color:#f5f5f7;background:#161617}}p{margin:0}</style><p>Returning to Zephium…</p>";
+const DONE_PAGE: &str = "<!doctype html><meta charset=utf-8><title>Returning to Quasar</title><style>body{font:15px -apple-system,system-ui,sans-serif;display:grid;place-items:center;height:90vh;margin:0;color:#1d1d1f;background:#fbfbfd}@media(prefers-color-scheme:dark){body{color:#f5f5f7;background:#161617}}p{margin:0}</style><p>Returning to Quasar…</p>";
 
 /// Waits for the one redirect to `/callback` and answers it with a short page.
 async fn catch_redirect(
@@ -444,7 +442,7 @@ mod tests {
             .starts_with("HTTP/1.1 400"));
         assert!(get("/callback?code=abc&state=xyz")
             .await
-            .contains("Returning to Zephium"));
+            .contains("Returning to Quasar"));
         assert_eq!(
             caught.await.unwrap().unwrap(),
             format!("http://127.0.0.1:{port}/callback?code=abc&state=xyz")

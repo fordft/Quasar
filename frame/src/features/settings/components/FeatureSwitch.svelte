@@ -12,6 +12,7 @@
   import Button from "$shared/ui/Button";
   import Icon from "$shared/ui/Icon";
   import Switch from "$shared/ui/Switch";
+  import { IS_LINUX } from "$shared/platform";
 
   type Feature = "ai" | "work" | "notes" | "tasks" | "time";
   let { feature, card = false }: { feature: Feature; card?: boolean } = $props();
@@ -58,6 +59,7 @@
     },
   };
   const item = $derived(copy[feature]);
+  const unavailable = $derived(IS_LINUX && (feature === "ai" || feature === "work"));
   const key = $derived(`${feature}.enabled` as PreferenceKey);
   const on = $derived(feature === "ai" ? preferences.aiEnabled() : preferences.enabled(feature));
   // AI and Work stop what runs, so turning them off is asked first and held
@@ -101,13 +103,13 @@
   <span class="tile" aria-hidden="true"><Icon icon={item.icon} size={card ? 20 : 17} /></span>
   <div class="copy">
     <h3>{item.title()}</h3>
-    <p>{on ? item.on() : item.off()}</p>
+    <p>{unavailable ? m.preview_linux_notice() : on ? item.on() : item.off()}</p>
   </div>
   <Switch
     label={item.title()}
     labelHidden
     checked={on && !asking && !leaving}
-    disabled={preferences.saving()}
+    disabled={preferences.saving() || unavailable}
     onchange={change}
   />
   {#if "leaves" in item}<dialog

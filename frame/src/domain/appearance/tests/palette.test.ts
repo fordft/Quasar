@@ -14,7 +14,7 @@ import {
 const nord = resolveTheme("nord", "").spec;
 
 describe("theme storage", () => {
-  it("names every preset once, Zephium first", () => {
+  it("names every preset once, Quasar first", () => {
     expect(presets[0]!.id).toBe("zephium");
     expect(new Set(presets.map((entry) => entry.id)).size).toBe(presets.length);
   });
@@ -35,7 +35,7 @@ describe("theme storage", () => {
       expect(parseTheme(invalid)).toBeNull();
   });
 
-  it("resolves a broken or unknown choice to Zephium", () => {
+  it("resolves a broken or unknown choice to Quasar", () => {
     expect(resolveTheme("custom", "{").id).toBe("zephium");
     expect(resolveTheme("monokai", "").id).toBe("zephium");
     expect(resolveTheme("custom", serializeTheme(nord))).toMatchObject({ custom: true });

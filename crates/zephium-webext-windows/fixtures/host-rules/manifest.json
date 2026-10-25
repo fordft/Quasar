@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Zephium native host-rule qualifier",
+  "name": "Quasar native host-rule qualifier",
   "version": "1.0",
   "permissions": ["declarativeNetRequest"],
   "host_permissions": ["<all_urls>"],

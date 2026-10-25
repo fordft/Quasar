@@ -23,7 +23,7 @@ vi.mock("$shared/ipc/bindings", async () => {
 vi.mock("$domain/tabs", () => ({
   tabs: {
     profile: () => ({ id: native.profile }),
-    activeTab: () => ({ url: "https://github.com/zephium/browser", title: "Zephium on GitHub" }),
+    activeTab: () => ({ url: "https://github.com/zephium/browser", title: "Quasar on GitHub" }),
   },
 }));
 vi.mock("$domain/surface", () => ({ surface: { open: vi.fn() } }));
@@ -137,7 +137,7 @@ test("lists, priorities and subtasks form a persistent task workflow", async () 
   const { screen, session, server } = await setup("all");
   await screen.getByRole("button", { name: "New list", exact: true }).first().click();
   const name = screen.getByRole("textbox", { name: "List name", exact: true });
-  await name.fill("Zephium");
+  await name.fill("Quasar");
   await name.click();
   await userEvent.keyboard("{Enter}");
   await expect.poll(() => session.lists.length).toBe(1);
@@ -149,7 +149,7 @@ test("lists, priorities and subtasks form a persistent task workflow", async () 
     list: list.id,
     dueDate: dayKey(new Date()),
     priority: "high",
-    context: { url: "https://github.com/zephium/browser", title: "Zephium · task experience" },
+    context: { url: "https://github.com/zephium/browser", title: "Quasar · task experience" },
   }))!;
   await session.create({
     title: "Refine the new tab experience",

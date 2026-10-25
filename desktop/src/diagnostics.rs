@@ -29,7 +29,7 @@ pub(crate) fn install(dir: PathBuf) {
             .or_else(|| payload.downcast_ref::<String>().map(String::as_str))
             .unwrap_or("a non-text panic");
         let report = format!(
-            "Zephium {} stopped at {location}: {message}\n{}\n",
+            "Quasar {} stopped at {location}: {message}\n{}\n",
             env!("CARGO_PKG_VERSION"),
             std::backtrace::Backtrace::force_capture()
         );

@@ -18,9 +18,9 @@ use zephium_app::{RetainedWorkHandle, RetainedWorkPhase};
 
 const TOTAL: Duration = Duration::from_secs(150);
 const RELEASE_CODE: &str = "ZEPH-R7-492";
-const ORIGIN_HEADING: &str = "Zephium Release Card";
+const ORIGIN_HEADING: &str = "Quasar Release Card";
 const REGISTER_HEADING: &str = "Compatibility Register";
-pub const OBJECTIVE: &str = "Verify the release code on the current Zephium release card against the relevant linked compatibility record. After inspecting the relevant record, return to the original release card and provide the exact release code shown there. Choose the relevant source and browser operations yourself. Do not report from memory: finish by extracting schema 1 on the restored release card, with release_code copied exactly and cited only from its current heading.";
+pub const OBJECTIVE: &str = "Verify the release code on the current Quasar release card against the relevant linked compatibility record. After inspecting the relevant record, return to the original release card and provide the exact release code shown there. Choose the relevant source and browser operations yourself. Do not report from memory: finish by extracting schema 1 on the restored release card, with release_code copied exactly and cited only from its current heading.";
 
 pub fn configuration_diagnostic() -> String {
     "work-retained-back-config: entry=admit_retained_trusted_work provider=OpenAIResponses model=gpt-5.6-luna reasoning=medium store=true task=retained-back-open-v1 navigation=production_observed_link history=exact_run_enrolled".into()

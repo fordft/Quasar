@@ -916,7 +916,7 @@ fn run_public_wikipedia_fill() -> Result<(), ProbeFailure> {
                 frame,
                 invocation,
                 generation,
-                "On the current Wikipedia public discovery page, fill its search input with exactly Zephium browser. Return exactly one act action and do not submit or navigate. Use effect=local_write, wait=mutation_quiet 100 ms, verification=target_value_matches_input, and settle_budget=1000 ms."
+                "On the current Wikipedia public discovery page, fill its search input with exactly Quasar browser. Return exactly one act action and do not submit or navigate. Use effect=local_write, wait=mutation_quiet 100 ms, verification=target_value_matches_input, and settle_budget=1000 ms."
                     .to_owned(),
             )
             .map_err(|_| {
@@ -1031,13 +1031,13 @@ impl TwoActionScenario {
     const fn objective(self) -> &'static str {
         match self {
             Self::FixedClickFill => {
-                "Complete exactly two local actions in order. First click Primary semantic action with target_state expanded true verification. After the verified tool result, fill Semantic fill text with Zephium model continuation using target_value_matches_input verification. Return exactly one act action per turn and use bounded settle budgets."
+                "Complete exactly two local actions in order. First click Primary semantic action with target_state expanded true verification. After the verified tool result, fill Semantic fill text with Quasar model continuation using target_value_matches_input verification. Return exactly one act action per turn and use bounded settle budgets."
             }
             Self::PublicFillSelect => {
-                "On the current Wikipedia public discovery page, complete exactly two local actions in order without submitting or navigating. First fill its search input with exactly Zephium browser using wait=mutation_quiet 100 ms, verification=target_value_matches_input, and settle_budget=1000 ms. After the verified tool result, select the Deutsch option in the language selector using wait=mutation_quiet 100 ms, verification=target_selection_matches_option, and settle_budget=1000 ms. Return exactly one act action per turn with effect=local_write."
+                "On the current Wikipedia public discovery page, complete exactly two local actions in order without submitting or navigating. First fill its search input with exactly Quasar browser using wait=mutation_quiet 100 ms, verification=target_value_matches_input, and settle_budget=1000 ms. After the verified tool result, select the Deutsch option in the language selector using wait=mutation_quiet 100 ms, verification=target_selection_matches_option, and settle_budget=1000 ms. Return exactly one act action per turn with effect=local_write."
             }
             Self::PublicFillLocateSelect => {
-                "On the current Wikipedia public discovery page, complete exactly two local actions in order without submitting or navigating. First fill its search input with exactly Zephium browser using wait=mutation_quiet 100 ms, verification=target_value_matches_input, and settle_budget=1000 ms. After the verified tool result, call locate exactly once with query Deutsch and scope all before selecting the returned exact option ref in the language selector using wait=mutation_quiet 100 ms, verification=target_selection_matches_option, and settle_budget=1000 ms. Return exactly one act action per action turn with effect=local_write."
+                "On the current Wikipedia public discovery page, complete exactly two local actions in order without submitting or navigating. First fill its search input with exactly Quasar browser using wait=mutation_quiet 100 ms, verification=target_value_matches_input, and settle_budget=1000 ms. After the verified tool result, call locate exactly once with query Deutsch and scope all before selecting the returned exact option ref in the language selector using wait=mutation_quiet 100 ms, verification=target_selection_matches_option, and settle_budget=1000 ms. Return exactly one act action per action turn with effect=local_write."
             }
         }
     }
@@ -1198,11 +1198,11 @@ fn run_variable_workflow() -> Result<(), ProbeFailure> {
                 if let Some(SemanticValueSummary::Text(value)) = node.value() {
                     let preview = value.preview();
                     initial |= !preview.truncated()
-                        && preview.source_bytes() == "Zephium browser".len()
-                        && preview.text() == "Zephium browser";
+                        && preview.source_bytes() == "Quasar browser".len()
+                        && preview.text() == "Quasar browser";
                     final_query |= !preview.truncated()
-                        && preview.source_bytes() == "Zephium open source browser".len()
-                        && preview.text() == "Zephium open source browser";
+                        && preview.source_bytes() == "Quasar open source browser".len()
+                        && preview.text() == "Quasar open source browser";
                 }
             }
             language |= node.role() == SemanticRole::Option
@@ -1249,7 +1249,7 @@ fn run_variable_workflow() -> Result<(), ProbeFailure> {
                     started: Instant::now(),
                     base: now,
                 });
-                let objective = "Prepare a public Wikipedia search without submitting or navigating. Fill the search with exactly Zephium browser and choose Deutsch in the search language selector, in either order. Once both are verified, refine the search text to exactly Zephium open source browser. Use one local_write act action per turn. Locate option references when needed. For each action use mutation_quiet=100 ms, settle_budget=1000 ms, and exact value or exact selected-option verification. Do not click links or submit. The host checks the exact milestones and stops when the final prepared search is verified.";
+                let objective = "Prepare a public Wikipedia search without submitting or navigating. Fill the search with exactly Quasar browser and choose Deutsch in the search language selector, in either order. Once both are verified, refine the search text to exactly Quasar open source browser. Use one local_write act action per turn. Locate option references when needed. For each action use mutation_quiet=100 ms, settle_budget=1000 ms, and exact value or exact selected-option verification. Do not click links or submit. The host checks the exact milestones and stops when the final prepared search is verified.";
                 let turn = TerraControllerTurnInput::try_new(
                     account,
                     request,

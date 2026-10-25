@@ -30,5 +30,5 @@ if [ -z "$identity" ]; then
 fi
 
 /usr/bin/codesign --force --sign "$identity" --keychain "$keychain" \
-    --identifier app.zephium.work-integration.probe --timestamp=none "$probe"
+    --identifier app.quasar.work-integration.probe --timestamp=none "$probe"
 /usr/bin/codesign --verify --strict "$probe"

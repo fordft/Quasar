@@ -32,7 +32,7 @@ export const memories: WorkMemoryV1[] = [
   },
   {
     id: "01M3F2YJTVB6S1M73MERQER7NC",
-    text: "Zephium ships from the work-mode-integration branch",
+    text: "Quasar ships from the work-mode-integration branch",
     kind: "project",
     created_ms: at(12),
     used_ms: at(1),

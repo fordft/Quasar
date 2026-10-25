@@ -73,7 +73,7 @@ export function planIcs(
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    `PRODID:-//${options.product ?? "Zephium"}//Work//EN`,
+    `PRODID:-//${options.product ?? "Quasar"}//Work//EN`,
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     ...(plan.title ? [`X-WR-CALNAME:${escapeText(plan.title)}`] : []),

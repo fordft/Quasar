@@ -1142,7 +1142,7 @@ fn contain_tauri_setup_failure<E>(
 fn request_startup_failure(app: &tauri::AppHandle, error: impl std::fmt::Display) {
     let error = error.to_string();
     write_diagnostic(format_args!(
-        "startup: failed to initialize Zephium: {error}"
+        "startup: failed to initialize Quasar: {error}"
     ));
     startup_alert::show_then(
         app,
@@ -1252,7 +1252,7 @@ fn request_pre_shell_startup_failure_with_store(
     store: Arc<SqliteStore>,
 ) {
     write_diagnostic(format_args!(
-        "startup: failed to initialize Zephium: {error}"
+        "startup: failed to initialize Quasar: {error}"
     ));
     let store_owner = app
         .try_state::<StartupStore>()
@@ -1280,7 +1280,7 @@ fn request_pre_shell_startup_failure_with_blocker(
     blocker: Arc<ManagedBlocker>,
 ) {
     write_diagnostic(format_args!(
-        "startup: failed to initialize Zephium: {error}"
+        "startup: failed to initialize Quasar: {error}"
     ));
     let engine_owner = app
         .try_state::<StartupEngine>()
@@ -4367,6 +4367,10 @@ async fn setting_get(caller: WebviewWindow, key: String) -> Option<String> {
     if !SETTING_KEYS.contains(&key.as_str()) {
         return None;
     }
+    #[cfg(not(feature = "work-product"))]
+    if matches!(key.as_str(), "ai.enabled" | "work.enabled") {
+        return Some("false".into());
+    }
     #[cfg(feature = "work-product")]
     if key == "work.screenshots" {
         return Some(zephium_app::work_screenshots::enabled().to_string());
@@ -4394,6 +4398,10 @@ fn setting_set(
         return rejected_operation();
     }
     if shutdown_started(&app) {
+        return rejected_operation();
+    }
+    #[cfg(not(feature = "work-product"))]
+    if matches!(key.as_str(), "ai.enabled" | "work.enabled") && value != "false" {
         return rejected_operation();
     }
     #[cfg(feature = "file-workflows-qa")]
@@ -5094,7 +5102,7 @@ fn build_quit_menu_item(
 ) -> tauri::Result<tauri::menu::MenuItem<tauri::Wry>> {
     // Native terminate: bypasses Tauri's ExitRequested path on macOS.
     // An ordinary menu event reaches the existing draft/store shutdown barrier.
-    tauri::menu::MenuItemBuilder::with_id("browser.quit", menu_text::label("Quit Zephium"))
+    tauri::menu::MenuItemBuilder::with_id("browser.quit", menu_text::label("Quit Quasar"))
         .accelerator("CmdOrCtrl+Q")
         .build(handle)
 }
@@ -5117,9 +5125,9 @@ fn build_menu(
 
     // About is Settings' About page: the system panel cannot open links in a tab.
     let about =
-        tauri::menu::MenuItemBuilder::with_id(help::ABOUT, menu_text::label("About Zephium"))
+        tauri::menu::MenuItemBuilder::with_id(help::ABOUT, menu_text::label("About Quasar"))
             .build(handle)?;
-    let app_menu = SubmenuBuilder::new(handle, menu_text::label("Zephium"))
+    let app_menu = SubmenuBuilder::new(handle, menu_text::label("Quasar"))
         .item(&about)
         .separator()
         .item(&item("browser.settings")?)
@@ -5128,7 +5136,7 @@ fn build_menu(
     let app_menu = app_menu
         .services_with_text(menu_text::label("Services"))
         .separator()
-        .hide_with_text(menu_text::label("Hide Zephium"))
+        .hide_with_text(menu_text::label("Hide Quasar"))
         .hide_others_with_text(menu_text::label("Hide Others"))
         .show_all_with_text(menu_text::label("Show All"))
         .separator();
@@ -5770,12 +5778,6 @@ fn install_async_runtime() {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    if cfg!(all(unix, not(target_os = "macos"))) {
-        diagnostic!(
-            "Zephium isn't available on Linux yet. We're working on it; follow https://zephium.app for news."
-        );
-        std::process::exit(1);
-    }
     install_async_runtime();
     APP_STARTED.get_or_init(std::time::Instant::now);
     #[cfg(target_os = "macos")]
@@ -5963,6 +5965,14 @@ pub fn run() {
                     zephium_core::preferences::migrations(|key| store.app_setting(key))
                 {
                     let _ = store.set_app_setting(key.into(), value);
+                }
+                #[cfg(not(feature = "work-product"))]
+                for key in ["ai.enabled", "work.enabled"] {
+                    if !store.set_app_setting(key.into(), "false".into()) {
+                        return Err(std::io::Error::other(
+                            "could not persist unavailable Work capabilities",
+                        ).into());
+                    }
                 }
                 menu_text::set_language(store.app_setting("ui.language").as_deref());
                 updates::schedule_native_checks(app.handle());
@@ -6789,7 +6799,7 @@ pub fn run() {
                         .map_err(|error| std::io::Error::other(error.to_string()))?,
                 ),
             )
-            .title("Zephium")
+            .title("Quasar")
             .incognito(true)
             .devtools(cfg!(debug_assertions))
             .general_autofill_enabled(false)
@@ -7001,7 +7011,7 @@ pub fn run() {
         })
         .build(tauri::generate_context!())
         .unwrap_or_else(|error| {
-            diagnostic!("startup: failed to build Zephium: {error}");
+            diagnostic!("startup: failed to build Quasar: {error}");
             #[cfg(not(target_os = "linux"))]
             startup_alert::show_blocking(
                 startup_alert::StartupProblem::Other,
@@ -8078,7 +8088,7 @@ mod tests {
             config
                 .get("productName")
                 .and_then(serde_json::Value::as_str),
-            Some("app.zephium")
+            Some("app.quasar")
         );
         for pointer in [
             "/bundle/linux/deb/desktopTemplate",
@@ -8086,13 +8096,13 @@ mod tests {
         ] {
             assert_eq!(
                 config.pointer(pointer).and_then(serde_json::Value::as_str),
-                Some("linux/zephium.desktop.hbs")
+                Some("linux/quasar.desktop.hbs")
             );
         }
-        let template = include_str!("../linux/zephium.desktop.hbs");
+        let template = include_str!("../linux/quasar.desktop.hbs");
         for exact in [
-            "Name=Zephium",
-            "StartupWMClass=app.zephium",
+            "Name=Quasar",
+            "StartupWMClass=app.quasar",
             "Exec={{exec}} %U",
             "Icon={{icon}}",
         ] {
@@ -8661,13 +8671,13 @@ mod tests {
         assert!(plist.contains("<key>NSCameraUsageDescription</key>"));
         assert!(plist.contains("<key>NSMicrophoneUsageDescription</key>"));
         assert!(
-            plist.contains("Zephium uses the camera only when you allow a website to access it.")
+            plist.contains("Quasar uses the camera only when you allow a website to access it.")
         );
         assert!(plist.contains(
-            "Zephium uses the microphone while you dictate in Work, and for a website only when you allow it."
+            "Quasar uses the microphone while you dictate in Work, and for a website only when you allow it."
         ));
         assert!(plist.contains("<key>NSSpeechRecognitionUsageDescription</key>"));
-        assert!(plist.contains("Zephium turns what you dictate in Work into text on this Mac."));
+        assert!(plist.contains("Quasar turns what you dictate in Work into text on this Mac."));
     }
 
     #[test]

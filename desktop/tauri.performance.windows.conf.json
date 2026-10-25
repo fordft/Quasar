@@ -1,13 +1,13 @@
 {
-  "productName": "Zephium Performance",
-  "identifier": "app.zephium.performance",
+  "productName": "Quasar Performance",
+  "identifier": "app.quasar.performance",
   "build": { "devUrl": null },
   "app": {
     "windows": [
       {
         "label": "main",
         "create": false,
-        "title": "Zephium Performance",
+        "title": "Quasar Performance",
         "width": 1200,
         "height": 800,
         "minWidth": 680,

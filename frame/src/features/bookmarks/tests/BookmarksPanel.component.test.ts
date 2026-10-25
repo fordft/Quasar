@@ -18,7 +18,7 @@ const view = (id: string, title: string, url: string | null, children = 0): Book
 
 const top = [
   view("1", "Reading", null, 2),
-  view("2", "Zephium", "https://zephium.app/"),
+  view("2", "Quasar", "https://zephium.app/"),
   view("3", "Rust docs", "https://doc.rust-lang.org/std/"),
 ];
 const reading = [view("4", "Long read", "https://essay.example/a")];
@@ -49,9 +49,9 @@ afterEach(() => {
 test("browses folders, opens links, and renames in place", async () => {
   native.call.mockImplementation(async (_profile: string, call: BookmarkCall) => answer(call));
   const screen = await render(BookmarksPanel, { profile: "p", query: "" });
-  await expect.element(screen.getByRole("button", { name: /Zephium/u })).toBeVisible();
+  await expect.element(screen.getByRole("button", { name: /Quasar/u })).toBeVisible();
 
-  await screen.getByRole("button", { name: /Zephium/u }).click();
+  await screen.getByRole("button", { name: /Quasar/u }).click();
   expect(native.open).toHaveBeenLastCalledWith("https://zephium.app/", false);
 
   await screen
@@ -146,7 +146,7 @@ test("adds a page by its address and says when it is not one", async () => {
     return answer(call);
   });
   const screen = await render(BookmarksPanel, { profile: "p", query: "" });
-  await expect.element(screen.getByRole("button", { name: /Zephium/u })).toBeVisible();
+  await expect.element(screen.getByRole("button", { name: /Quasar/u })).toBeVisible();
   // The header's Add menu asks; the panel opens the form.
   compose.request("link");
   const address = screen.getByRole("textbox", { name: "Address" });
@@ -173,7 +173,7 @@ test("a new folder asked for from the header is made and named in place", async 
     call.kind === "add_folder" ? { kind: "saved", id: "9" } : answer(call),
   );
   const screen = await render(BookmarksPanel, { profile: "p", query: "" });
-  await expect.element(screen.getByRole("button", { name: /Zephium/u })).toBeVisible();
+  await expect.element(screen.getByRole("button", { name: /Quasar/u })).toBeVisible();
   compose.request("folder");
   await vi.waitFor(() =>
     expect(native.call).toHaveBeenCalledWith("p", expect.objectContaining({ kind: "add_folder" })),
@@ -184,7 +184,7 @@ test("a new folder asked for from the header is made and named in place", async 
 test("folders end in a chevron, not a count, and the top level has no crumb row", async () => {
   native.call.mockImplementation(async (_profile: string, call: BookmarkCall) => answer(call));
   const screen = await render(BookmarksPanel, { profile: "p", query: "" });
-  await expect.element(screen.getByRole("button", { name: /Zephium/u })).toBeVisible();
+  await expect.element(screen.getByRole("button", { name: /Quasar/u })).toBeVisible();
   expect(screen.container.querySelector(".crumbs")).toBeNull();
   expect(screen.container.textContent).not.toMatch(/\d+ items/u);
   expect(screen.container.querySelectorAll(".chevron")).toHaveLength(1);
@@ -215,7 +215,7 @@ test("dragging a bookmark reorders it, and onto a folder files it there", async 
     from.dispatchEvent(new PointerEvent("pointerup", { ...pointer, clientX: at.x, clientY: at.y }));
   };
 
-  await carry(row(/Rust docs/u), row(/Zephium/u), 0.1);
+  await carry(row(/Rust docs/u), row(/Quasar/u), 0.1);
   await vi.waitFor(() =>
     expect(native.call).toHaveBeenCalledWith("p", {
       kind: "move",
@@ -225,7 +225,7 @@ test("dragging a bookmark reorders it, and onto a folder files it there", async 
     }),
   );
 
-  await carry(row(/Zephium/u), row(/Reading/u), 0.5);
+  await carry(row(/Quasar/u), row(/Reading/u), 0.5);
   await vi.waitFor(() =>
     expect(native.call).toHaveBeenCalledWith("p", {
       kind: "move",

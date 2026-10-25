@@ -84,7 +84,7 @@ $baseline = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'scenarios\baselin
 Invoke-Lab 'renderer-smoke' $baseline
 $smoke = @(Get-Content -LiteralPath (Join-Path $results 'renderer-smoke.jsonl') | ForEach-Object { $_ | ConvertFrom-Json })
 $render = @($smoke | Where-Object { $_.kind -eq 'step' -and $_.value.label -eq 'baseline renderer' })
-if (@($smoke | Where-Object { $_.kind -eq 'process_failed' }).Count -gt 0 -or $render.Count -ne 1 -or -not $render[0].value.ok -or $render[0].value.result.result.value.title -ne 'Zephium lab fixture') {
+if (@($smoke | Where-Object { $_.kind -eq 'process_failed' }).Count -gt 0 -or $render.Count -ne 1 -or -not $render[0].value.ok -or $render[0].value.result.result.value.title -ne 'Quasar lab fixture') {
     throw "The extension-free renderer baseline failed. Extension/resource qualification is blocked. See $results"
 }
 $diagnostic = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'scenarios\diagnostic.json') -Raw | ConvertFrom-Json

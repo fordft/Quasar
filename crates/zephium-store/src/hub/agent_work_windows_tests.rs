@@ -10,7 +10,7 @@ fn fixture() -> (tempfile::TempDir, tempfile::TempDir, Hub) {
     let ordinary = tempfile::tempdir().unwrap();
     let selector = super::super::WindowsWorkStorage::for_validation_fixture(
         profile.path(),
-        "app.zephium.work-integration",
+        "app.quasar.work-integration",
         None,
     )
     .unwrap();

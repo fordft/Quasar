@@ -181,11 +181,11 @@ pub(crate) fn definitions() -> Vec<WorkModelTool> {
         ),
         tool(
             "hand_off",
-            "Proposes a job for Work, Zephium's agent workspace, with what it should bring along. Nothing runs until the person continues.",
+            "Proposes a job for Work, Quasar's agent workspace, with what it should bring along. Nothing runs until the person continues.",
             json!({
                 "type": "object",
                 "properties": {
-                    "title": {"type": "string", "description": "Short, such as \"Zephium status page\"."},
+                    "title": {"type": "string", "description": "Short, such as \"Quasar status page\"."},
                     "summary": {"type": "string", "description": "One line on what Work will do."},
                     "tabs": {"type": "array", "items": {"type": "string"}, "description": "Tab handles to bring, from list_tabs or the attached page (t1)."},
                     "task": {"type": "string", "description": "Words naming a task of the person's to bring."},

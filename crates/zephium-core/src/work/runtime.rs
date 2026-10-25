@@ -16,7 +16,7 @@ pub const MAX_LEAD_STEPS: usize = 255;
 pub const MAX_LEAD_ARTIFACTS: usize = 128;
 pub const MAX_WORK_STEP_NOTE_BYTES: usize = 512;
 /// The note of a step that was running when the app closed.
-pub const WORK_STEP_INTERRUPTED: &str = "Zephium closed during this step";
+pub const WORK_STEP_INTERRUPTED: &str = "Quasar closed during this step";
 pub const MAX_WORK_FOLLOWUPS: usize = 3;
 pub const MAX_WORK_FOLLOWUP_BYTES: usize = 120;
 /// A work's name: at most five words in one short line.
@@ -996,7 +996,7 @@ pub mod read_note {
     /// An earlier page's record was never confirmed saved, so no page can
     /// open until Zephium restarts.
     pub const STORAGE_UNCONFIRMED: &str =
-        "Work storage did not confirm an earlier page; restart Zephium to read more pages";
+        "Work storage did not confirm an earlier page; restart Quasar to read more pages";
 
     /// A page that ended behind a bot check or waiting on the person:
     /// "state.gov asks for a human check; its page was skipped", "Airbnb

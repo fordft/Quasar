@@ -1,6 +1,6 @@
 import * as m from "$shared/i18n/messages";
 
-/** Extensions verified to work well in Zephium: in daily use, and in the
+/** Extensions verified to work well in Quasar: in daily use, and in the
  *  real-extension suite (`cargo xtask webext-suite`), which also checks the
  *  ones that act on pages really do. "Get" opens their Chrome Web Store page. */
 export type CatalogEntry = {

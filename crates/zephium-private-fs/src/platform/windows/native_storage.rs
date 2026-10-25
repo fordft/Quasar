@@ -54,16 +54,16 @@ pub enum NativeApplication {
 impl NativeApplication {
     fn component(self) -> &'static str {
         match self {
-            Self::Product => "app.zephium",
-            Self::Development => "app.zephium.dev",
-            Self::ReviewQa => "app.zephium.review-qa",
-            Self::ExtensionQa => "app.zephium.webext-qa",
-            Self::FilesIntegrationQa => "app.zephium.files-integration-qa",
-            Self::Performance => "app.zephium.performance",
-            Self::ProtectionQa => "app.zephium.protection-qa",
-            Self::WorkIntegration => "app.zephium.work-integration",
-            Self::WorkNavigationProbe => "app.zephium.work-navigation-probe",
-            Self::WorkRenderingProbe => "app.zephium.work-rendering-probe",
+            Self::Product => "app.quasar",
+            Self::Development => "app.quasar.dev",
+            Self::ReviewQa => "app.quasar.review-qa",
+            Self::ExtensionQa => "app.quasar.webext-qa",
+            Self::FilesIntegrationQa => "app.quasar.files-integration-qa",
+            Self::Performance => "app.quasar.performance",
+            Self::ProtectionQa => "app.quasar.protection-qa",
+            Self::WorkIntegration => "app.quasar.work-integration",
+            Self::WorkNavigationProbe => "app.quasar.work-navigation-probe",
+            Self::WorkRenderingProbe => "app.quasar.work-rendering-probe",
         }
     }
 }

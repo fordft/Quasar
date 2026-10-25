@@ -10,7 +10,7 @@ fn privileged_renderer_recovers_twice_through_native_process_failed() {
     let profile = tempfile::tempdir().unwrap();
     let mut context = tauri::generate_context!();
     context.config_mut().app.windows.clear();
-    context.config_mut().identifier = "app.zephium.renderer-recovery-test".into();
+    context.config_mut().identifier = "app.quasar.renderer-recovery-test".into();
     let app = tauri::Builder::default()
         .any_thread()
         .build(context)

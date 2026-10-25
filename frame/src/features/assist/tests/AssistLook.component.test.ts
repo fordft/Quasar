@@ -104,7 +104,7 @@ async function open(next: PageAssistStatusV1, height = 760) {
   native.status = next;
   await page.viewport(400, height + 40);
   const screen = await render(PanelStage, { profile: PROFILE, height });
-  await expect.element(screen.getByRole("textbox", { name: "Ask Zephium…" })).toBeVisible();
+  await expect.element(screen.getByRole("textbox", { name: "Ask Quasar…" })).toBeVisible();
   return screen;
 }
 
@@ -157,7 +157,7 @@ test("empty, typing: Send takes the mic's place", async () => {
 
 test("empty on a page it does not read: says what it can still do", async () => {
   const screen = await open(status([], { availability: "sensitive", page: null }));
-  await expect.element(screen.getByText("Zephium stays out of this site")).toBeVisible();
+  await expect.element(screen.getByText("Quasar stays out of this site")).toBeVisible();
   await expect.element(screen.getByText(/You can still ask anything/u)).toBeVisible();
   await capture(screen.container, "away");
 });

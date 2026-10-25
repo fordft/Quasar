@@ -14,7 +14,7 @@ case $(basename -- "$bin") in
     *) exec "$bin" "$@" ;;
 esac
 
-identifier=app.zephium.dev
+identifier=app.quasar.dev
 if ! /usr/bin/codesign -dv "$bin" 2>&1 | grep -qx "Identifier=$identifier"; then
     identity=${APPLE_SIGNING_IDENTITY:-}
     if [ -z "$identity" ]; then

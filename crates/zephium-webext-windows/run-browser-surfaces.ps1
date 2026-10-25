@@ -34,7 +34,7 @@ $menu = Run-Case 'context-menu' @(
     @{human_visible=$true;navigate='$ORIGIN/form'},
     @{load=(Package 'nngceckbapebfimnlniiiahkandclblb')},
     @{view='observer'}, @{in='observer';popup=$true}, @{sleep=3000},
-    @{in='observer';eval="return chrome.contextMenus.create({id:'zephium-lab',title:'Zephium lab command',contexts:['editable']})"},
+    @{in='observer';eval="return chrome.contextMenus.create({id:'zephium-lab',title:'Quasar lab command',contexts:['editable']})"},
     @{focus_human=$true},
     @{cdp='Input.dispatchMouseEvent';params=@{type='mousePressed';x=70;y=90;button='right';clickCount=1}},
     @{cdp='Input.dispatchMouseEvent';params=@{type='mouseReleased';x=70;y=90;button='right';clickCount=1}},

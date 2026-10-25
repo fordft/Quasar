@@ -1,12 +1,12 @@
 {
-  "productName": "app.zephium",
+  "productName": "app.quasar",
   "app": {
     "enableGTKAppId": true,
     "windows": [
       {
         "label": "main",
         "create": false,
-        "title": "Zephium",
+        "title": "Quasar",
         "width": 1200,
         "height": 800,
         "minWidth": 680,
@@ -19,10 +19,10 @@
   "bundle": {
     "linux": {
       "deb": {
-        "desktopTemplate": "linux/zephium.desktop.hbs"
+        "desktopTemplate": "linux/quasar.desktop.hbs"
       },
       "rpm": {
-        "desktopTemplate": "linux/zephium.desktop.hbs"
+        "desktopTemplate": "linux/quasar.desktop.hbs"
       }
     }
   }

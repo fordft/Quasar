@@ -862,7 +862,7 @@ mod tests {
     fn arguments_are_exact_and_bounded() {
         let arguments = parse_arguments(&[
             "--bundle-id".into(),
-            "app.zephium.extensions-staging".into(),
+            "app.quasar.extensions-staging".into(),
             "--duration-seconds".into(),
             "10".into(),
             "--interval-millis".into(),
@@ -879,13 +879,13 @@ mod tests {
             vec!["--bundle-id".into(), "not-a-bundle".into()],
             vec![
                 "--bundle-id".into(),
-                "app.zephium.test".into(),
+                "app.quasar.test".into(),
                 "--duration-seconds".into(),
                 "0".into(),
             ],
             vec![
                 "--bundle-id".into(),
-                "app.zephium.test".into(),
+                "app.quasar.test".into(),
                 "--duration-seconds".into(),
                 "1".into(),
                 "--label".into(),
@@ -907,12 +907,12 @@ mod tests {
 
         let info = "\"pid\"=45010\n\
             \"LSApplicationCoalitionPIDsKey\"=( 45012, 45010, 45011)\n\
-            \"CFBundleIdentifier\"=\"app.zephium.test\"\n\
-            \"LSDisplayName\"=\"Zephium Test\"\n";
+            \"CFBundleIdentifier\"=\"app.quasar.test\"\n\
+            \"LSDisplayName\"=\"Quasar Test\"\n";
         assert_eq!(parse_integer_value(info, "pid").unwrap(), 45010);
         assert_eq!(
             parse_string_value(info, "CFBundleIdentifier", 255).unwrap(),
-            "app.zephium.test"
+            "app.quasar.test"
         );
         assert_eq!(
             parse_coalition_pids(info).unwrap(),

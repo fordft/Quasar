@@ -1251,7 +1251,7 @@ fn begin(mut mode: ProbeMode<'_>) -> Result<PendingTeardown, &'static str> {
         for (name, value, role, batch, attempt, completed) in [
             (
                 "Semantic fill text",
-                "Zephium fixed text",
+                "Quasar fixed text",
                 SemanticRole::Textbox,
                 2,
                 2,
@@ -1259,7 +1259,7 @@ fn begin(mut mode: ProbeMode<'_>) -> Result<PendingTeardown, &'static str> {
             ),
             (
                 "Semantic fill search",
-                "Zephium fixed search",
+                "Quasar fixed search",
                 SemanticRole::Searchbox,
                 3,
                 3,
@@ -1267,7 +1267,7 @@ fn begin(mut mode: ProbeMode<'_>) -> Result<PendingTeardown, &'static str> {
             ),
             (
                 "Semantic fill textarea",
-                "  Zephium  fixed textarea\nline two  ",
+                "  Quasar  fixed textarea\nline two  ",
                 SemanticRole::Textbox,
                 4,
                 4,
@@ -1300,7 +1300,7 @@ fn begin(mut mode: ProbeMode<'_>) -> Result<PendingTeardown, &'static str> {
                 &observation,
                 &runtime,
                 "Semantic hostile fill",
-                "Zephium hostile attempt",
+                "Quasar hostile attempt",
                 5,
                 5,
             )?;
@@ -1323,7 +1323,7 @@ fn begin(mut mode: ProbeMode<'_>) -> Result<PendingTeardown, &'static str> {
                 &observation,
                 &runtime,
                 "Semantic hostile recovery",
-                "Zephium hostile recovery",
+                "Quasar hostile recovery",
                 6,
                 6,
             )?;
@@ -1341,7 +1341,7 @@ fn begin(mut mode: ProbeMode<'_>) -> Result<PendingTeardown, &'static str> {
             verify_primary_fill(
                 &after_recovery.snapshot,
                 "Semantic hostile recovery",
-                "Zephium hostile recovery",
+                "Quasar hostile recovery",
                 SemanticRole::Textbox,
                 4,
             )?;
@@ -1354,7 +1354,7 @@ fn begin(mut mode: ProbeMode<'_>) -> Result<PendingTeardown, &'static str> {
                 &observation,
                 &runtime,
                 "Semantic hostile credential fill",
-                "Zephium credential blocked",
+                "Quasar credential blocked",
                 7,
                 7,
             )?;
@@ -1377,7 +1377,7 @@ fn begin(mut mode: ProbeMode<'_>) -> Result<PendingTeardown, &'static str> {
                 &observation,
                 &runtime,
                 "Semantic hostile credential fill",
-                "Zephium credential recovery",
+                "Quasar credential recovery",
                 8,
                 8,
             )?;
@@ -1407,7 +1407,7 @@ fn begin(mut mode: ProbeMode<'_>) -> Result<PendingTeardown, &'static str> {
             &editable_observation,
             &runtime,
             "Semantic fill editable",
-            "  Zephium fixed editable\nline two  ",
+            "  Quasar fixed editable\nline two  ",
             10,
             10,
         )?;
@@ -1444,7 +1444,7 @@ fn begin(mut mode: ProbeMode<'_>) -> Result<PendingTeardown, &'static str> {
         verify_primary_fill(
             &after_editable.snapshot,
             "Semantic fill editable",
-            "  Zephium fixed editable\nline two  ",
+            "  Quasar fixed editable\nline two  ",
             SemanticRole::Textbox,
             if hostile_relay_probe { 5 } else { 4 },
         )?;
@@ -1683,7 +1683,7 @@ fn begin(mut mode: ProbeMode<'_>) -> Result<PendingTeardown, &'static str> {
             &rotated_observation,
             &runtime,
             "Semantic fill text",
-            "Zephium fixed text",
+            "Quasar fixed text",
             5,
             5,
         )?;
@@ -1701,7 +1701,7 @@ fn begin(mut mode: ProbeMode<'_>) -> Result<PendingTeardown, &'static str> {
         verify_primary_fill(
             &rotated_after.snapshot,
             "Semantic fill text",
-            "Zephium fixed text",
+            "Quasar fixed text",
             SemanticRole::Textbox,
             1,
         )?;
@@ -2635,7 +2635,7 @@ fn verify_hostile_credential_recovery(snapshot: &SemanticSnapshot) -> Result<(),
     if !snapshot_value_is(
         snapshot,
         "Semantic hostile credential fill",
-        "Zephium credential recovery",
+        "Quasar credential recovery",
     ) || !snapshot_contains(
         snapshot,
         "Semantic hostile credential recovered input untrusted value exact credential-marker clear target-marker clear",
@@ -3480,7 +3480,7 @@ fn run_work_host(
         };
         // SAFETY: the retained host is explicitly closed exactly once below.
         unsafe { window.setReleasedWhenClosed(false) };
-        window.setTitle(&NSString::from_str("Zephium Work qualification"));
+        window.setTitle(&NSString::from_str("Quasar Work qualification"));
         app.activate();
         #[allow(deprecated)]
         app.activateIgnoringOtherApps(true);

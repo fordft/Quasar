@@ -99,7 +99,7 @@ impl AgentWorkTask for PublicPreparedResultTask {
         let SemanticReadContent::ValuePreview(preview) = fragment.content() else {
             return Err(AgentWorkFailure::Contract);
         };
-        if value.as_str() != "Zephium open source browser"
+        if value.as_str() != "Quasar open source browser"
             || !matches!(
                 fragment.role(),
                 SemanticRole::Searchbox | SemanticRole::Textbox
@@ -339,11 +339,11 @@ fn input_mode(
             AgentAccountScope::Anonymous,
             vec![
                 AgentWorkFormPhase::try_new(vec![
-                    AgentWorkFormGoal::fill(None, "Zephium browser".into())?,
+                    AgentWorkFormGoal::fill(None, "Quasar browser".into())?,
                     AgentWorkFormGoal::select(None, "Deutsch".into())?,
                 ])?,
                 AgentWorkFormPhase::try_new(vec![
-                    AgentWorkFormGoal::fill(None, "Zephium open source browser".into())?,
+                    AgentWorkFormGoal::fill(None, "Quasar open source browser".into())?,
                     AgentWorkFormGoal::select(None, "Deutsch".into())?,
                 ])?,
             ],
@@ -410,15 +410,15 @@ fn input_mode(
         )],
     )
     .map_err(|_| Error::Authority)?;
-    let objective = "Prepare a public Wikipedia search without submitting or navigating. Fill the search with exactly Zephium browser and choose Deutsch in the search language selector, in either order. Once both are verified, refine the search text to exactly Zephium open source browser. Use one local_write act action per turn. Locate option references when needed. For each action use mutation_quiet=100 ms, settle_budget=2000 ms, and exact value or exact selected-option verification. Do not click links or submit. The host checks the exact milestones and stops when the final prepared search is verified.";
+    let objective = "Prepare a public Wikipedia search without submitting or navigating. Fill the search with exactly Quasar browser and choose Deutsch in the search language selector, in either order. Once both are verified, refine the search text to exactly Quasar open source browser. Use one local_write act action per turn. Locate option references when needed. For each action use mutation_quiet=100 ms, settle_budget=2000 ms, and exact value or exact selected-option verification. Do not click links or submit. The host checks the exact milestones and stops when the final prepared search is verified.";
     let objective = if let Some(site) = site {
         site.objective()
     } else if inspecting {
-        "Prepare a public Wikipedia search without submitting or navigating. First inspect the existing initial baseline with read to discover the collapsed search selector's option labels and source refs. From that evidence identify Deutsch and its combobox; do not substitute the prominent Deutsch edition link for a selector option. Then fill the search with exactly Zephium browser and choose Deutsch in either order. Once both are verified, refine the search to exactly Zephium open source browser. Use one local_write act action per turn, mutation_quiet=100 ms, settle_budget=2000 ms, and exact value or selected-option verification. Locate only if the bounded read omitted a needed ref. Do not click links or submit. Rust independently checks the goals and final value."
+        "Prepare a public Wikipedia search without submitting or navigating. First inspect the existing initial baseline with read to discover the collapsed search selector's option labels and source refs. From that evidence identify Deutsch and its combobox; do not substitute the prominent Deutsch edition link for a selector option. Then fill the search with exactly Quasar browser and choose Deutsch in either order. Once both are verified, refine the search to exactly Quasar open source browser. Use one local_write act action per turn, mutation_quiet=100 ms, settle_budget=2000 ms, and exact value or selected-option verification. Locate only if the bounded read omitted a needed ref. Do not click links or submit. Rust independently checks the goals and final value."
     } else if subtree {
-        "Prepare a public Wikipedia search without submitting or navigating. Fill the search with exactly Zephium browser and choose Deutsch in the search language selector, in either order. Once both are verified, refine the search text to exactly Zephium open source browser. Use one local_write act action per turn; locate option references when needed. Each action must use mutation_quiet=100 ms, settle_budget=2000 ms, and exact value or exact selected-option verification. Do not click links or submit. After all three milestones are verified, call extract with subtree scope targeting the current search text field's opaque ref and trusted schema 1. The host will freshly read only that subtree. Return prepared_query as the complete exact current search field value with its exact value-preview citation. Do not use initial extraction scope, extract early or perform further actions after the final query is verified."
+        "Prepare a public Wikipedia search without submitting or navigating. Fill the search with exactly Quasar browser and choose Deutsch in the search language selector, in either order. Once both are verified, refine the search text to exactly Quasar open source browser. Use one local_write act action per turn; locate option references when needed. Each action must use mutation_quiet=100 ms, settle_budget=2000 ms, and exact value or exact selected-option verification. Do not click links or submit. After all three milestones are verified, call extract with subtree scope targeting the current search text field's opaque ref and trusted schema 1. The host will freshly read only that subtree. Return prepared_query as the complete exact current search field value with its exact value-preview citation. Do not use initial extraction scope, extract early or perform further actions after the final query is verified."
     } else if combined {
-        "Prepare a public Wikipedia search without submitting or navigating. Fill the search with exactly Zephium browser and choose Deutsch in the search language selector, in either order. Once both are verified, refine the search text to exactly Zephium open source browser. Use one local_write act action per turn; locate option references when needed. Each action must use mutation_quiet=100 ms, settle_budget=2000 ms, and exact value or exact selected-option verification. Do not click links or submit. After all three milestones are verified, call extract with initial scope and trusted schema 1. Return prepared_query as the complete exact current search field value with its exact value-preview citation. Do not extract early or perform further actions after the final query is verified."
+        "Prepare a public Wikipedia search without submitting or navigating. Fill the search with exactly Quasar browser and choose Deutsch in the search language selector, in either order. Once both are verified, refine the search text to exactly Quasar open source browser. Use one local_write act action per turn; locate option references when needed. Each action must use mutation_quiet=100 ms, settle_budget=2000 ms, and exact value or exact selected-option verification. Do not click links or submit. After all three milestones are verified, call extract with initial scope and trusted schema 1. Return prepared_query as the complete exact current search field value with its exact value-preview citation. Do not extract early or perform further actions after the final query is verified."
     } else if extraction {
         "Extract an inventory of the ten prominent Wikipedia language-edition links. Use the trusted schema 1, initial scope. Return language_links as ten complete, exact accessible link names copied from the delivered evidence, including article-count text where it is part of a name. Do not paraphrase, translate, truncate or invent link names. Cite the exact source fragment for each item. Do not navigate or modify anything."
     } else {

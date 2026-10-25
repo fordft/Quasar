@@ -2,7 +2,7 @@
   import * as m from "$shared/i18n/messages";
   import Button from "$shared/ui/Button";
   import Icon from "$shared/ui/Icon";
-  import ZephiumTile from "$shared/ui/ZephiumTile";
+  import QuasarTile from "$shared/ui/QuasarTile";
   import {
     commands,
     type PageAssistStatusV1,
@@ -61,7 +61,7 @@
 </script>
 
 <div class="start">
-  <span class="mark"><ZephiumTile size={36} /></span>
+  <span class="mark"><QuasarTile size={36} /></span>
   <h3 class="greeting">{greeting}</h3>
   {#if starts.length}
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
@@ -103,7 +103,7 @@
 
 <style>
   /* The start: a calm composition standing on the composer, read top to bottom
-     as mark, one line of greeting, and what Zephium can begin with. */
+     as mark, one line of greeting, and what Quasar can begin with. */
   .start {
     display: flex;
     flex-direction: column;

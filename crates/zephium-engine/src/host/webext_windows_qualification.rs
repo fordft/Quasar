@@ -43,7 +43,7 @@ impl Host {
                 CreateWindowExW(
                     WS_EX_TOOLWINDOW,
                     class.lpszClassName,
-                    windows_core::w!("Zephium Protection Qualification"),
+                    windows_core::w!("Quasar Protection Qualification"),
                     WS_OVERLAPPEDWINDOW,
                     0,
                     0,

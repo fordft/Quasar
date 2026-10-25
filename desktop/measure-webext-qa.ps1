@@ -6,8 +6,8 @@ param(
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $owner = Get-Process -Id $QaProcessId
-$allowed = @((Join-Path $repo 'target\webext-qa\Zephium Extensions QA.exe'), (Join-Path $repo 'target\debug\zephium-desktop.exe'))
-if ($owner.Path -notin $allowed -or $owner.MainWindowTitle -ne 'Zephium Extensions QA') {
+$allowed = @((Join-Path $repo 'target\webext-qa\Quasar Extensions QA.exe'), (Join-Path $repo 'target\debug\zephium-desktop.exe'))
+if ($owner.Path -notin $allowed -or $owner.MainWindowTitle -ne 'Quasar Extensions QA') {
     throw 'The selected process is not this checkout''s isolated QA app.'
 }
 $results = Join-Path $repo ('target\webext-qa-resources\' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '-' + $Label)

@@ -178,7 +178,7 @@ impl LeadToolSet for PersonalTools {
             },
             WorkModelTool {
                 name: "list_tasks".into(),
-                description: "The person's own open tasks in Zephium, overdue and today's first, then upcoming, then those without a date, each with when (overdue, today, upcoming, no date), due date and time, priority, status and list. Use it for their day, their tasks, what is due. view narrows it to today (with overdue) or upcoming only. Asked under the notes question, once per work.".into(),
+                description: "The person's own open tasks in Quasar, overdue and today's first, then upcoming, then those without a date, each with when (overdue, today, upcoming, no date), due date and time, priority, status and list. Use it for their day, their tasks, what is due. view narrows it to today (with overdue) or upcoming only. Asked under the notes question, once per work.".into(),
                 schema: schema(
                     json!({
                         "view": {"type": "string", "enum": ["all", "today", "upcoming"]},
@@ -190,7 +190,7 @@ impl LeadToolSet for PersonalTools {
             },
             WorkModelTool {
                 name: "day_sources".into(),
-                description: "Where the person's day lives, for planning their day or what they have to do today: the apps and connections to read and how (one part each), and whether to read their Zephium tasks. Remembered after the person's first answer; call it before starting those parts.".into(),
+                description: "Where the person's day lives, for planning their day or what they have to do today: the apps and connections to read and how (one part each), and whether to read their Quasar tasks. Remembered after the person's first answer; call it before starting those parts.".into(),
                 schema: schema(json!({}), &[]),
                 strict: false,
             },

@@ -15,10 +15,10 @@ use crate::{FixtureCase, InputBackend};
 const MAX_REQUEST_BYTES: usize = 4 * 1_024;
 // No form, submission controls, scripts, event handlers, frames, remote assets
 // or persistence. The initial value deliberately differs from the trusted goal.
-const RETAINED_LOCAL_FORM_HTML: &str = r#"<!doctype html><html lang="en"><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; form-action 'none'; frame-src 'none'; base-uri 'none'"><title>Zephium local preparation witness</title><body><main><h1>Local draft</h1><label for="draft">Draft</label><input id="draft" type="text" value="Unprepared" autocomplete="off"><p>This field has no submission or persistence.</p></main></body></html>"#;
-const RETAINED_BACK_ORIGIN_HTML: &str = r#"<!doctype html><html lang="en"><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; form-action 'none'; frame-src 'none'; base-uri 'none'"><title>Zephium release card</title><body><main><h1>Zephium Release Card</h1><p>Release code</p><h2>ZEPH-R7-492</h2><p>Verify this candidate against the relevant linked record before reporting from this card.</p><nav aria-label="Release references"><a href="/retained-back/register-v1.html">Compatibility register</a><a href="/retained-back/handbook-v1.html">Release handbook</a></nav></main></body></html>"#;
-const RETAINED_BACK_REGISTER_HTML: &str = r#"<!doctype html><html lang="en"><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; form-action 'none'; frame-src 'none'; base-uri 'none'"><title>Zephium compatibility register</title><body><main><h1>Compatibility Register</h1><h2>ZEPH-R7-492</h2><p>Status: cleared for native history validation.</p><p>The authoritative release code remains on the release card.</p></main></body></html>"#;
-const RETAINED_BACK_HANDBOOK_HTML: &str = r#"<!doctype html><html lang="en"><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; form-action 'none'; frame-src 'none'; base-uri 'none'"><title>Zephium release handbook</title><body><main><h1>Release Handbook</h1><p>This handbook describes process only and does not contain compatibility status.</p></main></body></html>"#;
+const RETAINED_LOCAL_FORM_HTML: &str = r#"<!doctype html><html lang="en"><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; form-action 'none'; frame-src 'none'; base-uri 'none'"><title>Quasar local preparation witness</title><body><main><h1>Local draft</h1><label for="draft">Draft</label><input id="draft" type="text" value="Unprepared" autocomplete="off"><p>This field has no submission or persistence.</p></main></body></html>"#;
+const RETAINED_BACK_ORIGIN_HTML: &str = r#"<!doctype html><html lang="en"><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; form-action 'none'; frame-src 'none'; base-uri 'none'"><title>Quasar release card</title><body><main><h1>Quasar Release Card</h1><p>Release code</p><h2>ZEPH-R7-492</h2><p>Verify this candidate against the relevant linked record before reporting from this card.</p><nav aria-label="Release references"><a href="/retained-back/register-v1.html">Compatibility register</a><a href="/retained-back/handbook-v1.html">Release handbook</a></nav></main></body></html>"#;
+const RETAINED_BACK_REGISTER_HTML: &str = r#"<!doctype html><html lang="en"><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; form-action 'none'; frame-src 'none'; base-uri 'none'"><title>Quasar compatibility register</title><body><main><h1>Compatibility Register</h1><h2>ZEPH-R7-492</h2><p>Status: cleared for native history validation.</p><p>The authoritative release code remains on the release card.</p></main></body></html>"#;
+const RETAINED_BACK_HANDBOOK_HTML: &str = r#"<!doctype html><html lang="en"><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; form-action 'none'; frame-src 'none'; base-uri 'none'"><title>Quasar release handbook</title><body><main><h1>Release Handbook</h1><p>This handbook describes process only and does not contain compatibility status.</p></main></body></html>"#;
 // A maximum 112-row matrix reloads the top document for activation isolation;
 // each load may fetch the fixed child frame and one favicon.
 const MAX_REQUESTS: usize = 512;
@@ -841,7 +841,7 @@ const NATIVE_INPUT_HTML: &str = r###"<!doctype html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Zephium native input fixture v1</title>
+  <title>Quasar native input fixture v1</title>
   <style>
     body { font: 16px system-ui; margin: 24px; }
     .grid { display: grid; grid-template-columns: repeat(2, minmax(180px, 1fr)); gap: 16px; }
@@ -1235,18 +1235,18 @@ const SEMANTIC_RUNTIME_HTML: &str = r###"<!doctype html>
       }, 75);
     });
   };
-  installFillProbe('semantic-fill-text', 'semantic-fill-text-status', 'Zephium fixed text');
-  installFillProbe('semantic-fill-search', 'semantic-fill-search-status', 'Zephium fixed search');
-  installFillProbe('semantic-fill-editable', 'semantic-fill-editable-status', '  Zephium fixed editable\nline two  ');
+  installFillProbe('semantic-fill-text', 'semantic-fill-text-status', 'Quasar fixed text');
+  installFillProbe('semantic-fill-search', 'semantic-fill-search-status', 'Quasar fixed search');
+  installFillProbe('semantic-fill-editable', 'semantic-fill-editable-status', '  Quasar fixed editable\nline two  ');
   installFillProbe(
     'semantic-fill-textarea',
     'semantic-fill-textarea-status',
-    '  Zephium  fixed textarea\nline two  '
+    '  Quasar  fixed textarea\nline two  '
   );
   installFillProbe(
     'semantic-hostile-recovery',
     'semantic-hostile-recovery-status',
-    'Zephium hostile recovery'
+    'Quasar hostile recovery'
   );
   // Provider-free Windows native-input guard fixture. The beforeinput handler
   // changes the admitted identity and editing selection before browser mutation.
@@ -1699,7 +1699,7 @@ const SEMANTIC_RUNTIME_HTML: &str = r###"<!doctype html>
     });
     credential.addEventListener('input', (event) => {
       setTimeout(() => {
-        const exact = Reflect.apply(valueGetter, credential, []) === 'Zephium credential recovery';
+        const exact = Reflect.apply(valueGetter, credential, []) === 'Quasar credential recovery';
         credentialRecoveryStatus.textContent =
           `Semantic hostile credential recovered input ${event.isTrusted ? 'trusted' : 'untrusted'} value ${exact ? 'exact' : 'mismatch'} credential-marker ${credential.hasAttribute('aria-labelledby') ? 'present' : 'clear'} target-marker ${credential.hasAttribute(relayTerminal) ? 'present' : 'clear'}`;
       }, 75);

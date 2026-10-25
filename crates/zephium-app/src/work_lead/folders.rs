@@ -339,7 +339,7 @@ pub(crate) async fn request(run: &LeadRun, named: &str, why: &str) -> (String, b
         .map_or(written.clone(), |root| root.to_string_lossy().into_owned());
     if admitted.is_empty() && path.exists() {
         return (
-            format!("{written} is outside the folders Zephium may use (the home folder itself or private folders): say so in one sentence"),
+            format!("{written} is outside the folders Quasar may use (the home folder itself or private folders): say so in one sentence"),
             true,
         );
     }
@@ -383,7 +383,7 @@ pub(crate) async fn request(run: &LeadRun, named: &str, why: &str) -> (String, b
                     )
                 }
                 None => (
-                    format!("{chosen} is outside the folders Zephium may use: say so in one sentence"),
+                    format!("{chosen} is outside the folders Quasar may use: say so in one sentence"),
                     true,
                 ),
             }
@@ -473,7 +473,7 @@ pub(crate) fn context(run: &LeadRun, named: &[Named]) -> String {
                 "{path} does not exist on this Mac: say so in one sentence.\n"
             )),
             Named::Refused { path } => out.push_str(&format!(
-                "{path} is outside the folders Zephium may read (the home folder itself or private folders): say so in one sentence.\n"
+                "{path} is outside the folders Quasar may read (the home folder itself or private folders): say so in one sentence.\n"
             )),
             Named::Granted { .. } => {}
         }

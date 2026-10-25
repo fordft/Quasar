@@ -518,7 +518,7 @@ mod tests {
             "about:blank",
             "zephium://settings",
             "https://user:pass@example.com/",
-            "/Applications/Zephium.app",
+            "/Applications/Quasar.app",
             "--flag",
             "",
         ] {

@@ -32,7 +32,7 @@ const names: Record<WorkModelProvider, string> = {
   groq: "Groq",
   cerebras: "Cerebras",
   compatible: "Custom",
-  cloud: "Zephium",
+  cloud: "Zephium AI",
 };
 
 export function providerName(provider: WorkModelProvider): string {

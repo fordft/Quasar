@@ -5,8 +5,11 @@
 use std::str::FromStr;
 use std::sync::Mutex;
 
+#[cfg(target_os = "linux")]
+use muda::accelerator::{Accelerator as Shortcut, Code, Modifiers};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
+#[cfg(not(target_os = "linux"))]
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 use zephium_core::ports::store::Store;
 
@@ -87,11 +90,14 @@ pub fn validate(accelerator: &str) -> Result<Shortcut, Rejection> {
         return Err(Rejection::Invalid);
     }
     let shortcut = Shortcut::from_str(accelerator).map_err(|_| Rejection::Invalid)?;
-    let mods = shortcut.mods;
+    #[cfg(not(target_os = "linux"))]
+    let (mods, key) = (shortcut.mods, shortcut.key);
+    #[cfg(target_os = "linux")]
+    let (mods, key) = (shortcut.modifiers(), shortcut.key());
     if !mods.intersects(Modifiers::SUPER | Modifiers::CONTROL | Modifiers::ALT) {
         return Err(Rejection::NeedsModifier);
     }
-    if system(mods, shortcut.key) {
+    if system(mods, key) {
         return Err(Rejection::System);
     }
     // The primary modifier with a character is how every app spells its own
@@ -102,7 +108,7 @@ pub fn validate(accelerator: &str) -> Result<Shortcut, Rejection> {
     } else {
         Modifiers::CONTROL
     };
-    if mods.difference(Modifiers::SHIFT) == primary && character(shortcut.key) {
+    if mods.difference(Modifiers::SHIFT) == primary && character(key) {
         return Err(Rejection::AppCommand);
     }
     Ok(shortcut)
@@ -182,6 +188,7 @@ fn system(mods: Modifiers, key: Code) -> bool {
     }
 }
 
+#[cfg(not(target_os = "linux"))]
 fn register(app: &AppHandle, shortcut: &Shortcut) -> bool {
     let registered = app
         .global_shortcut()
@@ -196,9 +203,19 @@ fn register(app: &AppHandle, shortcut: &Shortcut) -> bool {
     registered.is_ok()
 }
 
+#[cfg(not(target_os = "linux"))]
 fn unregister(app: &AppHandle, shortcut: &Shortcut) {
     let _ = app.global_shortcut().unregister(*shortcut);
 }
+
+#[cfg(target_os = "linux")]
+fn register(_app: &AppHandle, _shortcut: &Shortcut) -> bool {
+    // Linux owns its shortcut through the X11/portal adapter.
+    false
+}
+
+#[cfg(target_os = "linux")]
+fn unregister(_app: &AppHandle, _shortcut: &Shortcut) {}
 
 fn setting(key: &str) -> Option<String> {
     crate::APP_STORE

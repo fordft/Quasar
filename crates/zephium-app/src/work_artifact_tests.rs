@@ -284,7 +284,7 @@ fn durable_result_process() {
         zephium_store::SqliteStore::open_with_windows_work_storage(
             std::path::Path::new(&directory),
             zephium_store::WindowsWorkStorage::for_application(
-                "app.zephium.webext-qa",
+                "app.quasar.webext-qa",
                 Some(&std::env::var("ZEPHIUM_ARTIFACT_TEST_WORK_SESSION").unwrap()),
             )
             .unwrap(),

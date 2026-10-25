@@ -1,6 +1,6 @@
 import type { AccountUsageV1, AccountV1 } from "$shared/ipc/bindings";
 
-/** A signed-out account on Zephium's server, as `account_get` answers it. */
+/** A signed-out account on Quasar's server, as `account_get` answers it. */
 export function accountFixture(overrides: Partial<AccountV1> = {}): AccountV1 {
   return {
     version: 1,

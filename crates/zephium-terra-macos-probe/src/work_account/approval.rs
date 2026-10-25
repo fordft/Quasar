@@ -2,7 +2,7 @@
 //! process-local and never a model tool, durable grant, or run-wide permission.
 use zephium_core::work::{runtime::*, WorkExecutionId, WorkStepId};
 
-pub(super) const MESSAGE: &str = "Zephium Work qualification: approved send and extraction test.";
+pub(super) const MESSAGE: &str = "Quasar Work qualification: approved send and extraction test.";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) struct Decision {
@@ -23,7 +23,7 @@ const DIALOG: &str = r#"function run() {
     const body = JSON.parse(ObjC.unwrap($.NSString.alloc.initWithDataEncoding(raw, $.NSUTF8StringEncoding)));
     if (typeof body !== 'string') return 'declined';
     const app = Application.currentApplication(); app.includeStandardAdditions = true;
-    const answer = app.displayDialog(body, {withTitle: 'Zephium Work test approval', buttons: ['Decline', 'Approve once'], defaultButton: 'Decline', cancelButton: 'Decline', givingUpAfter: 90});
+    const answer = app.displayDialog(body, {withTitle: 'Quasar Work test approval', buttons: ['Decline', 'Approve once'], defaultButton: 'Decline', cancelButton: 'Decline', givingUpAfter: 90});
     return !answer.gaveUp && answer.buttonReturned === 'Approve once' ? 'approved' : 'declined';
   } catch (_) { return 'declined'; }
 }"#;

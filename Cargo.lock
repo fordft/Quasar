@@ -7513,6 +7513,7 @@ dependencies = [
  "json-patch",
  "libc",
  "minisign-verify 0.3.0",
+ "muda",
  "objc2",
  "objc2-app-kit",
  "objc2-foundation",

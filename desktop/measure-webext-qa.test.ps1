@@ -29,8 +29,8 @@ function Get-Process {
     if ($Id -lt 1 -or $Id -gt 5) { throw 'Unexpected process ID.' }
     $fixtureCalls[$Id] = 1 + $fixtureCalls[$Id]
     $process = [pscustomobject]@{
-        Path = Join-Path $fixtureRepo 'target\webext-qa\Zephium Extensions QA.exe'
-        MainWindowTitle = 'Zephium Extensions QA'
+        Path = Join-Path $fixtureRepo 'target\webext-qa\Quasar Extensions QA.exe'
+        MainWindowTitle = 'Quasar Extensions QA'
         HasExited = $false
         StartTime = $fixtureBirth.AddSeconds($Id - 1)
         TotalProcessorTime = [timespan]::FromSeconds(0.2 * $fixtureCalls[$Id])

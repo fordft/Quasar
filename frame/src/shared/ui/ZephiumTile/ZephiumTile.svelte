@@ -1,6 +1,5 @@
 <script lang="ts">
-  /** Zephium's app icon itself, its own squircle and shadow included, the
-   *  same in either theme. */
+  /** The external Zephium AI service keeps its own provider identity. */
   let { size = 16 }: { size?: number } = $props();
 </script>
 

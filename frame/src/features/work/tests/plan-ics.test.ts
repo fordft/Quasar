@@ -31,7 +31,7 @@ describe("planIcs", () => {
       [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
-        "PRODID:-//Zephium//Work//EN",
+        "PRODID:-//Quasar//Work//EN",
         "CALSCALE:GREGORIAN",
         "METHOD:PUBLISH",
         "X-WR-CALNAME:Trip",

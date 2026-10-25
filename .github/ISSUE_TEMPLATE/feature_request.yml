@@ -1,5 +1,5 @@
 name: Feature request
-description: Suggest an improvement to Zephium
+description: Suggest an improvement to Quasar
 labels: ["enhancement"]
 body:
   - type: markdown

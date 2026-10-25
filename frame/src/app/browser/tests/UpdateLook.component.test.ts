@@ -18,7 +18,7 @@ const receiving = {
   id: "d1",
   revision: "1",
   created_at: "2026-10-04T10:00:00Z",
-  filename: "Zephium-1.0.2.dmg",
+  filename: "Quasar-1.0.2.dmg",
   source: "https://example.com",
   state: "receiving" as const,
   received: "48000000",
@@ -86,12 +86,12 @@ test("the card and the pill sit between a download and the dock", async () => {
   await start(false);
   await page.viewport(420, 520);
   const screen = await render(UpdateLook, { props: { download: true } });
-  await expect.element(screen.getByText("Zephium updated to 1.0.1")).toBeVisible();
+  await expect.element(screen.getByText("Quasar updated to 1.0.1")).toBeVisible();
   await expect
     .element(screen.getByText("Page dialogs show instead of answering for you"))
     .toBeVisible();
   await expect.element(screen.getByText("Something broke? Tell us")).toBeVisible();
-  await expect.element(screen.getByText("Zephium-1.0.2.dmg")).toBeVisible();
+  await expect.element(screen.getByText("Quasar-1.0.2.dmg")).toBeVisible();
   const stack = screen.container.querySelector<HTMLElement>(".update-stack")!;
   const card = stack.querySelector("[data-variant='card']")!;
   const pill = stack.querySelector("[data-variant='pill']")!;

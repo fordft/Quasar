@@ -64,7 +64,7 @@
 
   /** The favourites are shown while none of the seats is the place. */
   const at = $derived(seats.findIndex((seat) => seat.provider === current));
-  /** Zephium's own seat stands apart from the providers by a hairline. */
+  /** Quasar's own seat stands apart from the providers by a hairline. */
   const lead = $derived(seats[0]?.provider === "cloud" ? 1 : 0);
 
   let list = $state<HTMLElement>();

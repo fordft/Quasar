@@ -104,7 +104,7 @@ test("the rail's foot stands in the same place in Browse and in Work", async () 
   screen.container.querySelector<HTMLElement>(".work-case")!.click();
   await settle();
   await expect
-    .element(page.getByRole("menuitem", { name: "Sign in to Zephium", exact: true }))
+    .element(page.getByRole("menuitem", { name: "Sign in to Quasar", exact: true }))
     .toBeVisible();
   await expect.element(page.getByRole("menuitem", { name: /^Ada Lovelace/u })).toBeVisible();
   await shoot("foot-work-menu");

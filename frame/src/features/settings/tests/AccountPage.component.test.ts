@@ -67,7 +67,7 @@ const signedIn = account({
       kind: "plan",
       plan: "pro",
       interval: "monthly",
-      name: "Zephium Pro",
+      name: "Quasar Pro",
       price: { amount_minor: 2000, currency: "usd" },
       features: [],
     },
@@ -84,7 +84,7 @@ test("signing in takes an address, then the emailed code, with no password", asy
     .mockResolvedValueOnce(reply(signedIn));
   const screen = await render(AccountPage);
 
-  await expect.element(screen.getByRole("heading", { name: "Sign in to Zephium" })).toBeVisible();
+  await expect.element(screen.getByRole("heading", { name: "Sign in to Quasar" })).toBeVisible();
   const continueButton = screen.getByRole("button", { name: "Continue" });
   await expect.element(continueButton).toBeDisabled();
   await screen.getByLabelText("Email address").fill("ada@example.com");

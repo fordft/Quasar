@@ -119,7 +119,7 @@ const result = (title: string, kind: SearchResult["kind"] = "tab"): SearchResult
 test("the field hangs from the top, and the name and the day stand in the sky", async () => {
   const screen = await setup({ "ui.newtab-clock-format": "12h", "focus.goal": "240" });
   await skied(screen);
-  await expect.element(screen.getByRole("img", { name: "Zephium" })).toBeVisible();
+  await expect.element(screen.getByRole("img", { name: "Quasar" })).toBeVisible();
   expect(screen.container.querySelector(".time")!.textContent).toBe("2:32 PM");
   await expect.element(screen.getByText("Monday, September 28")).toBeVisible();
   await expect.element(screen.getByRole("combobox")).toHaveFocus();

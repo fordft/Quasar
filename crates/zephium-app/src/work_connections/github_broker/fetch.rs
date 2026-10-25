@@ -78,7 +78,7 @@ fn client(resolver: Arc<dyn reqwest::dns::Resolve>) -> Result<Client, Failure> {
         .dns_resolver(resolver)
         .connect_timeout(Duration::from_secs(5))
         .timeout(Duration::from_secs(10))
-        .user_agent("Zephium-Work-GitHub-CLI")
+        .user_agent("Quasar-Work-GitHub-CLI")
         .build()
         .map_err(|_| Failure::Failed)
 }

@@ -50,7 +50,7 @@ mod validation {
                 .unwrap();
         assert_eq!(
             product.directory(),
-            fixture.path().join(ANCHOR).join("app.zephium")
+            fixture.path().join(ANCHOR).join("app.quasar")
         );
         let expected = product.identity();
         let review =
@@ -58,7 +58,7 @@ mod validation {
                 .unwrap();
         assert_eq!(
             review.directory(),
-            fixture.path().join(ANCHOR).join("app.zephium.review-qa")
+            fixture.path().join(ANCHOR).join("app.quasar.review-qa")
         );
         assert_ne!(review.identity(), expected);
         assert!(matches!(
@@ -149,7 +149,7 @@ mod validation {
         ));
         assert!(security::snapshot(&directory).unwrap() == before);
         assert_eq!(std::fs::read(payload).unwrap(), b"exact fixture bytes");
-        assert!(!fixture.path().join(ANCHOR).join("app.zephium").exists());
+        assert!(!fixture.path().join(ANCHOR).join("app.quasar").exists());
     }
 
     #[test]
@@ -166,7 +166,7 @@ mod validation {
         let parent = &anchor.directories[anchor.directories.len() - 2].file;
         let acl_handle = native::open(
             parent,
-            "app.zephium",
+            "app.quasar",
             Some(true),
             native::READ | 0x0004_0000,
             3,

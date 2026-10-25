@@ -63,7 +63,7 @@ test("command review shows the exact line and folder boundary and preserves an u
   await expect
     .element(
       screen.getByText(
-        "Commands can reach anything your account can; this only decides when Zephium asks.",
+        "Commands can reach anything your account can; this only decides when Quasar asks.",
       ),
     )
     .toBeVisible();

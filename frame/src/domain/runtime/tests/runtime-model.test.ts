@@ -14,7 +14,7 @@ describe("runtime notifications", () => {
     expect(runtimeNotifications(clear)).toEqual([]);
   });
 
-  it("separates a known system update from an overdue Zephium review", () => {
+  it("separates a known system update from an overdue Quasar review", () => {
     expect(
       runtimeNotifications({
         ...clear,
@@ -96,7 +96,7 @@ describe("runtime notifications", () => {
       id: "user_content_degraded",
       title: "Some add-on changes weren't applied",
       detail:
-        "Some extension or userscript changes couldn't be applied. Zephium kept previous verified versions when available.",
+        "Some extension or userscript changes couldn't be applied. Quasar kept previous verified versions when available.",
       tone: "warning",
     });
   });

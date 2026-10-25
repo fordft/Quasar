@@ -70,7 +70,7 @@ describe("update notices", () => {
     ).toBeNull();
   });
 
-  it("brings a dismissed security notice back only with a newer Zephium", () => {
+  it("brings a dismissed security notice back only with a newer Quasar", () => {
     const at = (securityDismissed: string | null) =>
       selectNotices(facts({ advisories: behind, securityDismissed })).card?.kind ?? null;
     expect(at("1.0.1")).toBeNull();

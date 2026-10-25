@@ -476,7 +476,7 @@ async fn a_day_plan_asks_for_its_sources_once_and_remembers_them() {
     };
     assert!(
         asked.starts_with("Plan your day from Gmail")
-            && asked.ends_with(" and Zephium tasks and notes?"),
+            && asked.ends_with(" and Quasar tasks and notes?"),
         "{asked}"
     );
     let kept = drive(
@@ -489,7 +489,7 @@ async fn a_day_plan_asks_for_its_sources_once_and_remembers_them() {
     assert!(
         kept.iter()
             .any(|m| m.text.starts_with("Plans the day from Gmail")
-                && m.text.ends_with(" and Zephium tasks and notes")),
+                && m.text.ends_with(" and Quasar tasks and notes")),
         "{:?}",
         kept.iter().map(|m| m.text.clone()).collect::<Vec<_>>()
     );

@@ -4,7 +4,7 @@ const VENDORS: Record<string, string> = {
   anthropic: "Anthropic",
   openai: "OpenAI",
   google: "Google",
-  zephium: "Zephium",
+  zephium: "Quasar",
   openrouter: "OpenRouter",
 };
 

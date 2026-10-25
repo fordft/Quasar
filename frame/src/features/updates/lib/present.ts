@@ -16,7 +16,7 @@ import { releaseNotesUrl, updates } from "$domain/updates";
 import * as notices from "./notices.svelte";
 import type { UpdateCard, UpdatePill } from "./select";
 
-const REPORT_URL = "https://github.com/zephium-browser/Zephium/issues/new?template=bug_report.yml";
+const REPORT_URL = "https://github.com/fordft/Quasar/issues/new?template=bug_report.yml";
 
 export type CardView = {
   key: string;

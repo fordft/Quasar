@@ -1027,7 +1027,7 @@ async fn a_handoff_is_a_card_until_the_person_continues() {
     let h = harness(vec![
         tool(
             "hand_off",
-            json!({"title": "Zephium status page", "summary": "Compare three monitors and run one.", "folder": "~/Dev/zephium-infra"}),
+            json!({"title": "Quasar status page", "summary": "Compare three monitors and run one.", "folder": "~/Dev/zephium-infra"}),
         ),
         say("never asked"),
     ]);

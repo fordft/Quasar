@@ -248,7 +248,7 @@ fn extraction_forces_one_answer_tool_with_the_mapping_schema() {
     );
     assert!(request.system[0]
         .text
-        .starts_with("You are Zephium's bounded extraction mapper"));
+        .starts_with("You are Quasar's bounded extraction mapper"));
 }
 
 #[test]
@@ -597,7 +597,7 @@ fn a_trimmed_reply_returns_only_zephium_s_call() {
         panic!("user, assistant, tool results");
     };
     let [WorkModelPart::ToolCall(tool)] = turn.as_slice() else {
-        panic!("only Zephium's call");
+        panic!("only Quasar's call");
     };
     assert_eq!(tool.id, "call_zephium_7");
     assert_eq!(results[0].call, "call_zephium_7");

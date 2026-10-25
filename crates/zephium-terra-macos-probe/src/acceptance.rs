@@ -1541,7 +1541,7 @@ async fn seed_tasks(
 fn project_folder() -> Result<std::path::PathBuf, &'static str> {
     let home = std::env::var_os("HOME").ok_or("home")?;
     let folder = std::path::PathBuf::from(home)
-        .join("Library/Caches/app.zephium.probe")
+        .join("Library/Caches/app.quasar.probe")
         .join(format!("tidepool-{}", std::process::id()));
     let write = |path: &str, text: &str| {
         let path = folder.join(path);
@@ -1615,7 +1615,7 @@ test('tides', () => {});
 fn save_folder() -> Result<std::path::PathBuf, &'static str> {
     let home = std::env::var_os("HOME").ok_or("home")?;
     let folder = std::path::PathBuf::from(home)
-        .join("Library/Caches/app.zephium.probe")
+        .join("Library/Caches/app.quasar.probe")
         .join(format!("lead-save-{}", std::process::id()));
     std::fs::create_dir_all(&folder).map_err(|_| "save_folder")?;
     Ok(folder)
@@ -1624,7 +1624,7 @@ fn save_folder() -> Result<std::path::PathBuf, &'static str> {
 fn bug_folder() -> Result<std::path::PathBuf, &'static str> {
     let home = std::env::var_os("HOME").ok_or("home")?;
     let folder = std::path::PathBuf::from(home)
-        .join("Library/Caches/app.zephium.probe")
+        .join("Library/Caches/app.quasar.probe")
         .join(format!("lead-bug-{}", std::process::id()));
     std::fs::create_dir_all(&folder).map_err(|_| "bug_folder")?;
     std::fs::write(

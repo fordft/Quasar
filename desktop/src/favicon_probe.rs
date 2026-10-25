@@ -25,7 +25,7 @@ const MAX_LINKS: usize = 64;
 const MAX_DECODED_SIDE: u32 = 1024;
 const MAX_DECODE_ALLOC: u64 = 16 * 1024 * 1024;
 /// The agent browser's product user agent.
-const WORK_USER_AGENT: &str = "Zephium-Agent-Browser/0.1";
+const WORK_USER_AGENT: &str = "Quasar-Agent-Browser/0.1";
 const REPLY_ATTEMPTS: usize = 20;
 const REPLY_RETRY: Duration = Duration::from_millis(250);
 

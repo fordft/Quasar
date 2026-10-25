@@ -386,7 +386,7 @@ fn device_label(app: &tauri::AppHandle) -> String {
     } else {
         "Linux"
     };
-    format!("Zephium {} · {system}", app.package_info().version)
+    format!("Quasar {} · {system}", app.package_info().version)
 }
 
 /// Creates the account service after the app store exists. A session left in

@@ -212,7 +212,7 @@ order: native menu > overlay panel > DOM.
   hardening; it is not required for capability correctness.
 - Packaged Linux identity is one exact value: Tauri's Linux-only product name,
   installed desktop basename, GTK application id, and host Registry id are
-  `app.zephium`; a custom desktop template keeps the visible `Name=Zephium`.
+  `app.quasar`; a custom desktop template keeps the visible `Name=Quasar`.
   No Linux package is built, so the release workflow does not verify it. A raw
   development binary has no installed desktop-entry proof, so its attempted
   Registry identity may be rejected and cannot be treated as proven. Zephium

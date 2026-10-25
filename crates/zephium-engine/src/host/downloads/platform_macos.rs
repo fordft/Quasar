@@ -518,7 +518,7 @@ impl Downloads {
         panel.setCanChooseFiles(false);
         panel.setAllowsMultipleSelection(false);
         panel.setMessage(Some(&NSString::from_str(
-            "Choose where Zephium saves downloads",
+            "Choose where Quasar saves downloads",
         )));
         if self.stopping.get()
             || self.retired.borrow().contains(&partition.profile())

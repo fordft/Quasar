@@ -2,12 +2,12 @@
 
 pub fn validate(config: &serde_json::Value) -> std::io::Result<()> {
     use serde_json::Value;
-    if config.get("identifier").and_then(Value::as_str) != Some("app.zephium.work-rendering-probe")
-        || config.get("productName").and_then(Value::as_str) != Some("Zephium Work Rendering Probe")
+    if config.get("identifier").and_then(Value::as_str) != Some("app.quasar.work-rendering-probe")
+        || config.get("productName").and_then(Value::as_str) != Some("Quasar Work Rendering Probe")
         || config
             .pointer("/app/windows/0/title")
             .and_then(Value::as_str)
-            != Some("Zephium Work Rendering Probe")
+            != Some("Quasar Work Rendering Probe")
         || config.pointer("/build/devUrl") != Some(&Value::Null)
     {
         return Err(std::io::Error::other(

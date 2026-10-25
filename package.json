@@ -1,5 +1,5 @@
 {
-  "name": "zephium",
+  "name": "quasar",
   "private": true,
   "engines": {
     "node": ">=24.18.0 <25"
@@ -8,7 +8,8 @@
     "dev": "pnpm -C desktop dev",
     "build": "pnpm -C desktop build",
     "frame:dev": "pnpm -C frame dev",
-    "frame:build": "pnpm -C frame build"
+    "frame:build": "pnpm -C frame build",
+    "brand:assets": "pnpm -C desktop brand:icons && node scripts/sync-brand.mjs"
   },
   "packageManager": "pnpm@11.17.0"
 }

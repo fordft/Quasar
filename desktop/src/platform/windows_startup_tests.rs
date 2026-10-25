@@ -75,7 +75,7 @@ impl Drop for TestSurface {
 fn transparent_startup_parent_erases_first_paint_without_waiting_for_redraw() {
     let mut context = tauri::generate_context!();
     context.config_mut().app.windows.clear();
-    context.config_mut().identifier = "app.zephium.native-startup-test".into();
+    context.config_mut().identifier = "app.quasar.native-startup-test".into();
     let app = tauri::Builder::default()
         .any_thread()
         .build(context)

@@ -1,4 +1,4 @@
-//! Updates from GitHub Releases, signed with Zephium's updater key.
+//! Updates from GitHub Releases, verified with this fork's own signing key.
 //!
 //! A check downloads a newer release in the background and parks it on disk.
 //! It installs when the person relaunches, or on macOS when they quit, always
@@ -54,7 +54,8 @@ static RELAUNCH_AFTER_EXIT: AtomicBool = AtomicBool::new(false);
 #[cfg(target_os = "windows")]
 static INSTALL_AFTER_EXIT: Mutex<Option<(Parked, std::path::PathBuf)>> = Mutex::new(None);
 
-const SUPPORTED: bool = !cfg!(debug_assertions) && cfg!(any(target_os = "macos", windows));
+// Enable only after Quasar has its own update endpoint and verification key.
+const SUPPORTED: bool = false;
 /// The release's highlights, kept from its download for the first launch of it.
 const HIGHLIGHTS: &str = "updates.highlights";
 const MAX_HIGHLIGHTS: usize = 5;
@@ -578,9 +579,9 @@ pub(crate) fn finish_after_exit(clean: bool) {
 #[cfg(target_os = "windows")]
 fn explain_deferred_update() {
     rfd::MessageDialog::new()
-        .set_title("Zephium update postponed")
+        .set_title("Quasar update postponed")
         .set_level(rfd::MessageLevel::Warning)
-        .set_description("Zephium could not finish the update safely. The downloaded update has been kept. Open Zephium again to retry from Settings → About.")
+        .set_description("Quasar could not finish the update safely. The downloaded update has been kept. Open Quasar again to retry from Settings → About.")
         .set_buttons(rfd::MessageButtons::Ok)
         .show();
 }

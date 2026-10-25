@@ -18,7 +18,7 @@ use winreg::RegKey;
 
 use crate::ids::ProfileId;
 
-const REGISTRY_PARENT: &str = r"Software\Zephium";
+const REGISTRY_PARENT: &str = r"Software\Quasar";
 const LEASE_FILE: &str = ".zephium-lifecycle.lock";
 const GENERATION_MARKER: &str = ".zephium-webview2-generation-v1";
 const MARKER_PREFIX: &str = "zephium-webview2-runtime-generation-v1\n";
@@ -258,7 +258,7 @@ fn measure_tree(
 
 fn remediation_error(reason: &str) -> io::Error {
     io::Error::other(format!(
-        "{reason}. Fully restart Windows and start Zephium again so prior-boot WebView2 generations can be reclaimed. If this persists, keep Zephium closed and move the affected runtime directory aside for manual recovery"
+        "{reason}. Fully restart Windows and start Quasar again so prior-boot WebView2 generations can be reclaimed. If this persists, keep Quasar closed and move the affected runtime directory aside for manual recovery"
     ))
 }
 

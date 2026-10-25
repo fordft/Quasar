@@ -54,13 +54,13 @@ fn service(profile: &str, server: &str) -> String {
         let encode =
             |value: &str| -> String { value.bytes().map(|byte| format!("{byte:02x}")).collect() };
         format!(
-            "app.zephium.connection.{}.{}",
+            "app.quasar.connection.{}.{}",
             encode(profile),
             encode(server)
         )
     }
     #[cfg(not(target_os = "windows"))]
-    format!("app.zephium.connection.{profile}.{server}")
+    format!("app.quasar.connection.{profile}.{server}")
 }
 
 #[cfg(all(test, target_os = "windows"))]

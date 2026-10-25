@@ -11,7 +11,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File desktop\run-webext-qa.ps1
 
 The launcher verifies **Zephium Extensions QA** and refuses a second instance.
 The binary, `revision.txt` and `build-profile.txt` live in `target\webext-qa`.
-Data stays in `%APPDATA%\app.zephium.webext-qa`; normal profiles are not imported.
+Data stays in `%APPDATA%\app.quasar.webext-qa`; normal profiles are not imported.
 Execution policy changes only for the invoked PowerShell process.
 
 For repeatable checks without changing the usual QA session, append

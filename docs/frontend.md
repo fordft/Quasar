@@ -261,9 +261,10 @@ the current product surface for inspecting controls; Interface Studio is removed
 The old unused `shared/ui/work` kit has been removed. Future entity presentations
 share one UI kit and gain folders only with their real runtime contracts.
 
-The retained logo asset is `assets/brand/zephium-logo.png`, outside the shipped bundle. Its placement in the
-product belongs to the visual refinement work; this migration does not substitute
-it for the existing wordmark or change its pixels.
+Quasar’s icon and wordmark sources live in `assets/brand/quasar-icon.svg` and
+`assets/brand/quasar-wordmark.svg`. Run `pnpm brand:assets` to regenerate native
+icons, frontend icon rasters and the shared vector wordmark. The retained
+Zephium icon identifies the external Zephium AI provider only.
 
 `UiInfo.material` reports a per-window enum. Native material updates still use the
 scoped `material.*` UI-command transport until typed appearance projections land.

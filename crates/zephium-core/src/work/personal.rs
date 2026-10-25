@@ -330,7 +330,7 @@ mod tests {
     fn a_memory_is_one_short_line_and_never_a_secret() {
         for fact in [
             "Prefers aisle seats on long flights",
-            "Anna Kowalska leads design at Zephium",
+            "Anna Kowalska leads design at Quasar",
             "Works from Warsaw, CET",
             "Budget for the YC trip is about $6,000",
             "Flies LOT when it's direct",

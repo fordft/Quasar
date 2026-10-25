@@ -33,7 +33,7 @@ export const toolPresentation = (kind: ToolKind) => PRESENTATION[kind];
  * happened. Settings closes the second group as a destination of its own.
  */
 export const SHELF_TOOLS = ["notes", "tasks", "time"] as const satisfies readonly ToolKind[];
-/** Zephium reads the page in front of you, so it leads the things you make, where AI is on and the window is not private. */
+/** Quasar reads the page in front of you, so it leads the things you make, where AI is on and the window is not private. */
 export const ASK_TOOL = "ai" as const satisfies ToolKind;
 export const RECORD_TOOLS = [
   "history",

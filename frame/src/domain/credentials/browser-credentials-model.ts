@@ -6,7 +6,7 @@ export function browserPasskeyStatus(
 ): string {
   switch (state) {
     case "authorized":
-      return "Passkeys are enabled for Zephium.";
+      return "Passkeys are enabled for Quasar.";
     case "denied":
       return "Passkey access is disabled in System Settings.";
     case "not_determined":

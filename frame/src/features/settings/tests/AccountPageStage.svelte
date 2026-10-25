@@ -9,7 +9,7 @@
       <div class="settings-view">
         <header class="settings-page-heading">
           <h1>Account</h1>
-          <p>Your optional connection to Zephium services.</p>
+          <p>Your optional connection to Quasar services.</p>
         </header>
         <AccountPage />
       </div>

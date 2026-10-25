@@ -1,5 +1,5 @@
 name: Bug report
-description: Something in Zephium is broken or behaves unexpectedly
+description: Something in Quasar is broken or behaves unexpectedly
 labels: ["bug"]
 body:
   - type: markdown
@@ -12,7 +12,7 @@ body:
   - type: input
     id: version
     attributes:
-      label: Zephium version
+      label: Quasar version
       description: Shown in Settings, About.
       placeholder: "1.0.3"
     validations:

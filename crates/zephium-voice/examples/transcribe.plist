@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
   <key>CFBundleIdentifier</key>
-  <string>app.zephium.voice-probe</string>
+  <string>app.quasar.voice-probe</string>
   <key>NSMicrophoneUsageDescription</key>
   <string>The voice probe listens only while it records a sample.</string>
   <key>NSSpeechRecognitionUsageDescription</key>

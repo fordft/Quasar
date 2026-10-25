@@ -44,7 +44,7 @@ const PAGE: &[u8] = br##"<!doctype html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Zephium password-manager WebAuthn QA</title>
+  <title>Quasar password-manager WebAuthn QA</title>
   <link rel="stylesheet" href="./app.css">
 </head>
 <body>
@@ -367,11 +367,11 @@ fn handle(stream: &mut TcpStream, state: &mut State) -> Result<(), String> {
             let body = json!({
                 "publicKey": {
                     "challenge": URL_SAFE_NO_PAD.encode(state.registration_challenge),
-                    "rp": { "id": "localhost", "name": "Zephium Password Manager QA" },
+                    "rp": { "id": "localhost", "name": "Quasar Password Manager QA" },
                     "user": {
                         "id": URL_SAFE_NO_PAD.encode(state.user_id),
                         "name": "zephium-password-manager-qa",
-                        "displayName": "Zephium synthetic passkey QA"
+                        "displayName": "Quasar synthetic passkey QA"
                     },
                     "pubKeyCredParams": [{ "type": "public-key", "alg": -7 }],
                     "timeout": 120000,

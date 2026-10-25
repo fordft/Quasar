@@ -1,13 +1,13 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Zephium Work Rendering Probe",
-  "identifier": "app.zephium.work-rendering-probe",
+  "productName": "Quasar Work Rendering Probe",
+  "identifier": "app.quasar.work-rendering-probe",
   "build": { "devUrl": null },
   "app": {
     "windows": [{
       "label": "main",
       "create": false,
-      "title": "Zephium Work Rendering Probe",
+      "title": "Quasar Work Rendering Probe",
       "width": 1200,
       "height": 800,
       "minWidth": 680,

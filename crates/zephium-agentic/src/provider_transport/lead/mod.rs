@@ -50,7 +50,7 @@ const CEREBRAS_BASE: &str = "https://api.cerebras.ai/v1";
 /// Zephium Cloud's production base; each wire appends its provider's own path.
 pub const ZEPHIUM_CLOUD_BASE: &str = "https://api.zephium.app";
 const ANTHROPIC_VERSION: &str = "2023-06-01";
-const USER_AGENT: &str = "Zephium/1 (lead)";
+const USER_AGENT: &str = "Quasar/1 (lead)";
 
 const MAX_RETRIES: u32 = 2;
 /// A longer Retry-After goes back to the caller instead of holding the call.
@@ -298,7 +298,7 @@ impl LeadTarget {
             }
         }
         if self.upstream == WorkModelProvider::OpenRouter {
-            headers.insert("x-title", HeaderValue::from_static("Zephium"));
+            headers.insert("x-title", HeaderValue::from_static("Quasar"));
             headers.insert(
                 "http-referer",
                 HeaderValue::from_static("https://zephium.app"),

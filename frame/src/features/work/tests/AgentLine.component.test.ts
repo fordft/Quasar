@@ -458,8 +458,8 @@ test("every run that ended early says why in Rust's words, or calmly that it sto
       "The search could not be sent",
     ],
     [
-      ended("interrupted", read, "outcome_unknown", "Zephium closed during this step"),
-      "Zephium closed during this step",
+      ended("interrupted", read, "outcome_unknown", "Quasar closed during this step"),
+      "Quasar closed during this step",
     ],
     [agentRun("failed"), "Stopped before it finished"],
   ];
@@ -484,7 +484,7 @@ test("every run that ended early says why in Rust's words, or calmly that it sto
   };
   const interrupted = await render(AgentLine, { session: left });
   await expect
-    .element(interrupted.getByText("Zephium closed during this run", { exact: true }))
+    .element(interrupted.getByText("Quasar closed during this run", { exact: true }))
     .toBeVisible();
   await interrupted.unmount();
   left.dispose();

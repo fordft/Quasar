@@ -103,5 +103,5 @@ pub fn phase_ended(app: &tauri::AppHandle, alert: &str) {
         "focus" => ("Back to focus", "A new round has started."),
         _ => return,
     };
-    notify("app.zephium.focus", title, body);
+    notify("app.quasar.focus", title, body);
 }

@@ -58,7 +58,7 @@ impl std::fmt::Display for ShellTerminalFailure {
             }
             Self::ActorExitedUnexpectedly => "application shell actor exited unexpectedly",
             Self::SessionUnavailable => "the saved session could not be opened",
-            Self::SessionFromNewerVersion => "the saved session belongs to a newer Zephium",
+            Self::SessionFromNewerVersion => "the saved session belongs to a newer Quasar",
         })
     }
 }

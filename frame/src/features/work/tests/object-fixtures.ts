@@ -790,7 +790,7 @@ const drafts: DraftView[] = [
     id: "draft-linkedin",
     destination: "linkedin",
     body: "Excited to share that we've joined Y Combinator's winter batch. 🚀\n\nWe're building the browser where an agent does the work with you, on a canvas you can watch and steer. If you're in SF this spring, come say hi.",
-    author: { name: "Alex Novak", handle: "Founder at Zephium" },
+    author: { name: "Alex Novak", handle: "Founder at Quasar" },
     send: "draft",
   },
   {

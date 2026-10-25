@@ -2888,7 +2888,7 @@ mod tests {
             json!({"k":2,"p":0,"r":"button","n":"Share","o":1,"ak":1}),
             json!({"k":3,"p":0,"r":"group","n":"Quick add"}),
             json!({"k":4,"p":2,"r":"textbox","n":"Task name","o":11,"fs":1,"es":[1,2,false],
-                "v":{"k":"text","value":"Zephium test"}}),
+                "v":{"k":"text","value":"Quasar test"}}),
             json!({"k":5,"p":2,"r":"button","n":"Add task","o":1,"ak":1}),
         ]);
         assert_eq!(
@@ -2910,7 +2910,7 @@ mod tests {
             json!({"k":1,"r":"document","o":16}),
             json!({"k":2,"p":0,"r":"dialog","n":"Quick Add"}),
             json!({"k":3,"p":1,"r":"combobox","n":"Task name","o":11,"fs":1,
-                "v":{"k":"text","value":"Zephium test tomorrow"}}),
+                "v":{"k":"text","value":"Quasar test tomorrow"}}),
             json!({"k":4,"p":1,"r":"button","n":"Cancel","o":1,"ak":1}),
             json!({"k":5,"p":1,"r":"button","n":"Add task","o":1,"ak":1}),
         ]);
@@ -2931,7 +2931,7 @@ mod tests {
             json!({"k":2,"p":0,"r":"button","n":"Comment","o":1,"ak":1}),
             json!({"k":3,"p":0,"r":"group","n":"Quick add"}),
             json!({"k":4,"p":2,"r":"textbox","n":"Task name","o":11,"fs":1,"es":[1,2,false],
-                "v":{"k":"text","value":"Zephium test"}}),
+                "v":{"k":"text","value":"Quasar test"}}),
         ]);
         assert_eq!(
             effect_key(
@@ -3287,7 +3287,7 @@ mod tests {
             gate: gate.clone(),
             asks: true,
         };
-        let drafted = row("Zephium test");
+        let drafted = row("Quasar test");
         let add = click(&drafted, 4, SemanticEffectClass::ExternalWrite);
         assert!(
             policy.assess(&add, &drafted).is_ok(),

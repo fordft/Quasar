@@ -127,7 +127,7 @@ export const HANDOFF = (
     summary: "Create the status page, wire the release checks and open a pull request for review.",
     brings: [
       { kind: "task", label: "Set up status.zephium.app", detail: "This week", tab: null },
-      { kind: "repository", label: "zephium-browser/Zephium", detail: "Releases", tab: null },
+      { kind: "repository", label: "zephium-browser/Quasar", detail: "Releases", tab: null },
       { kind: "folder", label: "~/Dev/zephium-infra", detail: "Local folder", tab: null },
       { kind: "tab", label: "Status page docs", detail: "Open tab", tab: TAB },
       { kind: "conversation", label: "This conversation", detail: null, tab: null },

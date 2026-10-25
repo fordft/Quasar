@@ -768,7 +768,7 @@ mod tests {
             LookupFailureAction::Fail
         );
 
-        let foreign_domain = NSString::from_str("app.zephium.tests.not-webkit");
+        let foreign_domain = NSString::from_str("app.quasar.tests.not-webkit");
         let foreign_error = unsafe {
             NSError::errorWithDomain_code_userInfo(
                 &foreign_domain,

@@ -3,17 +3,17 @@
 <plist version="1.0">
 <dict>
   <key>NSCameraUsageDescription</key>
-  <string>Zephium uses the camera only when you allow a website to access it.</string>
+  <string>Quasar uses the camera only when you allow a website to access it.</string>
   <key>NSMicrophoneUsageDescription</key>
-  <string>Zephium uses the microphone while you dictate in Work, and for a website only when you allow it.</string>
+  <string>Quasar uses the microphone while you dictate in Work, and for a website only when you allow it.</string>
   <key>NSSpeechRecognitionUsageDescription</key>
-  <string>Zephium turns what you dictate in Work into text on this Mac.</string>
+  <string>Quasar turns what you dictate in Work into text on this Mac.</string>
   <key>NSDownloadsFolderUsageDescription</key>
-  <string>Zephium saves the files you download to your Downloads folder.</string>
+  <string>Quasar saves the files you download to your Downloads folder.</string>
   <key>NSDesktopFolderUsageDescription</key>
-  <string>Zephium saves downloads to your Desktop when you choose it as the download folder.</string>
+  <string>Quasar saves downloads to your Desktop when you choose it as the download folder.</string>
   <key>NSDocumentsFolderUsageDescription</key>
-  <string>Zephium saves downloads to your Documents folder when you choose it as the download folder.</string>
+  <string>Quasar saves downloads to your Documents folder when you choose it as the download folder.</string>
   <key>CFBundleURLTypes</key>
   <array>
     <dict>

@@ -25,7 +25,7 @@ pub trait AccountVault: Send + Sync {
 pub struct SystemVault;
 
 /// The item every origin shared before bearers were scoped to one.
-const UNSCOPED: &str = "app.zephium.account";
+const UNSCOPED: &str = "app.quasar.account";
 
 #[cfg_attr(not(any(target_os = "macos", target_os = "windows")), allow(dead_code))]
 fn item(origin: &str) -> String {
@@ -119,11 +119,11 @@ mod tests {
     fn each_origin_has_its_own_item() {
         assert_eq!(
             super::item(crate::DEFAULT_ORIGIN),
-            "app.zephium.account|https://api.zephium.app"
+            "app.quasar.account|https://api.zephium.app"
         );
         assert_eq!(
             super::item("http://127.0.0.1:8787"),
-            "app.zephium.account|http://127.0.0.1:8787"
+            "app.quasar.account|http://127.0.0.1:8787"
         );
     }
 }

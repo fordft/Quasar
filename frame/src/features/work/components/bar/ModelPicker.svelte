@@ -96,7 +96,7 @@
         ? m.ai_custom_name()
         : providerName(provider);
 
-  /** Every provider Settings offers: Zephium's own first, then the ready ones, then each with the one step that readies it. */
+  /** Every provider Settings offers: Quasar's own first, then the ready ones, then each with the one step that readies it. */
   const seats = $derived.by<Seat[]>(() => {
     const own: Seat[] = [];
     const ready: Seat[] = [];

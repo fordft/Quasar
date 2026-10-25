@@ -102,7 +102,7 @@ test("a copied theme imports back, and a broken one says so", async () => {
   const field = screen.getByRole("textbox", { name: "Theme to import" });
   await field.fill("zephium-theme:v1:bm90IGEgdGhlbWU");
   await screen.getByRole("button", { name: "Use theme" }).click();
-  await expect.element(screen.getByText("That isn’t a Zephium theme.")).toBeVisible();
+  await expect.element(screen.getByText("That isn’t a Quasar theme.")).toBeVisible();
   const scroller = document.querySelector<HTMLElement>(".settings-content")!;
   scroller.scrollTop = 900;
   await settle();

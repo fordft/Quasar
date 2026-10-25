@@ -55,7 +55,7 @@ const fn seeds(bg: u32, fg: u32, accent: u32) -> Seeds {
 pub const PRESETS: &[Preset] = &[
     Preset {
         id: "zephium",
-        name: "Zephium",
+        name: "Quasar",
         light: seeds(0xf1f1f3, 0x1c1c1f, 0x222226),
         dark: seeds(0x1a1a1d, 0xf4f4f6, 0xededf0),
     },

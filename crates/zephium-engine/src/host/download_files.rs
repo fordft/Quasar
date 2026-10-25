@@ -361,7 +361,7 @@ fn quarantine_in_pool(path: &Path, source: &str) -> Result<(), DownloadError> {
     }
     let path = path.to_str().ok_or(DownloadError::Destination)?;
     let url = NSURL::fileURLWithPath(&NSString::from_str(path));
-    let agent = NSString::from_str("Zephium");
+    let agent = NSString::from_str("Quasar");
     let date = NSDate::date();
     let source =
         NSURL::URLWithString(&NSString::from_str(source)).ok_or(DownloadError::Protection)?;

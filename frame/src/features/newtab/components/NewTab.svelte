@@ -239,7 +239,7 @@
 
 <!--
   Drawn by the chrome, so a new tab costs no WebView and shows no paint flash.
-  The page is a window onto the Zephium sky: solid above, dissolving through
+  The page is a window onto the Quasar sky: solid above, dissolving through
   a halftone screen into the page below the horizon. The window's own glass
   reaches down into it through the notch the field hangs in. The dots are
   baked into the picture, so the page only shows it.
@@ -275,7 +275,7 @@
   </svg>
 
   <!-- The name, drawn only as large as itself. -->
-  <svg class="mark" role="img" aria-label="Zephium" style={at(page.mark)}>
+  <svg class="mark" role="img" aria-label="Quasar" style={at(page.mark)}>
     <defs>
       <path id={`${id}-letters`} d={WORDMARK.d} transform={letters} />
       {#if glint}<linearGradient

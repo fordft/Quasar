@@ -1,13 +1,13 @@
 {
-  "productName": "Zephium Files Integration QA",
-  "identifier": "app.zephium.files-integration-qa",
+  "productName": "Quasar Files Integration QA",
+  "identifier": "app.quasar.files-integration-qa",
   "build": { "devUrl": null, "beforeBuildCommand": null },
   "app": {
     "windows": [
       {
         "label": "main",
         "create": false,
-        "title": "Zephium Files Integration QA",
+        "title": "Quasar Files Integration QA",
         "width": 1200,
         "height": 800,
         "minWidth": 680,

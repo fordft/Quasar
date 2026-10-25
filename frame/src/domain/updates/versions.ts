@@ -1,6 +1,6 @@
 import type { RuntimeSecurityAdvisory } from "$shared/ipc/bindings";
 
-const RELEASES = "https://github.com/zephium-browser/Zephium/releases/tag/v";
+const RELEASES = "https://github.com/fordft/Quasar/releases/tag/v";
 const SEMVER = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/u;
 
 export const releaseNotesUrl = (version: string) => `${RELEASES}${encodeURIComponent(version)}`;

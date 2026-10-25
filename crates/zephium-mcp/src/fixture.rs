@@ -66,7 +66,7 @@ impl ServerHandler for Fixture {
             .enable_resources()
             .build();
         config.server_info = Implementation::new("fixture", "1.2.3");
-        config.instructions = Some("Fixture server for Zephium tests.".into());
+        config.instructions = Some("Fixture server for Quasar tests.".into());
         config
     }
 

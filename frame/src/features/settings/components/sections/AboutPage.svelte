@@ -11,7 +11,7 @@
   import SettingsGroup from "$shared/ui/SettingsGroup";
   import SettingsRow from "$shared/ui/SettingsRow";
   import Button from "$shared/ui/Button";
-  import ZephiumTile from "$shared/ui/ZephiumTile";
+  import QuasarTile from "$shared/ui/QuasarTile";
   import AboutLinks from "../about/AboutLinks.svelte";
   import { WEBSITE } from "../../lib/links";
   import PreferenceSwitch from "../PreferenceSwitch.svelte";
@@ -67,7 +67,7 @@
 
   async function copyDetails() {
     if (!about) return;
-    const details = `Zephium ${about.version}\n${about.os} (${about.arch})`;
+    const details = `Quasar ${about.version}\n${about.os} (${about.arch})`;
     try {
       await navigator.clipboard.writeText(details);
       notices.show(m.about_details_copied());
@@ -88,9 +88,9 @@
 </script>
 
 <header class="settings-about hero">
-  <ZephiumTile size={88} />
+  <QuasarTile size={88} />
   <div class="identity">
-    <span class="zephium-wordmark" role="img" aria-label="Zephium"></span>
+    <span class="quasar-wordmark" role="img" aria-label="Quasar"></span>
     <p class="meta">
       <span class="version">{about ? m.about_version({ version: about.version }) : ""}</span>
       {#if updatable && about}<Button
@@ -102,6 +102,9 @@
         >{/if}
     </p>
     <p class="platform">{platform}</p>
+    {#if about?.os.toLowerCase().includes("linux")}
+      <p class="platform" role="note">{m.preview_linux_notice()}</p>
+    {/if}
   </div>
   <AboutLinks />
 </header>
@@ -216,7 +219,7 @@
     gap: 6px;
   }
 
-  .zephium-wordmark {
+  .quasar-wordmark {
     inline-size: 150px;
     block-size: 22px;
   }

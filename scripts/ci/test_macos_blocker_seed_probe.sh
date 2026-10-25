@@ -17,7 +17,7 @@ for invariant in \
   '(before.st_mode & S_IFMT) == S_IFREG' \
   'before.st_nlink == 1' \
   'blocker artifact changed while it was being admitted' \
-  'private let identifierPrefix = "app.zephium.rules.v1."' \
+  'private let identifierPrefix = "app.quasar.rules.v1."' \
   'private let artifactDigestDomain = Data("zephium-webkit-content-rules".utf8)' \
   'private let artifactFormatVersion: UInt32 = 4' \
   '"b0e7d8af3782731f328a97ea4a5b77034bd32f200c3e1632f5d85c316f6d5621"' \

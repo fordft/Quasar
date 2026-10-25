@@ -34,7 +34,7 @@ pub(super) const VIEWS: [AppView; 6] = [
     },
     AppView {
         path: "/app/notion",
-        fact: "Launch checklist for Zephium 1.0",
+        fact: "Launch checklist for Quasar 1.0",
         html: NOTION,
     },
     AppView {
@@ -62,7 +62,7 @@ const ROUTED: &str = r##"<!doctype html><html><head><meta charset="utf-8"><title
 <script>
 var views={
   inbox:'<h1>Inbox</h1><div role="list" aria-label="Messages"><div role="listitem">Dana: Quarterly report</div></div>',
-  drafts:'<h1>Drafts</h1><div role="list" aria-label="Messages"><div role="listitem">Draft: Launch checklist for Zephium 1.0</div></div>'
+  drafts:'<h1>Drafts</h1><div role="list" aria-label="Messages"><div role="listitem">Draft: Launch checklist for Quasar 1.0</div></div>'
 };
 function show(){
   var name=location.hash.slice(1).split('?')[0]||'inbox';
@@ -147,7 +147,7 @@ const NOTION: &str = r##"<!doctype html><html><head><meta charset="utf-8"><title
 <nav class="notion-sidebar" aria-label="Sidebar"><div role="tree" aria-label="Private"><div role="treeitem">Roadmap</div><div role="treeitem">Meeting notes</div></div></nav>
 <main class="notion-frame"><h1>Good morning</h1><section aria-label="Recently visited"><h2>Recently visited</h2>
 <div class="notion-scroller"><div role="list">
-<div role="listitem"><a href="/acme/Launch-checklist-1f2e" class="notion-home-card"><div class="card-title">Launch checklist for Zephium 1.0</div><div class="card-meta">Edited 2h ago by Marta</div></a></div>
+<div role="listitem"><a href="/acme/Launch-checklist-1f2e" class="notion-home-card"><div class="card-title">Launch checklist for Quasar 1.0</div><div class="card-meta">Edited 2h ago by Marta</div></a></div>
 <div role="listitem"><a href="/acme/Pricing-research-9a8b" class="notion-home-card"><div class="card-title">Pricing research notes</div><div class="card-meta">Edited yesterday by you</div></a></div>
 <div role="listitem"><a href="/acme/Hiring-plan-Q4-77aa" class="notion-home-card"><div class="card-title">Hiring plan for Q4</div><div class="card-meta">Edited Sep 26 by Dana</div></a></div>
 </div></div></section></main></body></html>"##;

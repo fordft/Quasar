@@ -32,7 +32,7 @@ function pillFor(status: UpdateStatus, relaunching: boolean): UpdatePill | null 
   return relaunching ? { kind: "installing" } : { kind: "ready", version: status.version };
 }
 
-/** Dismissed at an older Zephium, or never: a system still behind is
+/** Dismissed at an older Quasar, or never: a system still behind is
  *  mentioned again once per Zephium version. */
 function securityDue(dismissed: string, version: string) {
   if (dismissed === "") return true;

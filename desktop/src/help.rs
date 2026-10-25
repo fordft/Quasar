@@ -16,9 +16,9 @@ const ISSUES: &str = "help.issues";
 
 pub(crate) fn url(id: &str) -> Option<&'static str> {
     match id {
-        DOCS => Some("https://zephium.app/docs"),
-        RELEASES => Some("https://github.com/zephium-browser/Zephium/releases"),
-        ISSUES => Some("https://github.com/zephium-browser/Zephium/issues"),
+        DOCS => Some("https://github.com/fordft/Quasar/tree/main/docs"),
+        RELEASES => Some("https://github.com/fordft/Quasar/releases"),
+        ISSUES => Some("https://github.com/fordft/Quasar/issues"),
         _ => None,
     }
 }
@@ -26,7 +26,7 @@ pub(crate) fn url(id: &str) -> Option<&'static str> {
 type Entries = Vec<Box<dyn IsMenuItem<tauri::Wry>>>;
 
 fn entries(handle: &tauri::AppHandle, shortcuts: &MenuItem<tauri::Wry>) -> tauri::Result<Entries> {
-    let docs = MenuItemBuilder::with_id(DOCS, menu_text::label("Zephium Help")).build(handle)?;
+    let docs = MenuItemBuilder::with_id(DOCS, menu_text::label("Quasar Help")).build(handle)?;
     let releases =
         MenuItemBuilder::with_id(RELEASES, menu_text::label("Release Notes")).build(handle)?;
     let issues =
@@ -44,7 +44,7 @@ fn entries(handle: &tauri::AppHandle, shortcuts: &MenuItem<tauri::Wry>) -> tauri
     #[cfg(not(target_os = "macos"))]
     {
         let about =
-            MenuItemBuilder::with_id(ABOUT, menu_text::label("About Zephium")).build(handle)?;
+            MenuItemBuilder::with_id(ABOUT, menu_text::label("About Quasar")).build(handle)?;
         entries.push(Box::new(PredefinedMenuItem::separator(handle)?));
         entries.push(Box::new(about));
     }
@@ -79,7 +79,10 @@ mod tests {
 
     #[test]
     fn links_lead_to_the_documentation_the_releases_and_the_issue_tracker() {
-        assert_eq!(url(DOCS), Some("https://zephium.app/docs"));
+        assert_eq!(
+            url(DOCS),
+            Some("https://github.com/fordft/Quasar/tree/main/docs")
+        );
         assert!(url(RELEASES).is_some_and(|url| url.starts_with("https://github.com/")));
         assert!(url(ISSUES).is_some_and(|url| url.ends_with("/issues")));
         assert_eq!(url(ABOUT), None);
