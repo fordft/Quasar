@@ -113,6 +113,9 @@ jobs:
       - name: Finalize and smoke Linux AppImage
         if: matrix.platform == 'linux'
         run: |
+          # linuxdeploy may alter or move libraries in LD_LIBRARY_PATH. Restore
+          # the checksum-verified originals before pairing engine and helpers.
+          python3 scripts/release/prepare-linux-runtime.py
           python3 scripts/release/finalize-linux-appimage.py target/release/bundle/appimage/app.quasar.AppDir
           image="$(realpath target/release/bundle/appimage/*.AppImage)"
           mkdir -p target/preview-extracted
