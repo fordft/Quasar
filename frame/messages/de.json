@@ -3252,6 +3252,7 @@
   "chatgpt_voice_note": "Dictation uses speech recognition on this device.",
   "chatgpt_decision_note": "Typed decisions use the connected ChatGPT account.",
   "chatgpt_cost": "{model} · Using ChatGPT plan",
+  "chatgpt_error_refresh": "Your ChatGPT session cannot refresh yet. Try again shortly.",
   "chatgpt_error_busy": "Another account operation is running. Try again shortly.",
   "chatgpt_refresh_models": "Refresh ChatGPT models",
   "chatgpt_models_failed": "Could not load ChatGPT models. Check the connection above and retry."

@@ -99,10 +99,15 @@ impl Runtime {
     }
 
     async fn save(&self, lease: Lease, state: State) -> Result<State, Error> {
+        self.checkpoint(lease, state).await.map(|(_, state)| state)
+    }
+
+    // Keep the cross-process lease through checkpoint verification and activation.
+    async fn checkpoint(&self, lease: Lease, state: State) -> Result<(Lease, State), Error> {
         let store = self.store.clone();
         tokio::task::spawn_blocking(move || {
             store.write(&lease, &state)?;
-            Ok(state)
+            Ok((lease, state))
         })
         .await
         .map_err(|_| Error::Storage)?
@@ -271,6 +276,7 @@ impl Runtime {
                     client_id: callback.client_id.clone(),
                     identity: None,
                     tokens: None,
+                    pending_refresh: None,
                 });
             }
             self.save(lease, state).await?;
@@ -296,6 +302,7 @@ impl Runtime {
         }
         profile.identity = Some(identity);
         profile.tokens = Some(tokens);
+        profile.pending_refresh = None;
         state.active = Some(profile.id.clone());
         let state = self.save(lease, state).await?;
         *self.active.lock().unwrap_or_else(|p| p.into_inner()) = state.active;
@@ -362,6 +369,7 @@ impl Runtime {
         };
         let revocation = profile.clone();
         profile.tokens = None;
+        profile.pending_refresh = None;
         // Local erasure survives cancellation or shutdown during the network call.
         self.save(lease, state).await?;
         let confirmed = tokio::time::timeout(
@@ -381,7 +389,15 @@ impl Runtime {
             .store(true, std::sync::atomic::Ordering::SeqCst);
     }
 
-    pub async fn access_token(&self, expected_epoch: u64) -> Result<Secret, Error> {
+    /// Rotation is owned by the session, even when its caller cancels a stream.
+    pub async fn access_token(self: &Arc<Self>, expected_epoch: u64) -> Result<Secret, Error> {
+        let owner = self.clone();
+        tokio::spawn(async move { owner.access_token_inner(expected_epoch).await })
+            .await
+            .map_err(|_| Error::Storage)?
+    }
+
+    async fn access_token_inner(&self, expected_epoch: u64) -> Result<Secret, Error> {
         if self.signed_out.load(std::sync::atomic::Ordering::SeqCst) {
             return Err(Error::SignedOut);
         }
@@ -406,40 +422,46 @@ impl Runtime {
             .as_ref()
             .and_then(|id| state.profiles.iter().position(|p| &p.id == id))
             .ok_or(Error::SignedOut)?;
+        if state.profiles[index].pending_refresh.is_some() {
+            return self
+                .commit_rotation(lease, state, index, expected_epoch)
+                .await;
+        }
         let profile = &state.profiles[index];
         let tokens = profile.tokens.as_ref().ok_or(Error::SignedOut)?;
         if !tokens.sharing() {
             return Err(Error::PlanPermissionRequired);
         }
         let time = now()?;
-        let rejected = self
-            .rejected
-            .swap(false, std::sync::atomic::Ordering::SeqCst);
-        let refresh_allowed = tokens.earliest_refresh_at.is_none_or(|t| time >= t);
+        let rejected = self.rejected.load(std::sync::atomic::Ordering::SeqCst);
+        let refresh_allowed = tokens.refresh_allowed(time);
         if !rejected
             && tokens.expires_at > time
-            && (tokens.expires_at > time.saturating_add(120) || !refresh_allowed)
+            && (tokens.expires_at > time.saturating_add(120)
+                || !refresh_allowed
+                || tokens.refresh.is_none())
         {
-            return Secret::new(tokens.access.to_string());
+            return tokens.bearer();
         }
-        let refreshed = self.client.refresh(profile).await;
-        match refreshed {
-            Ok(tokens) => {
-                let sharing = tokens.sharing();
-                let secret = Secret::new(tokens.access.to_string())?;
-                state.profiles[index].tokens = Some(tokens);
-                self.save(lease, state).await?;
-                if !sharing {
-                    self.advance();
-                    return Err(Error::PlanPermissionRequired);
-                }
-                if self.epoch() != expected_epoch {
-                    return Err(Error::SignedOut);
-                }
-                Ok(secret)
+        if !refresh_allowed {
+            return Err(Error::RetryLater);
+        }
+        match self.client.rotate(profile).await {
+            Ok((tokens, verify)) => {
+                state.profiles[index].pending_refresh = Some(crate::PendingRefresh {
+                    tokens,
+                    received_at: self.client.received_at()?,
+                    verify_identity: verify,
+                });
+                // Persist the only valid successor before fetching rotating keys.
+                // It remains quarantined until its new identity is verified.
+                let (lease, state) = self.checkpoint(lease, state).await?;
+                self.commit_rotation(lease, state, index, expected_epoch)
+                    .await
             }
-            Err(error @ (Error::SignedOut | Error::InvalidIdentity)) => {
+            Err(error @ (Error::SignedOut | Error::InvalidIdentity | Error::Protocol)) => {
                 state.profiles[index].tokens = None;
+                state.profiles[index].pending_refresh = None;
                 self.save(lease, state).await?;
                 self.set_fault(Some(error));
                 self.advance();
@@ -450,7 +472,7 @@ impl Runtime {
                     && tokens.expires_at > time
                     && matches!(error, Error::Network | Error::RateLimited)
                 {
-                    Secret::new(tokens.access.to_string())
+                    tokens.bearer()
                 } else {
                     Err(error)
                 }
@@ -458,7 +480,60 @@ impl Runtime {
         }
     }
 
-    pub async fn models(&self) -> Result<Vec<Model>, Error> {
+    async fn commit_rotation(
+        &self,
+        lease: Lease,
+        mut state: State,
+        index: usize,
+        epoch: u64,
+    ) -> Result<Secret, Error> {
+        let profile = &state.profiles[index];
+        let pending = profile.pending_refresh.as_ref().ok_or(Error::Protocol)?;
+        if pending.verify_identity {
+            match self.client.verify_rotation(profile, pending).await {
+                Ok(identity) => state.profiles[index].identity = Some(identity),
+                Err(Error::InvalidIdentity) => {
+                    state.profiles[index].tokens = None;
+                    state.profiles[index].pending_refresh = None;
+                    self.save(lease, state).await?;
+                    self.set_fault(Some(Error::InvalidIdentity));
+                    self.advance();
+                    return Err(Error::InvalidIdentity);
+                }
+                Err(error) => {
+                    self.set_fault(Some(error));
+                    return Err(error);
+                }
+            }
+        }
+        let pending = state.profiles[index]
+            .pending_refresh
+            .take()
+            .ok_or(Error::Protocol)?;
+        let sharing = pending.tokens.sharing();
+        let expired = pending.tokens.expires_at <= now()?;
+        let bearer = if sharing && !expired {
+            Some(pending.tokens.bearer()?)
+        } else {
+            None
+        };
+        state.profiles[index].tokens = Some(pending.tokens);
+        self.save(lease, state).await?;
+        self.rejected
+            .store(false, std::sync::atomic::Ordering::SeqCst);
+        if !sharing {
+            self.set_fault(Some(Error::PlanPermissionRequired));
+            self.advance();
+            return Err(Error::PlanPermissionRequired);
+        }
+        if self.signed_out.load(std::sync::atomic::Ordering::SeqCst) || self.epoch() != epoch {
+            return Err(Error::SignedOut);
+        }
+        self.set_fault(None);
+        bearer.ok_or(Error::RetryLater)
+    }
+
+    pub async fn models(self: &Arc<Self>) -> Result<Vec<Model>, Error> {
         let epoch = self.epoch();
         let result = async {
             let token = self.access_token(epoch).await?;
@@ -495,6 +570,7 @@ impl Runtime {
                     .and_then(|id| state.profiles.iter_mut().find(|p| &p.id == id))
                 {
                     profile.tokens = None;
+                    profile.pending_refresh = None;
                 }
                 self.save(lease, state).await?;
                 self.set_fault(Some(Error::SignedOut));
@@ -561,7 +637,7 @@ mod tests {
     #[test]
     fn identity_sign_in_does_not_grant_plan_usage() {
         let tokens = crate::Tokens {
-            access: Zeroizing::new("access".into()),
+            access: Some(Zeroizing::new("access".into())),
             refresh: None,
             id: Zeroizing::new("id".into()),
             scopes: vec!["openid".into()],
@@ -590,8 +666,9 @@ mod tests {
                     email: Some("same@example.invalid".into()),
                     name: None,
                 }),
+                pending_refresh: None,
                 tokens: Some(crate::Tokens {
-                    access: Zeroizing::new(format!("test-access-{id}")),
+                    access: Some(Zeroizing::new(format!("test-access-{id}"))),
                     refresh: refresh.then(|| Zeroizing::new(format!("test-refresh-{id}"))),
                     id: Zeroizing::new("test-id-hint".into()),
                     scopes: vec!["resource.invoke".into(), "chatgpt.tokens.use.direct".into()],
@@ -872,5 +949,220 @@ mod tests {
         );
         drop(lease);
         assert!(!runtime.session().await.expect("view").sharing());
+    }
+
+    #[tokio::test]
+    async fn cancelling_a_caller_does_not_discard_a_rotated_refresh_token() {
+        let (_dir, store) = seeded(true, true);
+        let server = crate::fixtures::Server::delayed(
+            vec![(200, rotation(SHARING))],
+            std::time::Duration::from_millis(150),
+        )
+        .await;
+        let runtime = fixture_runtime(store.clone(), &server);
+        let owner = runtime.clone();
+        let caller = tokio::spawn(async move { owner.access_token(0).await });
+        tokio::time::timeout(std::time::Duration::from_secs(1), async {
+            while server.requests.lock().expect("requests").is_empty() {
+                tokio::time::sleep(std::time::Duration::from_millis(5)).await;
+            }
+        })
+        .await
+        .expect("refresh started");
+        caller.abort();
+        assert_eq!(
+            runtime.access_token(0).await.expect("successor").expose(),
+            "test-rotated-access"
+        );
+        assert_eq!(server.requests.lock().expect("requests").len(), 1);
+        let lease = store.lease().expect("lease");
+        let state = store.read(&lease).expect("saved successor");
+        assert!(state.profiles[0].pending_refresh.is_none());
+        assert_eq!(
+            state.profiles[0]
+                .tokens
+                .as_ref()
+                .expect("tokens")
+                .refresh
+                .as_deref()
+                .map(String::as_str),
+            Some("test-rotated-refresh")
+        );
+    }
+
+    #[tokio::test]
+    async fn key_service_outages_resume_a_quarantined_rotation_after_restart() {
+        let vector: serde_json::Value =
+            serde_json::from_str(include_str!("oidc-test-vector.json")).expect("vector");
+        let mut malformed = vector["jwks"].clone();
+        malformed["keys"][0]["n"] = serde_json::json!("!");
+        for unavailable in [
+            (503, serde_json::json!({})),
+            (200, serde_json::json!({"keys": []})),
+            (200, malformed),
+        ] {
+            let (_dir, store) = seeded(true, true);
+            {
+                let lease = store.lease().expect("lease");
+                let mut state = store.read(&lease).expect("state");
+                state.profiles[0].client_id = "oaiapp_quasar_unit_test".into();
+                state.profiles[0]
+                    .identity
+                    .as_mut()
+                    .expect("identity")
+                    .subject = "test-subject".into();
+                store.write(&lease, &state).expect("fixture identity");
+            }
+            let mut response = rotation(SHARING);
+            response["id_token"] = vector["token"].clone();
+            let server = crate::fixtures::Server::start(vec![
+                (200, response),
+                unavailable,
+                (200, vector["jwks"].clone()),
+            ])
+            .await;
+            let runtime = fixture_runtime(store.clone(), &server);
+            assert_eq!(runtime.access_token(0).await.err(), Some(Error::Network));
+            assert!(!runtime.session().await.expect("quarantined").sharing());
+            {
+                let lease = store.lease().expect("lease");
+                let state = store.read(&lease).expect("checkpoint");
+                let pending = state.profiles[0]
+                    .pending_refresh
+                    .as_ref()
+                    .expect("durable rotation");
+                assert_eq!(
+                    pending.tokens.refresh.as_deref().map(String::as_str),
+                    Some("test-rotated-refresh")
+                );
+                assert_eq!(pending.received_at, 1800000030);
+            }
+            drop(runtime);
+            let restarted = fixture_runtime(store.clone(), &server);
+            assert_eq!(
+                restarted.access_token(0).await.expect("recovered").expose(),
+                "test-rotated-access"
+            );
+            let requests = server.requests.lock().expect("requests");
+            assert_eq!(requests.len(), 3);
+            assert!(requests[0].starts_with("POST "));
+            assert!(requests[1].starts_with("GET "));
+            assert!(requests[2].starts_with("GET "));
+        }
+    }
+
+    #[tokio::test]
+    async fn a_refreshed_identity_must_keep_its_subject_and_valid_signature() {
+        let vector: serde_json::Value =
+            serde_json::from_str(include_str!("oidc-test-vector.json")).expect("vector");
+        for bad_signature in [false, true] {
+            let (_dir, store) = seeded(true, true);
+            {
+                let lease = store.lease().expect("lease");
+                let mut state = store.read(&lease).expect("state");
+                state.profiles[0].client_id = "oaiapp_quasar_unit_test".into();
+                if bad_signature {
+                    state.profiles[0]
+                        .identity
+                        .as_mut()
+                        .expect("identity")
+                        .subject = "test-subject".into();
+                }
+                store.write(&lease, &state).expect("fixture");
+            }
+            let mut response = rotation(SHARING);
+            let mut token = vector["token"].as_str().expect("token").as_bytes().to_vec();
+            if bad_signature {
+                let offset = token.iter().rposition(|b| *b == b'.').expect("signature") + 1;
+                token[offset] = if token[offset] == b'A' { b'B' } else { b'A' };
+            }
+            response["id_token"] = serde_json::json!(String::from_utf8(token).expect("token"));
+            let server = crate::fixtures::Server::start(vec![
+                (200, response),
+                (200, vector["jwks"].clone()),
+            ])
+            .await;
+            let runtime = fixture_runtime(store.clone(), &server);
+            assert_eq!(
+                runtime.access_token(0).await.err(),
+                Some(Error::InvalidIdentity)
+            );
+            assert_ne!(runtime.epoch(), 0);
+            let lease = store.lease().expect("lease");
+            let state = store.read(&lease).expect("cleared");
+            assert!(state.profiles[0].tokens.is_none());
+            assert!(state.profiles[0].pending_refresh.is_none());
+        }
+    }
+
+    #[tokio::test]
+    async fn an_expired_token_waits_until_the_provider_allows_refresh() {
+        let (_dir, store) = seeded(true, true);
+        {
+            let lease = store.lease().expect("lease");
+            let mut state = store.read(&lease).expect("state");
+            state.profiles[0]
+                .tokens
+                .as_mut()
+                .expect("tokens")
+                .earliest_refresh_at = Some(serde_json::json!(now().expect("now") + 60));
+            store.write(&lease, &state).expect("future refresh");
+        }
+        let server = crate::fixtures::Server::start(vec![]).await;
+        let runtime = fixture_runtime(store, &server);
+        assert_eq!(runtime.access_token(0).await.err(), Some(Error::RetryLater));
+        assert!(server.requests.lock().expect("requests").is_empty());
+    }
+
+    #[tokio::test]
+    async fn a_rejected_bearer_stays_blocked_while_refresh_is_not_ready() {
+        let (_dir, store) = seeded(false, true);
+        {
+            let lease = store.lease().expect("lease");
+            let mut state = store.read(&lease).expect("state");
+            state.profiles[0]
+                .tokens
+                .as_mut()
+                .expect("tokens")
+                .earliest_refresh_at = Some(serde_json::json!(now().expect("now") + 60));
+            store.write(&lease, &state).expect("future refresh");
+        }
+        let server = crate::fixtures::Server::start(vec![]).await;
+        let runtime = fixture_runtime(store, &server);
+        runtime.rejected();
+        for _ in 0..2 {
+            assert_eq!(runtime.access_token(0).await.err(), Some(Error::RetryLater));
+        }
+        assert!(server.requests.lock().expect("requests").is_empty());
+    }
+
+    #[tokio::test]
+    async fn sign_out_revokes_the_pending_successor_and_erases_both_generations() {
+        let (_dir, store) = seeded(true, true);
+        {
+            let lease = store.lease().expect("lease");
+            let mut state = store.read(&lease).expect("state");
+            let mut tokens = state.profiles[0].tokens.clone().expect("tokens");
+            tokens.refresh = Some(Zeroizing::new("test-pending-successor".into()));
+            state.profiles[0].pending_refresh = Some(crate::PendingRefresh {
+                tokens,
+                received_at: now().expect("now"),
+                verify_identity: true,
+            });
+            store.write(&lease, &state).expect("checkpoint");
+        }
+        let server = crate::fixtures::Server::start(vec![
+            (200, serde_json::json!({"issuer": crate::ISSUER, "revocation_endpoint": "https://auth.openai.com/api/accounts/oauth/revoke"})),
+            (200, serde_json::json!({})),
+        ]).await;
+        let runtime = fixture_runtime(store.clone(), &server);
+        runtime.sign_out().await.expect("sign out");
+        let requests = server.requests.lock().expect("requests");
+        assert!(requests[1].contains("token=test-pending-successor"));
+        assert!(!requests[1].contains("test-refresh-one"));
+        let lease = store.lease().expect("lease");
+        let state = store.read(&lease).expect("local erasure");
+        assert!(state.profiles[0].tokens.is_none());
+        assert!(state.profiles[0].pending_refresh.is_none());
     }
 }

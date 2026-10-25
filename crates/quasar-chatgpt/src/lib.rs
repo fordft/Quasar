@@ -40,6 +40,7 @@ pub enum Error {
     PlanPermissionRequired,
     UsageLimit,
     RateLimited,
+    RetryLater,
     RemoteRevocationUnconfirmed,
 }
 
@@ -119,20 +120,53 @@ pub struct Model {
 
 #[derive(Clone, Serialize, Deserialize)]
 pub(crate) struct Tokens {
-    pub access: Zeroizing<String>,
+    pub access: Option<Zeroizing<String>>,
     pub refresh: Option<Zeroizing<String>>,
     pub id: Zeroizing<String>,
     pub scopes: Vec<String>,
     pub expires_at: u64,
-    pub earliest_refresh_at: Option<u64>,
+    pub earliest_refresh_at: Option<serde_json::Value>,
 }
 
 impl Tokens {
     pub(crate) fn sharing(&self) -> bool {
-        ["resource.invoke", "chatgpt.tokens.use.direct"]
-            .iter()
-            .all(|wanted| self.scopes.iter().any(|scope| scope == wanted))
+        self.access.is_some()
+            && ["resource.invoke", "chatgpt.tokens.use.direct"]
+                .iter()
+                .all(|wanted| self.scopes.iter().any(|scope| scope == wanted))
     }
+    pub(crate) fn bearer(&self) -> Result<Secret, Error> {
+        Secret::new(
+            self.access
+                .as_ref()
+                .ok_or(Error::PlanPermissionRequired)?
+                .to_string(),
+        )
+    }
+    pub(crate) fn refresh_allowed(&self, time: u64) -> bool {
+        let earliest = self
+            .earliest_refresh_at
+            .as_ref()
+            .and_then(|value| match value {
+                serde_json::Value::Number(n) => n
+                    .as_f64()
+                    .filter(|n| n.is_finite() && *n >= 0.0)
+                    .map(|n| n.ceil() as u64),
+                serde_json::Value::String(s) => chrono::DateTime::parse_from_rfc3339(s)
+                    .ok()
+                    .and_then(|t| u64::try_from(t.timestamp_millis()).ok())
+                    .map(|ms| ms.div_ceil(1000)),
+                _ => None,
+            });
+        earliest.is_none_or(|earliest| time >= earliest)
+    }
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub(crate) struct PendingRefresh {
+    pub tokens: Tokens,
+    pub received_at: u64,
+    pub verify_identity: bool,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -141,6 +175,8 @@ pub(crate) struct Profile {
     pub client_id: String,
     pub identity: Option<Identity>,
     pub tokens: Option<Tokens>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pending_refresh: Option<PendingRefresh>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -200,7 +236,8 @@ impl State {
                     label: format!("ChatGPT connection {}", index + 1),
                     email: p.identity.as_ref().and_then(|i| i.email.clone()),
                     signed_in: p.tokens.is_some(),
-                    sharing: p.tokens.as_ref().is_some_and(Tokens::sharing),
+                    sharing: p.pending_refresh.is_none()
+                        && p.tokens.as_ref().is_some_and(Tokens::sharing),
                 })
                 .collect(),
             pending,

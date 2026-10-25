@@ -122,11 +122,11 @@ fn error(error: quasar_chatgpt::Error) -> WorkModelError {
     match error {
         quasar_chatgpt::Error::Network => WorkModelError::Network,
         quasar_chatgpt::Error::Cancelled => WorkModelError::Cancelled,
-        quasar_chatgpt::Error::RateLimited | quasar_chatgpt::Error::UsageLimit => {
-            WorkModelError::RateLimited {
-                retry_after_ms: None,
-            }
-        }
+        quasar_chatgpt::Error::RateLimited
+        | quasar_chatgpt::Error::UsageLimit
+        | quasar_chatgpt::Error::RetryLater => WorkModelError::RateLimited {
+            retry_after_ms: None,
+        },
         quasar_chatgpt::Error::SignedOut | quasar_chatgpt::Error::PlanPermissionRequired => {
             WorkModelError::MissingKey
         }
@@ -190,7 +190,12 @@ async fn update_catalog(force: bool) {
     }
     let session = runtime.session().await;
     let epoch = runtime.epoch();
-    if session.as_ref().is_ok_and(|s| !s.sharing()) {
+    // A signed-in session may have a quarantined refresh to recover. Native
+    // credential verification still gates the actual catalog request.
+    if session.as_ref().is_ok_and(|s| {
+        !s.active().is_some_and(|p| p.signed_in)
+            || s.fault == Some(quasar_chatgpt::Error::PlanPermissionRequired)
+    }) {
         *catalog() = Catalog::default();
         return;
     }
@@ -219,9 +224,9 @@ async fn update_catalog(force: bool) {
             state.entries.clear();
             state.fault = Some(match error {
                 quasar_chatgpt::Error::Network => WorkKeyFault::Offline,
-                quasar_chatgpt::Error::UsageLimit | quasar_chatgpt::Error::RateLimited => {
-                    WorkKeyFault::RateLimited
-                }
+                quasar_chatgpt::Error::UsageLimit
+                | quasar_chatgpt::Error::RateLimited
+                | quasar_chatgpt::Error::RetryLater => WorkKeyFault::RateLimited,
                 quasar_chatgpt::Error::Storage => WorkKeyFault::Keychain,
                 _ => WorkKeyFault::WrongKey,
             });

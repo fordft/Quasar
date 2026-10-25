@@ -38,6 +38,14 @@ Unix. A file lease serializes refresh across cooperating processes; atomic
 replacement commits rotated access token, refresh token, expiry and scope
 metadata together. Inaccessible or corrupt credentials fail closed.
 
+The session owner finishes refresh rotation even if an answer is cancelled. If
+verification of a refreshed ID token is interrupted by a key-service outage,
+the encrypted successor is checkpointed without authorizing it. Restarting
+resumes verification at its receipt time without spending the old refresh token
+again. Both numeric Unix seconds and RFC 3339 refresh schedules are honored;
+expired credentials wait when OpenAI has not yet allowed refresh. Identity-only
+responses remain connected without granting model access.
+
 Model discovery uses authenticated `GET https://api.openai.com/v1/models` and
 only visible account entries become selectable. Settings can explicitly retry
 model discovery without reauthorizing the account. Ask, Work, chosen page agents
@@ -81,7 +89,9 @@ entering its credentials again in that old release.
 Unit fixtures cover callback binding, PKCE and code exchange, JWT verification,
 concurrent token rotation, invalid grants, loss of plan permission, account
 switches, cancellation during exchange, discovery filtering, and local sign-out
-when remote revocation fails. Fixture HTTP endpoints exist only under `cfg(test)`.
+when remote revocation fails. They also cover cancelled refresh callers,
+checkpoint recovery after key-service outages, replacement-token revocation and
+identity-only token responses. Fixture HTTP endpoints exist only under `cfg(test)`.
 Frontend component tests exercise connection, consent, cancellation, switching,
 sign-out and the ChatGPT-only model picker. Native tests regenerate IPC bindings.
 

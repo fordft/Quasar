@@ -27,6 +27,8 @@ export function explainAccountFault(fault: AccountFaultV1): string {
       return m.chatgpt_error_limit();
     case "rate_limited":
       return m.chatgpt_error_rate();
+    case "retry_later":
+      return m.chatgpt_error_refresh();
     case "remote_revocation_unconfirmed":
       return m.chatgpt_error_revoke();
     case "protocol":

@@ -12,8 +12,8 @@ use zeroize::Zeroizing;
 
 use crate::{random, Error, State};
 
-const MAX_PLAIN: usize = 256 * 1024;
-const MAX_FILE: usize = 512 * 1024;
+const MAX_PLAIN: usize = 2 * 1024 * 1024;
+const MAX_FILE: usize = 4 * 1024 * 1024;
 const AAD: &[u8] = b"Quasar ChatGPT session v1";
 
 /// A small native encryption key; OAuth tokens are never stored as vault blobs.

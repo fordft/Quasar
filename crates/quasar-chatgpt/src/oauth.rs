@@ -277,13 +277,13 @@ pub(crate) struct Client {
 
 #[derive(Deserialize)]
 struct TokenReply {
-    access_token: String,
+    access_token: Option<String>,
     refresh_token: Option<String>,
     id_token: Option<String>,
-    token_type: String,
-    expires_in: u64,
+    token_type: Option<String>,
+    expires_in: Option<f64>,
     scope: Option<String>,
-    earliest_refresh_at: Option<u64>,
+    earliest_refresh_at: Option<Value>,
 }
 
 impl Client {
@@ -359,7 +359,7 @@ impl Client {
         Ok((identity, tokens(reply, None)?))
     }
 
-    pub(crate) async fn refresh(&self, profile: &Profile) -> Result<Tokens, Error> {
+    pub(crate) async fn rotate(&self, profile: &Profile) -> Result<(Tokens, bool), Error> {
         let old = profile.tokens.as_ref().ok_or(Error::SignedOut)?;
         let refresh = old.refresh.as_ref().ok_or(Error::SignedOut)?;
         let form = url::form_urlencoded::Serializer::new(String::new())
@@ -369,17 +369,31 @@ impl Client {
             .append_pair("resource", RESOURCE)
             .finish();
         let reply = self.token(form).await?;
-        if let Some(id) = &reply.id_token {
-            let identity = self.verify(id, &profile.client_id, None).await?;
-            if profile
-                .identity
-                .as_ref()
-                .is_none_or(|i| i.issuer != identity.issuer || i.subject != identity.subject)
-            {
-                return Err(Error::InvalidIdentity);
-            }
+        let verify = reply.id_token.is_some();
+        Ok((tokens(reply, Some(old))?, verify))
+    }
+
+    pub(crate) async fn verify_rotation(
+        &self,
+        profile: &Profile,
+        pending: &crate::PendingRefresh,
+    ) -> Result<Identity, Error> {
+        let identity = self
+            .verify_at(
+                &pending.tokens.id,
+                &profile.client_id,
+                None,
+                pending.received_at,
+            )
+            .await?;
+        if profile
+            .identity
+            .as_ref()
+            .is_none_or(|old| old.issuer != identity.issuer || old.subject != identity.subject)
+        {
+            return Err(Error::InvalidIdentity);
         }
-        tokens(reply, Some(old))
+        Ok(identity)
     }
 
     async fn token(&self, form: String) -> Result<TokenReply, Error> {
@@ -421,6 +435,25 @@ impl Client {
         client: &str,
         nonce: Option<&str>,
     ) -> Result<Identity, Error> {
+        self.verify_at(token, client, nonce, self.received_at()?)
+            .await
+    }
+
+    pub(crate) fn received_at(&self) -> Result<u64, Error> {
+        #[cfg(test)]
+        if self.fixture.is_some() {
+            return Ok(1800000030);
+        }
+        now()
+    }
+
+    async fn verify_at(
+        &self,
+        token: &str,
+        client: &str,
+        nonce: Option<&str>,
+        time: u64,
+    ) -> Result<Identity, Error> {
         let response = self
             .http
             .get(self.endpoint(JWKS))
@@ -430,15 +463,50 @@ impl Client {
         if !response.status().is_success() {
             return Err(Error::Network);
         }
-        let keys: Value = serde_json::from_slice(&bounded(response).await?)
-            .map_err(|_| Error::InvalidIdentity)?;
-        let time = now()?;
-        #[cfg(test)]
-        let time = if self.fixture.is_some() {
-            1800000030
-        } else {
-            time
-        };
+        let keys: Value =
+            serde_json::from_slice(&bounded(response).await.map_err(|_| Error::Network)?)
+                .map_err(|_| Error::Network)?;
+        let header: Value = serde_json::from_slice(
+            &URL_SAFE_NO_PAD
+                .decode(token.split('.').next().ok_or(Error::InvalidIdentity)?)
+                .map_err(|_| Error::InvalidIdentity)?,
+        )
+        .map_err(|_| Error::InvalidIdentity)?;
+        let kid = header
+            .get("kid")
+            .and_then(Value::as_str)
+            .ok_or(Error::InvalidIdentity)?;
+        if header.get("alg").and_then(Value::as_str) != Some("RS256") {
+            return Err(Error::InvalidIdentity);
+        }
+        let usable = keys
+            .get("keys")
+            .and_then(Value::as_array)
+            .filter(|keys| keys.len() <= 64)
+            .is_some_and(|keys| {
+                let candidates: Vec<_> = keys
+                    .iter()
+                    .filter(|key| {
+                        key.get("kid").and_then(Value::as_str) == Some(kid)
+                            && key.get("kty").and_then(Value::as_str) == Some("RSA")
+                    })
+                    .collect();
+                candidates.len() == 1
+                    && candidates.iter().all(|key| {
+                        let bytes = |name| {
+                            key.get(name)
+                                .and_then(Value::as_str)
+                                .and_then(|s| URL_SAFE_NO_PAD.decode(s).ok())
+                        };
+                        bytes("n").is_some_and(|n| (256..=1024).contains(&n.len()))
+                            && bytes("e").is_some_and(|e| !e.is_empty() && e.len() <= 8)
+                            && key.get("alg").is_none_or(|v| v.as_str() == Some("RS256"))
+                            && key.get("use").is_none_or(|v| v.as_str() == Some("sig"))
+                    })
+            });
+        if !usable {
+            return Err(Error::Network);
+        }
         verify_identity(token, client, nonce, &keys, time)
     }
 
@@ -491,7 +559,17 @@ impl Client {
     }
 
     pub(crate) async fn revoke(&self, profile: &Profile) -> bool {
-        let Some(refresh) = profile.tokens.as_ref().and_then(|t| t.refresh.as_ref()) else {
+        let Some(refresh) = profile
+            .pending_refresh
+            .as_ref()
+            .and_then(|pending| pending.tokens.refresh.as_ref())
+            .or_else(|| {
+                profile
+                    .tokens
+                    .as_ref()
+                    .and_then(|tokens| tokens.refresh.as_ref())
+            })
+        else {
             return true;
         };
         let Ok(response) = self.http.get(self.endpoint(DISCOVERY)).send().await else {
@@ -569,36 +647,68 @@ async fn bounded(mut response: reqwest::Response) -> Result<Zeroizing<Vec<u8>>, 
 }
 
 fn tokens(reply: TokenReply, old: Option<&Tokens>) -> Result<Tokens, Error> {
-    if !reply.token_type.eq_ignore_ascii_case("bearer")
-        || reply.expires_in == 0
-        || reply.expires_in > 24 * 60 * 60
-    {
-        return Err(Error::Protocol);
-    }
-    let access = crate::Secret::new(reply.access_token)?;
-    let refresh = match reply.refresh_token {
-        Some(token) => Some(crate::Secret::new(token)?.0),
-        None => old.and_then(|t| t.refresh.clone()),
-    };
-    let id = match reply.id_token {
-        Some(token) => crate::Secret::new(token)?.0,
-        None => old.map(|t| t.id.clone()).ok_or(Error::InvalidIdentity)?,
-    };
-    let scopes = match reply.scope {
+    let scopes: Vec<String> = match reply.scope {
         Some(scope) if scope.len() <= 4096 => {
             scope.split_ascii_whitespace().map(str::to_owned).collect()
         }
         Some(_) => return Err(Error::Protocol),
-        None => old.map_or_else(Vec::new, |t| t.scopes.clone()),
+        None => old.map(|t| t.scopes.clone()).ok_or(Error::Protocol)?,
     };
+    let offline = scopes.iter().any(|s| s == "offline_access");
+    let access = reply.access_token.map(crate::Secret::new).transpose()?;
+    if access.is_none()
+        && (old.is_some() || offline || scopes.iter().any(|s| s == "chatgpt.tokens.use.direct"))
+    {
+        return Err(Error::Protocol);
+    }
+    let expires_at = if access.is_some() {
+        let ttl = reply
+            .expires_in
+            .filter(|t| t.is_finite() && *t > 0.0)
+            .ok_or(Error::Protocol)?;
+        if !reply
+            .token_type
+            .as_deref()
+            .is_some_and(|t| t.eq_ignore_ascii_case("bearer"))
+        {
+            return Err(Error::Protocol);
+        }
+        now()?
+            .checked_add(ttl.floor() as u64)
+            .ok_or(Error::Protocol)?
+    } else {
+        0
+    };
+    let refresh = reply
+        .refresh_token
+        .map(crate::Secret::new)
+        .transpose()?
+        .map(|token| token.0);
+    // Refresh rotation always needs its replacement; never retain a consumed token.
+    if (old.is_some() || offline) && refresh.is_none() {
+        return Err(Error::Protocol);
+    }
+    let id = match reply.id_token {
+        Some(token) => crate::Secret::new(token)?.0,
+        None => old.map(|t| t.id.clone()).ok_or(Error::InvalidIdentity)?,
+    };
+    if reply
+        .earliest_refresh_at
+        .as_ref()
+        .is_some_and(|value| match value {
+            Value::String(s) => s.len() > 256,
+            Value::Number(_) => false,
+            _ => true,
+        })
+    {
+        return Err(Error::Protocol);
+    }
     Ok(Tokens {
-        access: access.0,
+        access: access.map(|token| token.0),
         refresh,
         id,
         scopes,
-        expires_at: now()?
-            .checked_add(reply.expires_in)
-            .ok_or(Error::Protocol)?,
+        expires_at,
         earliest_refresh_at: reply.earliest_refresh_at,
     })
 }
@@ -613,7 +723,7 @@ struct Claims {
     sub: String,
     aud: Value,
     exp: u64,
-    iat: Option<u64>,
+    iat: u64,
     nbf: Option<u64>,
     nonce: Option<String>,
     azp: Option<String>,
@@ -712,10 +822,11 @@ fn verify_identity(
     if claims.iss != ISSUER
         || !text(&claims.sub, 512)
         || !audiences.contains(&client)
+        || claims.azp.as_deref().is_some_and(|azp| azp != client)
         || (audiences.len() > 1 && claims.azp.as_deref() != Some(client))
         || claims.exp <= time
         || claims.nbf.is_some_and(|t| t > time.saturating_add(60))
-        || claims.iat.is_some_and(|t| t > time.saturating_add(60))
+        || claims.iat > time.saturating_add(60)
         || nonce.is_some_and(|expected| {
             claims
                 .nonce
@@ -846,11 +957,11 @@ mod tests {
     #[test]
     fn granted_scopes_come_from_tokens_not_from_callback_claims() {
         let value = TokenReply {
-            access_token: "test-token".into(),
+            access_token: Some("test-token".into()),
             refresh_token: None,
             id_token: Some("test-id-token".into()),
-            token_type: "Bearer".into(),
-            expires_in: 3600,
+            token_type: Some("Bearer".into()),
+            expires_in: Some(3600.0),
             scope: Some("openid email profile".into()),
             earliest_refresh_at: None,
         };
@@ -922,5 +1033,69 @@ mod tests {
         assert_eq!(fields.get("redirect_uri"), Some(&auth.redirect));
         assert_eq!(fields.get("resource").map(String::as_str), Some(RESOURCE));
         assert!(!fields.contains_key("client_secret"));
+    }
+
+    #[test]
+    fn identity_only_tokens_do_not_require_access_credentials() {
+        let reply = serde_json::from_value(serde_json::json!({
+            "id_token": "test-id", "scope": "openid profile email"
+        }))
+        .expect("identity reply");
+        let identity = tokens(reply, None).expect("identity-only connection");
+        assert!(identity.access.is_none());
+        assert!(!identity.sharing());
+        assert_eq!(identity.bearer().err(), Some(Error::PlanPermissionRequired));
+        let reply = serde_json::from_value(serde_json::json!({"id_token": "test-id"}))
+            .expect("unconfirmed scope");
+        assert_eq!(tokens(reply, None).err(), Some(Error::Protocol));
+    }
+
+    #[test]
+    fn refresh_inherits_scopes_but_requires_a_replacement_refresh_token() {
+        let mut response = serde_json::json!({
+            "access_token": "test-access", "refresh_token": "test-refresh",
+            "id_token": "test-id", "scope": SCOPES, "token_type": "Bearer", "expires_in": 3600
+        });
+        let original = tokens(
+            serde_json::from_value(response.clone()).expect("reply"),
+            None,
+        )
+        .expect("original");
+        response.as_object_mut().expect("object").remove("scope");
+        let rotated = tokens(
+            serde_json::from_value(response.clone()).expect("reply"),
+            Some(&original),
+        )
+        .expect("unchanged scopes");
+        assert_eq!(rotated.scopes, original.scopes);
+        response
+            .as_object_mut()
+            .expect("object")
+            .remove("refresh_token");
+        assert_eq!(
+            tokens(
+                serde_json::from_value(response).expect("reply"),
+                Some(&original)
+            )
+            .err(),
+            Some(Error::Protocol)
+        );
+    }
+
+    #[test]
+    fn earliest_refresh_accepts_unix_seconds_and_rfc3339_without_refreshing_early() {
+        for earliest in [
+            serde_json::json!(1800000060.5),
+            serde_json::json!("2027-01-15T08:01:00.500Z"),
+        ] {
+            let reply = serde_json::from_value(serde_json::json!({
+                "access_token": "test-access", "id_token": "test-id", "scope": "openid",
+                "token_type": "bearer", "expires_in": 86400.5, "earliest_refresh_at": earliest
+            }))
+            .expect("reply");
+            let credentials = tokens(reply, None).expect("supported metadata");
+            assert!(!credentials.refresh_allowed(1800000060));
+            assert!(credentials.refresh_allowed(1800000061));
+        }
     }
 }

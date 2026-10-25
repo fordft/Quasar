@@ -591,7 +591,7 @@ export type AccountChanged = {
 	version: number,
 };
 
-export type AccountFaultV1 = "offline" | "browser" | "protocol" | "invalid_identity" | "invalid_callback" | "denied" | "cancelled" | "timed_out" | "busy" | "vault" | "unavailable" | "signed_out" | "plan_permission_required" | "usage_limit" | "rate_limited" | "remote_revocation_unconfirmed";
+export type AccountFaultV1 = "offline" | "browser" | "protocol" | "invalid_identity" | "invalid_callback" | "denied" | "cancelled" | "timed_out" | "busy" | "vault" | "unavailable" | "signed_out" | "plan_permission_required" | "usage_limit" | "rate_limited" | "retry_later" | "remote_revocation_unconfirmed";
 
 export type AccountProfileV1 = {
 	id: string,

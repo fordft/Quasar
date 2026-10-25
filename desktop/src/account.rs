@@ -27,6 +27,7 @@ pub(crate) enum AccountFaultV1 {
     PlanPermissionRequired,
     UsageLimit,
     RateLimited,
+    RetryLater,
     RemoteRevocationUnconfirmed,
 }
 impl From<Error> for AccountFaultV1 {
@@ -46,6 +47,7 @@ impl From<Error> for AccountFaultV1 {
             Error::PlanPermissionRequired => Self::PlanPermissionRequired,
             Error::UsageLimit => Self::UsageLimit,
             Error::RateLimited => Self::RateLimited,
+            Error::RetryLater => Self::RetryLater,
             Error::RemoteRevocationUnconfirmed => Self::RemoteRevocationUnconfirmed,
         }
     }
