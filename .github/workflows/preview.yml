@@ -76,7 +76,7 @@ jobs:
         if: matrix.platform == 'linux'
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf libxdo-dev xvfb xdotool dbus-x11 libmanette-0.2-0 libavif16
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf libxdo-dev xvfb xdotool dbus-x11 libmanette-0.2-0 libavif16 libflite1 librav1e0.8
       - name: Prepare supported Linux engine
         if: matrix.platform == 'linux'
         run: |
