@@ -72,6 +72,10 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
       - run: rustup toolchain install --profile minimal
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          shared-key: preview-${{ matrix.platform }}
+          cache-on-failure: true
       - name: Linux dependencies
         if: matrix.platform == 'linux'
         run: |
@@ -87,10 +91,6 @@ jobs:
         run: |
           ldd target/linux-runtime/root/usr/lib/x86_64-linux-gnu/libwebkit2gtk-4.1.so.0
           python3 -c 'import ctypes; w = ctypes.CDLL("libwebkit2gtk-4.1.so.0"); v = [getattr(w, "webkit_get_" + p + "_version")() for p in ("major", "minor", "micro")]; print("Bundled WebKitGTK:", v); assert v == [2, 54, 2]'
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
-        with:
-          shared-key: preview-${{ matrix.platform }}
-          cache-on-failure: true
       - run: pnpm install --frozen-lockfile
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -113,8 +113,8 @@ jobs:
       - name: Finalize and smoke Linux AppImage
         if: matrix.platform == 'linux'
         run: |
-          # linuxdeploy may alter or move libraries in LD_LIBRARY_PATH. Restore
-          # the checksum-verified originals before pairing engine and helpers.
+          # Restore the checksum-verified originals before finalizing the
+          # complete matching engine, codec and helper set.
           python3 scripts/release/prepare-linux-runtime.py
           python3 scripts/release/finalize-linux-appimage.py target/release/bundle/appimage/app.quasar.AppDir
           image="$(realpath target/release/bundle/appimage/*.AppImage)"

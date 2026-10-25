@@ -10,6 +10,22 @@ import sys
 def main():
     appdir = Path(sys.argv[1]).resolve(strict=True)
     sdk = Path("target/linux-runtime/root").resolve(strict=True)
+    # Always ship the complete reviewed library cohort. The first linuxdeploy
+    # pass can use host libraries when a cached SDK contains stale symlinks;
+    # replacing only WebKit would then leave its newer codec dependencies out.
+    for library in sorted((sdk / "usr/lib/x86_64-linux-gnu").glob("lib*.so.*")):
+        if library.is_symlink():
+            continue
+        soname = subprocess.check_output(
+            ["patchelf", "--print-soname", str(library)], text=True).strip()
+        if not soname or Path(soname).name != soname:
+            raise RuntimeError(f"invalid SDK library SONAME: {library.name}")
+        destination = appdir / "usr/lib" / soname
+        destination.unlink(missing_ok=True)
+        shutil.copy2(library, destination)
+        subprocess.run([
+            "patchelf", "--set-rpath", "$ORIGIN", str(destination),
+        ], check=True)
     helpers = Path("usr/lib/x86_64-linux-gnu/webkit2gtk-4.1")
     # Tauri copies helpers from /usr, even when linuxdeploy resolves the
     # shared engine from LD_LIBRARY_PATH. Replace that set as one unit.

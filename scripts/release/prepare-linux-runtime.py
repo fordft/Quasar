@@ -3,6 +3,7 @@
 import hashlib
 import json
 from pathlib import Path
+import shutil
 import subprocess
 import tarfile
 import urllib.request
@@ -15,7 +16,11 @@ def main():
     downloads = target / "downloads"
     root = target / "root"
     downloads.mkdir(parents=True, exist_ok=True)
-    root.mkdir(parents=True, exist_ok=True)
+    # A restored Cargo cache can contain stale SDK files and symlinks. Rebuild
+    # this disposable root exclusively from the verified package archives.
+    if root.exists():
+        shutil.rmtree(root)
+    root.mkdir(parents=True)
     for package in packages:
         archive = downloads / Path(package["filename"]).name
         if not archive.exists() or hashlib.sha256(archive.read_bytes()).hexdigest() != package["sha256"]:
