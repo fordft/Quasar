@@ -36,10 +36,16 @@ availability; upstream documentation may describe a broader target.
 
 ## Platforms and architecture
 
-- **macOS:** Apple Silicon, macOS 14 or later, using WebKit.
+- **macOS:** Apple Silicon, using WebKit. Requires an updated macOS and Safari
+  that meet the application's runtime security policy.
 - **Windows:** x64, Windows 10 or 11, using WebView2.
-- **Linux:** not currently supported; desktop development and build commands
-  stop with an explanatory message.
+- **Linux preview:** x86_64, Ubuntu 26.04 or newer (glibc 2.43+), distributed as
+  an AppImage with WebKitGTK included. Browsing is available; AI and Work are
+  disabled while their Linux backend is unfinished.
+
+Download test builds from [Releases](https://github.com/fordft/Quasar/releases).
+See [preview installation and release workflow](docs/preview-builds.md) for
+platform requirements, installation and development details.
 
 Rust owns browser state, native integrations, storage and agent execution.
 Tauri and Wry host the native WebViews. The interface uses Svelte 5, TypeScript,

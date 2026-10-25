@@ -10,6 +10,8 @@ import type { SettingsSection } from "../lib/settings-model";
 import SettingsLookStage from "./SettingsLookStage.svelte";
 
 const native = vi.hoisted(() => ({ settings: {} as Record<string, string> }));
+// This bench exercises the complete feature set, independent of the test host.
+vi.mock("$shared/platform", () => ({ IS_MAC: true, IS_WINDOWS: false, IS_LINUX: false }));
 vi.mock("$domain/tabs", () => ({
   tabs: { profile: () => ({ id: "00000000000000000000000001", kind: "regular" }) },
 }));

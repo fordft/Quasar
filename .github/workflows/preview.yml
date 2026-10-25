@@ -59,7 +59,7 @@ jobs:
     needs: check
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(inputs.platform == 'macos' && '{"include":[{"platform":"macos","os":"macos-15"}]}' || inputs.platform == 'linux' && '{"include":[{"platform":"linux","os":"ubuntu-22.04"}]}' || '{"include":[{"platform":"linux","os":"ubuntu-22.04"},{"platform":"macos","os":"macos-15"}]}') }}
+      matrix: ${{ fromJSON(inputs.platform == 'macos' && '{"include":[{"platform":"macos","os":"macos-15"}]}' || inputs.platform == 'linux' && '{"include":[{"platform":"linux","os":"ubuntu-26.04"}]}' || '{"include":[{"platform":"linux","os":"ubuntu-26.04"},{"platform":"macos","os":"macos-15"}]}') }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     steps:
@@ -76,7 +76,12 @@ jobs:
         if: matrix.platform == 'linux'
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf libxdo-dev xvfb xdotool dbus-x11
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf libxdo-dev xvfb xdotool dbus-x11 libmanette-0.2-0 libavif16
+      - name: Prepare supported Linux engine
+        if: matrix.platform == 'linux'
+        run: |
+          python3 scripts/release/prepare-linux-runtime.py
+          echo "LD_LIBRARY_PATH=$GITHUB_WORKSPACE/target/linux-runtime/root/usr/lib/x86_64-linux-gnu" >> "$GITHUB_ENV"
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           shared-key: preview-${{ matrix.platform }}
@@ -93,16 +98,21 @@ jobs:
         env:
           APPIMAGE_EXTRACT_AND_RUN: '1'
         run: >-
-          pnpm -C desktop build --bundles deb,appimage
+          pnpm -C desktop build --bundles appimage
           --config '{"build":{"beforeBuildCommand":null},"bundle":{"createUpdaterArtifacts":false,"resources":{"../target/THIRD_PARTY_NOTICES.txt":"licenses/THIRD_PARTY_NOTICES.txt"}}}'
       - name: Build macOS preview
         if: matrix.platform == 'macos'
         run: >-
           pnpm -C desktop build --target aarch64-apple-darwin --bundles app,dmg
           --config '{"build":{"beforeBuildCommand":null},"bundle":{"createUpdaterArtifacts":false,"macOS":{"signingIdentity":"-"},"resources":{"../target/THIRD_PARTY_NOTICES.txt":"licenses/THIRD_PARTY_NOTICES.txt"}}}'
-      - name: Smoke Linux startup
+      - name: Finalize and smoke Linux AppImage
         if: matrix.platform == 'linux'
-        run: xvfb-run -a dbus-run-session -- python3 scripts/ci/smoke-desktop.py target/release/Quasar
+        run: |
+          python3 scripts/release/finalize-linux-appimage.py target/release/bundle/appimage/app.quasar.AppDir
+          image="$(realpath target/release/bundle/appimage/*.AppImage)"
+          mkdir -p target/preview-extracted
+          (cd target/preview-extracted && "$image" --appimage-extract >/dev/null)
+          env -u LD_LIBRARY_PATH xvfb-run -a dbus-run-session -- python3 scripts/ci/smoke-desktop.py target/preview-extracted/squashfs-root/AppRun
       - name: Smoke macOS startup
         if: matrix.platform == 'macos'
         run: |
@@ -116,8 +126,8 @@ jobs:
         run: |
           mkdir -p dist
           if [[ "$PLATFORM" == linux ]]; then
-            cp target/release/bundle/deb/*.deb dist/Quasar-Linux-x86_64.deb
             cp target/release/bundle/appimage/*.AppImage dist/Quasar-Linux-x86_64.AppImage
+            cp target/linux-runtime/Quasar-Linux-runtime-sources.tar dist/
           else
             cp target/aarch64-apple-darwin/release/bundle/dmg/*.dmg dist/Quasar-macOS-arm64.dmg
           fi
@@ -164,12 +174,17 @@ jobs:
           Experimental Quasar builds from ${REVISION}.
 
           - macOS: Apple Silicon; ad-hoc signed, not Apple-notarized. macOS may require approval in Privacy & Security.
-          - Linux: x86_64 browsing preview. AI and Work are unavailable in this build. Use the .deb on Ubuntu/Debian, or the AppImage.
+          - Linux: x86_64 AppImage for Ubuntu 26.04 or newer (glibc 2.43+), with WebKitGTK 2.54.2 included. AI and Work are unavailable in this browsing preview.
           - Automatic updates remain disabled. Install a later preview manually.
 
           Checksums are in SHA256SUMS. These are test builds, not a production release.
           EOF
           if gh release view "$TAG" --repo "$REPOSITORY" >/dev/null 2>&1; then
+            existing="$(gh api "repos/$REPOSITORY/commits/$TAG" --jq '.sha')"
+            if [[ "$existing" != "$REVISION" ]]; then
+              echo "Refusing to replace a preview from a different commit" >&2
+              exit 1
+            fi
             gh release upload "$TAG" Quasar-* SHA256SUMS --repo "$REPOSITORY" --clobber
           else
             gh release create "$TAG" Quasar-* SHA256SUMS --repo "$REPOSITORY" --target "$REVISION" --title "Quasar Preview $TAG" --prerelease --latest=false --notes-file "$RUNNER_TEMP/preview-notes.md"

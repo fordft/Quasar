@@ -1,13 +1,69 @@
 #!/usr/bin/env python3
 """Verify that this checkout's packaged app reveals a native window."""
 import json
+import http.server
 import os
 from pathlib import Path
 import signal
 import subprocess
 import sys
 import tempfile
+import threading
 import time
+
+
+def smoke_linux_browsing(window):
+    """Navigate through the real omnibox and execute JS in an untrusted page."""
+    ready = threading.Event()
+    result = {}
+
+    class Page(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path.startswith("/ready?ipc="):
+                result["page_javascript_executed"] = True
+                result["trusted_ipc_exposed"] = self.path != "/ready?ipc=0"
+                ready.set()
+                self.send_response(204)
+                self.end_headers()
+            elif self.path == "/browse":
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(b'''<!doctype html><title>Quasar browsing smoke</title>
+<h1>Quasar can browse</h1><p id="result"></p><script>
+document.getElementById('result').textContent = 'JavaScript works';
+fetch('/ready?ipc=' + Number('__TAURI_INTERNALS__' in window || '__TAURI__' in window));
+</script>''')
+            else:
+                self.send_error(404)
+
+        def log_message(self, *args):
+            pass
+
+    with http.server.ThreadingHTTPServer(("127.0.0.1", 0), Page) as server:
+        worker = threading.Thread(target=server.serve_forever, daemon=True)
+        worker.start()
+        try:
+            subprocess.run(["xdotool", "windowfocus", "--sync", window], check=True)
+            # A fresh Linux profile has five onboarding steps and no AI setup.
+            # Enter advances their primary action, including Skip Import.
+            for _ in range(7):
+                subprocess.run(["xdotool", "key", "--clearmodifiers", "Return"], check=True)
+                time.sleep(2)
+            subprocess.run(["xdotool", "key", "--clearmodifiers", "ctrl+l"], check=True)
+            subprocess.run([
+                "xdotool", "type", "--clearmodifiers", "--delay", "15",
+                f"http://127.0.0.1:{server.server_port}/browse",
+            ], check=True)
+            subprocess.run(["xdotool", "key", "--clearmodifiers", "Return"], check=True)
+            if not ready.wait(20):
+                raise RuntimeError("browser did not load and execute the test page")
+            if result["trusted_ipc_exposed"]:
+                raise RuntimeError("trusted application IPC was exposed to the test page")
+            return result
+        finally:
+            server.shutdown()
+            worker.join(timeout=5)
 
 
 def main():
@@ -64,9 +120,11 @@ exit(found ? 0 : 1)
                 time.sleep(3)
                 if app.poll() is not None:
                     raise RuntimeError("app exited immediately after startup")
+                browsing = smoke_linux_browsing(window) if sys.platform == "linux" else {}
                 (evidence / "result.json").write_text(json.dumps({
                     "binary": str(binary), "platform": sys.platform,
                     "pid": app.pid, "window": window, "visible": True,
+                    **browsing,
                 }, indent=2) + "\n")
                 print(f"Native startup passed: {binary.name} revealed its own window.")
             finally:

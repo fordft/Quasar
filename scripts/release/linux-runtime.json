@@ -1,0 +1,56 @@
+[
+  {
+    "package": "libavif16",
+    "version": "1.4.2-1",
+    "filename": "pool/main/liba/libavif/libavif16_1.4.2-1_amd64.deb",
+    "sha256": "44b9a2d151b1bdc95aab81c54daa3f9d12b042c469744572614e3e77527fbf7b"
+  },
+  {
+    "package": "libjpeg62-turbo",
+    "version": "1:3.1.3-4",
+    "filename": "pool/main/libj/libjpeg-turbo/libjpeg62-turbo_3.1.3-4_amd64.deb",
+    "sha256": "402b02ea2f4aaf8922343e4c08c374cf07f26fb88323f87e1047ec475b3f12b5"
+  },
+  {
+    "package": "libsharpyuv0",
+    "version": "1.6.0-0.1",
+    "filename": "pool/main/libw/libwebp/libsharpyuv0_1.6.0-0.1_amd64.deb",
+    "sha256": "2052f8e885b4994073a3ed59def293de8797e127ac0de9bb5ef9d28ebe82ebd0"
+  },
+  {
+    "package": "libwebp7",
+    "version": "1.6.0-0.1",
+    "filename": "pool/main/libw/libwebp/libwebp7_1.6.0-0.1_amd64.deb",
+    "sha256": "2c4af958078fd59fdf11e3b1363be3f7a804bb93d20acabe05c55ed8a29e7594"
+  },
+  {
+    "package": "libwebpdemux2",
+    "version": "1.6.0-0.1",
+    "filename": "pool/main/libw/libwebp/libwebpdemux2_1.6.0-0.1_amd64.deb",
+    "sha256": "28a43a1c4cfb400a0f1396ec073ebb76646a17f4afe77d6aa933fcd38df531e3"
+  },
+  {
+    "package": "libwebpmux3",
+    "version": "1.6.0-0.1",
+    "filename": "pool/main/libw/libwebp/libwebpmux3_1.6.0-0.1_amd64.deb",
+    "sha256": "6cae3627e07782e7886c870c88d573f0b978552e2ef9891d88ed6b885c18d98d"
+  },
+  {
+    "package": "libjavascriptcoregtk-4.1-0",
+    "version": "2.54.2-2",
+    "filename": "pool/main/w/webkit2gtk/libjavascriptcoregtk-4.1-0_2.54.2-2_amd64.deb",
+    "sha256": "fe5d6a8c958daee505174d112afdcd313806b3e0241e41b52c80c8e2b61bd8a6"
+  },
+  {
+    "package": "libwebkit2gtk-4.1-0",
+    "version": "2.54.2-2",
+    "filename": "pool/main/w/webkit2gtk/libwebkit2gtk-4.1-0_2.54.2-2_amd64.deb",
+    "sha256": "ef327f840d3f9ee0d729297b54f66e3e217c0b733da5f01e75537097fce0f09c"
+  },
+  {
+    "package": "libsvtav1enc4",
+    "version": "4.2.0+dfsg-3",
+    "filename": "pool/main/s/svt-av1/libsvtav1enc4_4.2.0+dfsg-3_amd64.deb",
+    "sha256": "7844a846c1adf1f32072c53f28e8f36715b02adff944ac06928055d38da21acf"
+  }
+]

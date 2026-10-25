@@ -1,0 +1,62 @@
+[
+  {
+    "filename": "pool/main/w/webkit2gtk/webkit2gtk_2.54.2-2.dsc",
+    "sha256": "19e2f727e8a9cf58e3005d6bfba8434dac73cb3fa127c882a1ca60fe2780b3c0"
+  },
+  {
+    "filename": "pool/main/w/webkit2gtk/webkit2gtk_2.54.2.orig.tar.xz",
+    "sha256": "a76345b391bef6211fb5ab6cfab2e86b285d18cda17cbb9ade595f1252b86065"
+  },
+  {
+    "filename": "pool/main/w/webkit2gtk/webkit2gtk_2.54.2.orig.tar.xz.asc",
+    "sha256": "90fff5582a45ef659037e2ef25e08a977ef08362b5c0d7a79c374483d3299c39"
+  },
+  {
+    "filename": "pool/main/w/webkit2gtk/webkit2gtk_2.54.2-2.debian.tar.xz",
+    "sha256": "9816d5578bfba7ffcb24314a22c20d176eb9efa8a9c634fe5fa185ad51fdaf9f"
+  },
+  {
+    "filename": "pool/main/liba/libavif/libavif_1.4.2-1.dsc",
+    "sha256": "8ca9c8483159e7ca05d23df8ad625408e725303a5e57f1785dd6b76262001a7a"
+  },
+  {
+    "filename": "pool/main/liba/libavif/libavif_1.4.2.orig-libargparse.tar.gz",
+    "sha256": "5671faeda13789d19a228368c2004b2f3fb488a15a0718ae16e9ce0fdb74db67"
+  },
+  {
+    "filename": "pool/main/liba/libavif/libavif_1.4.2.orig.tar.gz",
+    "sha256": "2b645287340ba5a631d268b551dc2d72bd73ac33335962dd36dcdb6d8366921d"
+  },
+  {
+    "filename": "pool/main/liba/libavif/libavif_1.4.2-1.debian.tar.xz",
+    "sha256": "4df6f7e7007c2d030721fca22e6ce26fe5faec3af40e22e78900cb2663ef7e01"
+  },
+  {
+    "filename": "pool/main/libj/libjpeg-turbo/libjpeg-turbo_3.1.3-4.dsc",
+    "sha256": "f1c5c6f2e2f379a51c91dc456690c278e80d15081ab619c2c89255100d0cf54d"
+  },
+  {
+    "filename": "pool/main/libj/libjpeg-turbo/libjpeg-turbo_3.1.3.orig.tar.gz",
+    "sha256": "3a13a5ba767dc8264bc40b185e41368a80d5d5f945944d1dbaa4b2fb0099f4e5"
+  },
+  {
+    "filename": "pool/main/libj/libjpeg-turbo/libjpeg-turbo_3.1.3-4.debian.tar.xz",
+    "sha256": "369fc469ad91071d1c125b00d01085a54c8fdd20dd5ee2f8a58d30e547f17d9c"
+  },
+  {
+    "filename": "pool/main/libw/libwebp/libwebp_1.6.0-0.1.dsc",
+    "sha256": "d8ee6905fbb6c44be12c13f47e7c48eb42be557c7e05e7ed466fb550615bb26d"
+  },
+  {
+    "filename": "pool/main/libw/libwebp/libwebp_1.6.0.orig.tar.gz",
+    "sha256": "e4ab7009bf0629fd11982d4c2aa83964cf244cffba7347ecd39019a9e38c4564"
+  },
+  {
+    "filename": "pool/main/libw/libwebp/libwebp_1.6.0.orig.tar.gz.asc",
+    "sha256": "bf561cfc1609cdafa8be4029184b35e75affd155335cc2ce6c2438fbb546c074"
+  },
+  {
+    "filename": "pool/main/libw/libwebp/libwebp_1.6.0-0.1.debian.tar.xz",
+    "sha256": "3148d1178cb1bd20a34f79bf856a1e975b0fabef58fbc457024adc9425701158"
+  }
+]
