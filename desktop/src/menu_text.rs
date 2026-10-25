@@ -99,7 +99,9 @@ pub(crate) fn key(english: &str) -> String {
         .filter(|word| !word.is_empty())
     {
         key.push('_');
-        key.push_str(&word.to_ascii_lowercase());
+        let word = word.to_ascii_lowercase();
+        // Keep the existing dictionary IDs while displaying the fork's name.
+        key.push_str(if word == "quasar" { "zephium" } else { &word });
     }
     key
 }
@@ -128,6 +130,7 @@ mod tests {
         assert!(set_language(Some("fr")));
         assert!(!set_language(Some("fr")));
         assert_eq!(text("new_tab", "New Tab"), "Nouvel onglet");
+        assert_eq!(label("Quit Quasar"), "Quitter Quasar");
         assert_eq!(text("native_not_a_key", "Fallback"), "Fallback");
         assert!(set_language(Some("en")));
         assert_eq!(text("new_tab", "New Tab"), "New Tab");

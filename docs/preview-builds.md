@@ -4,6 +4,7 @@ The Preview workflow builds the fork's current `main` and publishes experimental
 downloads when manually dispatched with `platform: both` and `publish: true`.
 Ordinary pushes build artifacts without creating a release. The production
 Release workflow remains separate and requires signing credentials.
+Publication also requires the full main CI run to pass for the same commit.
 
 ## macOS
 

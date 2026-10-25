@@ -145,9 +145,40 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  ci:
+    name: Main CI for the preview commit
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish && inputs.platform == 'both' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 65
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Require successful main CI for this exact commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REVISION: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          for _ in $(seq 1 120); do
+            runs="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$REVISION&event=push&per_page=100")"
+            # shellcheck disable=SC2016
+            main='[.workflow_runs[] | select(.head_sha == $sha and .head_branch == "main" and .event == "push")]'
+            if jq -e --arg sha "$REVISION" "$main | any(.conclusion == \"success\")" <<< "$runs" >/dev/null; then
+              exit 0
+            fi
+            if jq -e --arg sha "$REVISION" "$main | length > 0 and all(.status == \"completed\")" <<< "$runs" >/dev/null; then
+              echo "Main CI failed for $REVISION; refusing to publish" >&2
+              exit 1
+            fi
+            sleep 30
+          done
+          echo "Timed out waiting for main CI" >&2
+          exit 1
+
   publish:
     name: Publish pre-release
-    needs: [check, build]
+    needs: [check, build, ci]
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish && inputs.platform == 'both' }}
     runs-on: ubuntu-24.04
     permissions:
