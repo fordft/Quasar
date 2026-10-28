@@ -43,6 +43,12 @@
     if (mode === "default" || mode === "compact") untrack(() => sidebar.adoptMode(mode));
   });
 
+  // Hiding the sidebar is macOS's alone: elsewhere the window controls live in it.
+  $effect(() => {
+    const hide = preferences.value("sidebar.autohide") === "true" && IS_MAC;
+    untrack(() => sidebar.adoptAutoHide(hide));
+  });
+
   $effect(() => {
     theme.applyUiPreferences(
       preferences.value("ui.accent"),
@@ -140,7 +146,7 @@
     // them, so this listener must exist before tabs asks native to bootstrap.
     const faviconsReady = favicons.init();
     const tabsReady = tabs.init();
-    const sidebarReady = sidebar.init();
+    const sidebarReady = sidebar.init(IS_MAC);
     const uiEventsReady = ui.init();
     void keymap.init();
     // An embedder (a test) may have provided its own port already.

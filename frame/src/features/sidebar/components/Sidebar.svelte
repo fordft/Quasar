@@ -5,13 +5,23 @@
   import * as motion from "$session/motion.svelte";
   import { surface as browserPage } from "$domain/surface";
   import * as tools from "$session/tools.svelte";
+  import * as tabDrag from "$session/tab-drag.svelte";
+  import { tabs } from "$domain/tabs";
   import { untrack } from "svelte";
   import {
     COMPACT_WIDTH,
     PANEL_GAP,
     effectiveWidth,
+    holdRevealed,
     isCompact,
+    isHidden,
+    pointerEnteredEdge,
+    pointerEnteredSidebar,
+    pointerLeft,
+    revealHeld,
+    setAutoHideApplies,
     sidebarResizeSettlement,
+    toggleAutoHide,
     toggleMode,
   } from "$session/sidebar-mode.svelte";
   import { uiCommands as ui } from "$domain/ui-commands";
@@ -62,6 +72,46 @@
   let navigating = $derived(settings);
   let paneled = $derived(settings || tools.activeTool() !== null);
   let compact = $derived(navigating || railPage || isCompact() || tools.activeTool() !== null);
+
+  // Only plain browsing lets the sidebar hide: Settings, Tasks, Notes, Work and
+  // an open tool each keep their place in the column.
+  $effect.pre(() => {
+    const applies = !navigating && !railPage && tools.activeTool() === null;
+    untrack(() => setAutoHideApplies(applies));
+  });
+  // A tab carried toward the page leaves the sidebar where it is, so it can
+  // still be dropped to split a view or kept among the essentials.
+  $effect(() => {
+    if (tabDrag.draggedId() !== null) return holdRevealed();
+  });
+  // A page asking something of the person is answered in the address field, so
+  // the column comes out for it and stays until it is answered.
+  let asking = $derived(tabs.activeTab()?.page_request != null);
+  $effect(() => {
+    if (asking) return revealHeld();
+  });
+  // Typing in the column keeps it out, wherever the pointer has gone.
+  let editing = $state(false);
+  $effect(() => {
+    if (editing) return holdRevealed();
+  });
+  let hidden = $derived(isHidden());
+  // Coming out or going away is one change of width, travelled like any other.
+  let hideTravel = $state(false);
+  let hiddenShown: boolean | null = null;
+  let hideTraveled: ReturnType<typeof setTimeout> | undefined;
+  $effect(() => () => clearTimeout(hideTraveled));
+  $effect.pre(() => {
+    const next = hidden;
+    untrack(() => {
+      if (hiddenShown !== null && hiddenShown !== next && !reducedMotion()) {
+        hideTravel = true;
+        clearTimeout(hideTraveled);
+        hideTraveled = setTimeout(() => (hideTravel = false), duration("page") + 40);
+      }
+      hiddenShown = next;
+    });
+  });
 
   // A change of shape is one continuous change: every mark travels from the
   // old shape into the new one while native slides the page to match. Not
@@ -137,6 +187,15 @@
         ? COMPACT_WIDTH
         : effectiveWidth(),
   );
+  // The column's contents hold the width they have while it travels in or
+  // out; what leaves with it is the space beside them. Derived, not stored by
+  // an effect: an effect that wrote it while reading the width left the
+  // column's own width a step behind.
+  let lastOpenWidth = 240;
+  let openWidth = $derived.by(() => {
+    if (width > 0) lastOpenWidth = width;
+    return lastOpenWidth;
+  });
 
   // Dispatch runs untracked and behind a sequence guard. Handlers read the
   // state they mutate (the sidebar shape, the tab projection), so a tracked
@@ -149,7 +208,10 @@
   // focus ends it too.
   let pointerIn = $state(false);
   $effect(() => {
-    const out = () => (pointerIn = false);
+    const out = () => {
+      pointerIn = false;
+      pointerLeft();
+    };
     document.documentElement.addEventListener("mouseleave", out);
     window.addEventListener("blur", out);
     return () => {
@@ -168,6 +230,9 @@
     // shape changed mid-pass re-renders before the old shape is measured,
     // so nothing could travel from it.
     if (command.id === "sidebar.toggleCompact") queueMicrotask(toggleShape);
+    // Only macOS keeps its window controls outside the sidebar, so only there
+    // can it go away.
+    if (command.id === "sidebar.toggleAutoHide" && IS_MAC) queueMicrotask(toggleAutoHide);
   });
 
   function toggleShape() {
@@ -176,21 +241,44 @@
   }
 </script>
 
+<!-- Where a hidden sidebar waits: the window's gutter, which chrome keeps when
+     the column is gone. Resting the pointer on it brings the sidebar back. -->
+<div
+  class="sidebar-edge"
+  aria-hidden="true"
+  onpointerenter={pointerEnteredEdge}
+  onpointerleave={pointerLeft}
+></div>
 <aside
   data-tauri-drag-region="deep"
   aria-label={m.ui_browser_sidebar()}
   style:width={`${width}px`}
   style:--sidebar-width={`${width}px`}
+  style:--sidebar-open-width={`${openWidth}px`}
   data-menu-material={IS_WINDOWS && !settings ? "opaque" : undefined}
   data-reshaping={reshaping}
+  data-hidden={hidden}
+  data-hide-travel={hideTravel}
   data-sidebar-resize-settling={resizeSettling}
   data-header-fresh={headerFresh}
   data-pointer-in={pointerIn}
-  onpointerenter={() => (pointerIn = true)}
-  onpointerleave={() => (pointerIn = false)}
+  inert={hidden || undefined}
+  onfocusin={(event) =>
+    (editing =
+      event.target instanceof Element &&
+      event.target.matches("input, textarea, [contenteditable]:not([contenteditable=false])"))}
+  onfocusout={() => (editing = false)}
+  onpointerenter={() => {
+    pointerIn = true;
+    pointerEnteredSidebar();
+  }}
+  onpointerleave={() => {
+    pointerIn = false;
+    pointerLeft();
+  }}
   class="browser-sidebar relative flex shrink-0 flex-col text-text select-none"
 >
-  {#if !navigating && !railPage && tools.activeTool() === null}<SidebarResizeHandle
+  {#if !navigating && !railPage && tools.activeTool() === null && !hidden}<SidebarResizeHandle
       {width}
       disabled={reshaping}
     />{/if}

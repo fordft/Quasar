@@ -2221,6 +2221,7 @@ const MAX_COMMAND_ID_BYTES: usize = 128;
 const MAX_KEPT_SITE_ID_BYTES: usize = 32;
 const MAX_PROFILE_NAME_BYTES: usize = 256;
 const MAX_WINDOW_COORDINATE: f64 = 1_000_000.0;
+#[cfg(test)]
 use zephium_core::layout::{MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH};
 
 /// The tab a native context menu was opened for.
@@ -2360,8 +2361,9 @@ fn extension_popup_anchor_in_bounds(
     ExtensionPopupAnchor::new(Rect::new(x, y, width, height)).ok()
 }
 
+/// Hidden, or from the rail through the widest column: the core owns the range.
 fn sidebar_width_in_bounds(width: f64) -> bool {
-    width.is_finite() && (MIN_SIDEBAR_WIDTH..=MAX_SIDEBAR_WIDTH).contains(&width)
+    zephium_core::layout::sidebar_width_admitted(width)
 }
 
 fn sidebar_resize_revision(revision: f64) -> Option<u64> {
@@ -3521,7 +3523,7 @@ fn execute_command(app: &tauri::AppHandle, id: &str) -> zephium_ipc::OperationAd
     // Sidebar presentation is privileged-chrome state persisted through the
     // settings allowlist, not an actor mutation. Deliver the intent and let
     // the frame own it.
-    if id == SIDEBAR_COMPACT_COMMAND {
+    if id == SIDEBAR_COMPACT_COMMAND || id == SIDEBAR_AUTOHIDE_COMMAND {
         return if try_emit_to_privileged(app, MAIN_LABEL, EVENT_UI, &id) {
             accepted_ui_operation()
         } else {
@@ -5153,7 +5155,11 @@ fn build_menu(
         .item(&item("zoom.out")?)
         .item(&item("zoom.reset")?)
         .separator()
-        .item(&item("sidebar.toggleCompact")?)
+        .item(&item("sidebar.toggleCompact")?);
+    // Only macOS keeps the window controls outside the sidebar.
+    #[cfg(target_os = "macos")]
+    let view = view.item(&item(SIDEBAR_AUTOHIDE_COMMAND)?);
+    let view = view
         .item(&appearance)
         .separator()
         .item(&item("url.focus")?)
@@ -5291,6 +5297,8 @@ const TAB_MENU_COPY_LINK_COMMAND: &str = "tab.copyLink";
 
 /// Registry command delivered to the frame, which owns sidebar presentation.
 const SIDEBAR_COMPACT_COMMAND: &str = "sidebar.toggleCompact";
+/// Delivered the same way: the frame hides the sidebar and reveals it on hover.
+const SIDEBAR_AUTOHIDE_COMMAND: &str = "sidebar.toggleAutoHide";
 
 /// The rail cannot show a navigation cluster, so the collapsed menu carries
 /// the whole one rather than a subset of it.
@@ -7457,6 +7465,17 @@ mod tests {
         // Compact is a real sidebar width, so the native floor has to admit
         // the rail rather than reject it as out of bounds.
         assert!(super::sidebar_width_in_bounds(56.0));
+        // Auto-hide is its own shape: a width of nothing, never a sliver.
+        assert!(super::SETTING_KEYS.contains(&"sidebar.autohide"));
+        assert!(super::setting_value_allowed("sidebar.autohide", "true"));
+        assert!(super::setting_value_allowed("sidebar.autohide", "false"));
+        assert!(!super::setting_value_allowed("sidebar.autohide", "hover"));
+        assert!(super::sidebar_width_in_bounds(0.0));
+        assert!(!super::sidebar_width_in_bounds(1.0));
+        assert!(
+            zephium_core::commands::get(super::SIDEBAR_AUTOHIDE_COMMAND).is_some(),
+            "the auto-hide command is registered"
+        );
         assert_eq!(
             super::SIDEBAR_MENU_COMMAND_IDS,
             [

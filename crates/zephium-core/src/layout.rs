@@ -37,10 +37,25 @@ impl Default for Metrics {
 /// the content region disagreed about where the sidebar ended.
 pub const MIN_SIDEBAR_WIDTH: f64 = 56.0;
 pub const MAX_SIDEBAR_WIDTH: f64 = 460.0;
+/// A sidebar that is out of the way (auto-hide). It is a shape of its own, not
+/// a width in the range above: chrome keeps only the window's gutter, which is
+/// where the pointer reveals the sidebar again, and the page takes the rest.
+pub const HIDDEN_SIDEBAR_WIDTH: f64 = 0.0;
+
+/// Whether `width` is a width the sidebar can have: hidden, or from the rail
+/// through the widest column.
+pub fn sidebar_width_admitted(width: f64) -> bool {
+    width.is_finite()
+        && (width == HIDDEN_SIDEBAR_WIDTH
+            || (MIN_SIDEBAR_WIDTH..=MAX_SIDEBAR_WIDTH).contains(&width))
+}
 
 pub fn clamp_sidebar_width(width: f64) -> f64 {
     if !width.is_finite() {
         return MIN_SIDEBAR_WIDTH;
+    }
+    if width == HIDDEN_SIDEBAR_WIDTH {
+        return HIDDEN_SIDEBAR_WIDTH;
     }
     width.clamp(MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH)
 }
@@ -106,8 +121,15 @@ fn sidebar(win: Size, m: Metrics, content_present: bool) -> Layout {
         };
     }
 
+    // Hidden, the sidebar leaves no gap behind it: the page sits one padding
+    // from the window's edge, like it does on its other three sides.
+    let gap = if m.sidebar_width == HIDDEN_SIDEBAR_WIDTH {
+        0.0
+    } else {
+        m.gap
+    };
     let chrome = Rect::new(0.0, 0.0, p + m.sidebar_width, win.height);
-    let content_x = p + m.sidebar_width + m.gap;
+    let content_x = p + m.sidebar_width + gap;
     let content = Rect::new(
         content_x,
         p + m.caption,
@@ -128,10 +150,43 @@ mod tests {
     fn the_sidebar_clamp_admits_the_rail_and_rejects_nonsense() {
         assert_eq!(clamp_sidebar_width(MIN_SIDEBAR_WIDTH), MIN_SIDEBAR_WIDTH);
         assert_eq!(clamp_sidebar_width(MAX_SIDEBAR_WIDTH), MAX_SIDEBAR_WIDTH);
-        assert_eq!(clamp_sidebar_width(0.0), MIN_SIDEBAR_WIDTH);
         assert_eq!(clamp_sidebar_width(10_000.0), MAX_SIDEBAR_WIDTH);
+        assert_eq!(clamp_sidebar_width(-5.0), MIN_SIDEBAR_WIDTH);
+        assert_eq!(clamp_sidebar_width(30.0), MIN_SIDEBAR_WIDTH);
         assert_eq!(clamp_sidebar_width(f64::NAN), MIN_SIDEBAR_WIDTH);
         assert_eq!(clamp_sidebar_width(240.0), 240.0);
+    }
+
+    #[test]
+    fn a_hidden_sidebar_is_its_own_width_and_nothing_between_it_and_the_rail() {
+        assert_eq!(clamp_sidebar_width(HIDDEN_SIDEBAR_WIDTH), 0.0);
+        assert!(sidebar_width_admitted(0.0));
+        assert!(sidebar_width_admitted(MIN_SIDEBAR_WIDTH));
+        assert!(sidebar_width_admitted(240.0));
+        assert!(sidebar_width_admitted(MAX_SIDEBAR_WIDTH));
+        for refused in [
+            -1.0,
+            0.5,
+            MIN_SIDEBAR_WIDTH - 1.0,
+            MAX_SIDEBAR_WIDTH + 1.0,
+            f64::NAN,
+            f64::INFINITY,
+        ] {
+            assert!(!sidebar_width_admitted(refused), "{refused}");
+        }
+    }
+
+    #[test]
+    fn a_hidden_sidebar_leaves_chrome_the_gutter_and_the_page_one_padding_in() {
+        let m = Metrics {
+            sidebar_width: HIDDEN_SIDEBAR_WIDTH,
+            ..M
+        };
+        let l = compute(Size::new(1200.0, 800.0), Mode::Sidebar, m, true);
+        assert_eq!(l.chrome, Rect::new(0.0, 0.0, 8.0, 800.0));
+        assert_eq!(l.content, Some(Rect::new(8.0, 8.0, 1184.0, 784.0)));
+        // Still tiled: the page begins where chrome ends.
+        assert_eq!(l.chrome.x + l.chrome.width, l.content.unwrap().x);
     }
 
     const M: Metrics = Metrics {

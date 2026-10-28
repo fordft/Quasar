@@ -1,12 +1,13 @@
 <script lang="ts">
   import { Camera01Icon, Mic01Icon } from "@hugeicons/core-free-icons";
-  import { onMount } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import type {
     PagePermissionPromptDecisionInput,
     PagePermissionPromptEntryView,
   } from "$shared/ipc/bindings";
   import * as m from "$shared/i18n/messages";
   import { pagePermissions as permissions } from "$domain/permissions";
+  import { revealHeld } from "$session/sidebar-mode.svelte";
   import Icon from "$shared/ui/Icon";
   import Button from "$shared/ui/Button";
 
@@ -34,6 +35,8 @@
         : m.page_permission_detail_microphone(),
   );
 
+  // The prompt is drawn in the chrome, which a hidden sidebar leaves no room.
+  onDestroy(revealHeld());
   onMount(() => queueMicrotask(() => denyButton?.focus()));
 
   function respond(allow: boolean) {

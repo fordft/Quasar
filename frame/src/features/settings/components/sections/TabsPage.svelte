@@ -1,5 +1,6 @@
 <script lang="ts">
   import * as m from "$shared/i18n/messages";
+  import { IS_MAC } from "$shared/platform";
   import SettingsGroup from "$shared/ui/SettingsGroup";
   import PreferenceSelect from "../PreferenceSelect.svelte";
   import PreferenceSwitch from "../PreferenceSwitch.svelte";
@@ -14,6 +15,11 @@
     preference="tabs.automatic-pip"
   /></SettingsGroup
 >
+{#if IS_MAC}
+  <SettingsGroup title={m.tabs_group_sidebar()}
+    ><PreferenceSwitch id="tabs.sidebar-autohide" preference="sidebar.autohide" /></SettingsGroup
+  >
+{/if}
 <SettingsGroup title={m.tabs_group_closing()}
   ><PreferenceSelect id="tabs.close" preference="tabs.after-close" /><PreferenceSelect
     id="tabs.close-button"

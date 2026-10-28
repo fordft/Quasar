@@ -635,7 +635,27 @@
 /* Width only: the column still fills the sidebar's height, or the dock at
    its foot rides up under the tabs for the length of the change. */
 .browser-sidebar[data-reshaping="true"] > .sidebar-columns {
-  width: var(--sidebar-width);
+  width: var(--sidebar-open-width, var(--sidebar-width));
+}
+/* Auto-hide: out of the way the column is a width of nothing. While it
+   travels in or out its contents are clipped by it, and once gone it takes
+   no pointer, focus or paint. */
+.browser-sidebar[data-hide-travel="true"] {
+  overflow: clip;
+  transition: width var(--motion-page) var(--ease-emphasized);
+}
+.browser-sidebar[data-hidden="true"]:not([data-hide-travel="true"]) {
+  visibility: hidden;
+}
+/* The strip of the window's own gutter where the pointer calls a hidden
+   sidebar back. Left standing while the sidebar is out, so the window's
+   very edge still counts as being on it. */
+.sidebar-edge {
+  position: fixed;
+  inset-block: 0;
+  inset-inline-start: 0;
+  inline-size: 8px;
+  z-index: 1;
 }
 /* The header is one shape or the other, never both; the new one fades in. */
 .browser-sidebar[data-header-fresh="true"] > header {

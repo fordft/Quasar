@@ -21,6 +21,7 @@
   import * as find from "../lib/find.svelte";
   import { flushSync, untrack, type Snippet } from "svelte";
   import { duration, easing, reducedMotion } from "$shared/lib/motion";
+  import { isHidden } from "$session/sidebar-mode.svelte";
   import { addressSecurity, editingAddress, restingAddress } from "../lib/address-model";
 
   let {
@@ -91,7 +92,8 @@
     if (command.seq === 0 || command.id !== "url.focus" || input === undefined) return;
     // At rail width the field is not drawn; the launcher stands in for it.
     const tab = untrack(() => tabs.activeTab());
-    if (compact && tab?.url && (tab.content ?? "web") === "web") {
+    // A sidebar that has stepped away leaves the field out of reach as well.
+    if ((compact || untrack(() => isHidden())) && tab?.url && (tab.content ?? "web") === "web") {
       // Work has no page in front, so there the launcher opens empty.
       if (untrack(() => surface.currentPage()) === "work")
         void commands.runCommand("launcher.toggle");

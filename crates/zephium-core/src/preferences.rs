@@ -5,6 +5,7 @@ pub const KEYS: &[&str] = &[
     "search.custom-url",
     "search.suggestions",
     "sidebar.mode",
+    "sidebar.autohide",
     "ui.accent",
     "ui.material",
     "ui.reduce-motion",
@@ -238,6 +239,7 @@ pub fn value_allowed(key: &str, value: &str) -> bool {
         | "search.history"
         | "tabs.switch-to-open"
         | "tabs.automatic-pip"
+        | "sidebar.autohide"
         | "time.track"
         | "performance.sleep"
         | "updates.auto-check"

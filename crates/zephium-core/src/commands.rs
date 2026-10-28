@@ -163,6 +163,14 @@ pub const REGISTRY: &[CommandSpec] = &[
         Keys::same("CmdOrCtrl+Shift+S"),
         Group::View,
     ),
+    // Hiding the sidebar needs somewhere for the window controls to live while
+    // it is away; only macOS has them outside it.
+    command(
+        "sidebar.toggleAutoHide",
+        "Auto-hide Sidebar",
+        mac_only("CmdOrCtrl+S"),
+        Group::View,
+    ),
     command(
         "nav.reload",
         "Reload Page",
@@ -718,6 +726,15 @@ mod tests {
         let command = get("sidebar.toggleCompact").expect("compact sidebar command");
         assert_eq!(command.title, "Compact Mode");
         assert_eq!(command.group, Group::View);
+    }
+
+    #[test]
+    fn auto_hide_is_a_mac_only_view_command_on_the_arc_key() {
+        let command = get("sidebar.toggleAutoHide").expect("auto-hide sidebar command");
+        assert_eq!(command.title, "Auto-hide Sidebar");
+        assert_eq!(command.group, Group::View);
+        assert_eq!(command.keys.on(Platform::Mac), Some("CmdOrCtrl+S"));
+        assert_eq!(command.keys.on(Platform::Other), None);
     }
 
     #[test]

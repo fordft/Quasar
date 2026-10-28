@@ -107,10 +107,37 @@ already in the backend needs a visible home, and this is the honest answer to
 
 ## 4. Compact mode
 
-Two modes only: Default (240-280px) and Compact (~52px, icons). No hidden mode.
+Two shapes: Default (240-280px) and Compact (~52px, icons).
 
 **Compact never hover-expands.** An expanding overlay would have to cover page
 pixels, which we cannot do, and hover-expand is twitchy regardless.
+
+**Auto-hide (macOS).** The `sidebar.autohide` preference (Settings, Tabs, or
+Cmd+S) takes the column out of the way altogether, as Arc does. It is not a
+third shape the column is drawn in but a sidebar width of nothing: chrome keeps
+only the window's 8px gutter, the page takes the rest, and resting the pointer
+on that gutter brings the column back until the pointer leaves it. Whatever
+shape the column has (Default or Compact) is the one it comes back in.
+
+It tiles rather than floats. Arc's column floats over the page because Arc
+paints chrome and page in one compositor tree; ours cannot, so the page is
+pushed aside for as long as the column is out, exactly as it is when the
+column's width changes any other way (native slides the page with it). Two
+things follow. A page re-lays out when the column comes and goes, so the
+reveal waits for the pointer to rest on the edge (`REVEAL_DELAY`) rather than
+firing on a pass, and the column waits a moment after the pointer leaves
+(`HIDE_DELAY`). And the hidden column stays in the DOM, inert and unpainted,
+because the presentation barrier reads the address input and tab rows through
+it. A floating column would be a second surface, which the allocation rule
+above admits only when nothing else could work.
+
+Where the column has work to do it does not hide: Settings, Tasks, Notes, Work
+and an open tool panel each live in it. Something that needs it while hidden
+(find in page, the site shield, the space switcher) brings it out through
+`expandBriefly`, and a tab being carried keeps it out until it is dropped.
+Windows and Linux put the window controls in the column, so there it cannot go.
+The macOS window controls rest as unlit discs over the page's corner while the
+column is away.
 
 - Essentials become a vertical icon rail; tabs become favicons with an active bar.
 - The address field collapses to a search icon that **opens the launcher**. This

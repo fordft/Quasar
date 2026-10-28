@@ -235,6 +235,14 @@ export const fields = {
     description: m.pref_tabs_automatic_pip_help,
     initial: true,
   },
+  // Where the window controls stay outside the sidebar, which is macOS.
+  "tabs.sidebar-autohide": {
+    section: "tabs",
+    macOnly: true,
+    label: m.pref_sidebar_autohide,
+    description: m.pref_sidebar_autohide_help,
+    initial: false,
+  },
   "tabs.external": {
     section: "tabs",
     label: m.tabs_external,
