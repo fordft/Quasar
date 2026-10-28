@@ -132,7 +132,7 @@ updater.
 - Both updater signatures verify against the public key in
   `desktop/tauri.conf.json`, and the asset set is exactly the one above.
 - Build provenance is attested for the DMG, the updater archive and the
-  installer (`gh attestation verify <file> --repo zephium-browser/Quasar`).
+  installer (`gh attestation verify <file> --repo fordft/Quasar`).
 
 The macOS dSYM and Windows PDB are kept as workflow artifacts for 90 days.
 Download them for any release you need to symbolicate later.

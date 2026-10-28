@@ -7,7 +7,7 @@ Read this before touching `frame/`. It is the working contract for UI work;
 
 - Svelte 5 runes + strict TypeScript + Vite 8.
 - Tailwind CSS v4, token-first. Bits UI supplies narrowly adopted accessible
-  behavior; Zephium owns every visual component.
+  behavior; Quasar owns every visual component.
 - Icons come only from the MIT/free packages `@hugeicons/svelte` and
   `@hugeicons/core-free-icons`, wrapped by `src/shared/ui/Icon`.
 - Inter Variable are bundled through Fontsource and

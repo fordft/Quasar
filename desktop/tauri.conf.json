@@ -69,7 +69,7 @@
     "active": true,
     "targets": "all",
     "publisher": "Quasar",
-    "copyright": "Copyright © 2026 Zephium",
+    "copyright": "Copyright © 2026 Quasar contributors. Portions © Zephium authors",
     "category": "Productivity",
     "shortDescription": "A fast, private browser with a built-in place to get work done.",
     "homepage": "https://github.com/fordft/Quasar",

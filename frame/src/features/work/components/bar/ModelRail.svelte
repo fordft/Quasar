@@ -12,7 +12,6 @@
   import { untrack } from "svelte";
   import { providerName } from "$domain/ai";
   import ProviderMark from "$shared/ui/ProviderMark";
-  import ZephiumTile from "$shared/ui/ZephiumTile";
   import * as m from "$shared/i18n/messages";
 
   let {
@@ -134,10 +133,7 @@
       onclick={() => onpick(seat.provider)}
     >
       <span class="mark" aria-hidden="true"
-        >{#if seat.provider === "cloud"}<ZephiumTile size={24} />{:else}<ProviderMark
-            provider={seat.provider}
-            size={18}
-          />{/if}</span
+        ><ProviderMark provider={seat.provider} size={18} /></span
       >
       {#if seat.standing === "refused"}<span class="badge" aria-hidden="true"></span>{/if}
     </button>

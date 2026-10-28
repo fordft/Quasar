@@ -5,6 +5,7 @@ use std::sync::atomic::{AtomicU8, Ordering};
 
 const TITLE: &str = "Quasar couldn't start";
 const ISSUES_URL: &str = "https://github.com/fordft/Quasar/issues";
+const RELEASES_URL: &str = "https://github.com/fordft/Quasar/releases";
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum StartupProblem {
@@ -45,10 +46,11 @@ impl StartupProblem {
                 Close this message and open Quasar again. Your saved browsing data is kept, \
                 but edits that hadn't been saved may be lost."
                 .to_owned(),
-            Self::NewerProfile => "Your profile was last opened by a newer version of Quasar. \
-                 Install the latest version from zephium.app to open it. \
+            Self::NewerProfile => format!(
+                "Your profile was last opened by a newer version of Quasar. \
+                 Install the latest version from {RELEASES_URL} to open it. \
                  Nothing in your profile was changed."
-                .to_owned(),
+            ),
             Self::DamagedProfile => format!(
                 "Quasar couldn't read your profile; it may be damaged. Nothing was deleted.\n\n\
                  Please report this at {ISSUES_URL}\n\nDetails: {detail}"

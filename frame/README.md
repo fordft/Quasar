@@ -1,4 +1,4 @@
-# Zephium frame
+# Quasar frame
 
 Read [the frontend contract](../docs/frontend.md) before changing browser chrome.
 

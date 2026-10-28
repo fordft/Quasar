@@ -10,7 +10,7 @@ Everything that can be configured from a file is: CI in
 ## Reviews
 
 1. Install the [CodeRabbit GitHub app](https://github.com/apps/coderabbitai)
-   for **Only select repositories → Zephium**. It is free for public
+   for **Only select repositories → Quasar**. It is free for public
    repositories and reads `.coderabbit.yaml`; nothing else needs configuring.
 2. Leave CodeRabbit out of the required checks. It skips PRs labelled `slop`
    or `skip-review`, and a skipped required check would block them forever.

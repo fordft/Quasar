@@ -22,8 +22,8 @@ function card(frame: string | null): CanvasItem {
 test("a settled page draws its frame on first mount and follows it when it changes", async () => {
   await page.viewport(1200, 800);
   // Served files: a frame is drawn at its seen size, asked for by width.
-  const first = "/zephium-logo.png";
-  const second = "/zephium-logo.png?generation=2";
+  const first = "/quasar-icon@2x.png";
+  const second = "/quasar-icon@2x.png?generation=2";
   const screen = await render(PageCard, { item: card(first), selected: false });
   const drawn = () => screen.container.querySelector<HTMLCanvasElement>(".frame canvas");
   expect(screen.container.querySelector(".frame img")).toBeNull();

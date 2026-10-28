@@ -32,7 +32,7 @@ session identity. Rust publishes `PanelState`; the frontend sends `PanelIntent`
 `panel_fit`. It never positions the window itself.
 
 The shortcut toggles the launcher. It goes away when focus moves to the browser
-or another application; an owned native surface such as a menu keeps Zephium
+or another application; an owned native surface such as a menu keeps Quasar
 active and does not dismiss it. On macOS the launcher is made key and main
 before activating, so activation brings the launcher forward rather than a
 browser window behind the user's current app, and an explicit dismissal hands
@@ -140,7 +140,7 @@ shapes are reinstalled when the appearance changes.
 
 ### Native acceptance still required
 
-Computer Use could not inspect Zephium: macOS ScreenCaptureKit failed to start
+Computer Use could not inspect Quasar: macOS ScreenCaptureKit failed to start
 capture (error -3811). Therefore the following are **not verified** by this
 implementation pass:
 
@@ -368,7 +368,7 @@ sheet flows out of it over 420 ms on a curve that overshoots by a hair. The
 page reveals the list from the top at the same pace and lets its rows drift
 8 points into place 60 ms behind. Leaving is a 120 ms fade. AppKit's own
 window animation is off so the two never stack. Reduce Motion — the system's
-or Zephium's — leaves only a short fade.
+or Quasar's — leaves only a short fade.
 
 ## Measured — 2026-09-28
 

@@ -32,7 +32,7 @@ Read `docs/frontend.md` from the repository root. Do not infer completion from t
   change. A known unrelated full-CI failure does not authorize bypassing its gate or
   stopping independent frontend work. Report it separately.
 - Identify a native app by this checkout's executable/process before interacting;
-  other Zephium worktrees may be running. Static checks are not native visual,
+  other Quasar worktrees may be running. Static checks are not native visual,
   interaction, resource or cross-platform qualification.
 - Respect the user's current commit/push scope. Preserve unrelated existing changes
   and do not use a shared stash or bulk checkpoint commit to reorganize dirty work.

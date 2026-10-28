@@ -1,6 +1,6 @@
 # Security Policy
 
-Zephium treats security as the top priority. A browser is a hostile environment by nature, and we'd rather hear about a problem privately than read about it publicly.
+Quasar treats security as the top priority. A browser is a hostile environment by nature, and we'd rather hear about a problem privately than read about it publicly.
 
 ## Supported versions
 
@@ -15,10 +15,7 @@ Only the latest release receives security fixes.
 
 **Do not open a public issue for security problems.**
 
-Report privately in either way:
-
-- Use GitHub's [private vulnerability reporting](https://github.com/zephium-browser/Zephium/security/advisories/new).
-- Email **security@zephium.app**.
+Report privately with GitHub's [private vulnerability reporting](https://github.com/fordft/Quasar/security/advisories/new).
 
 Include:
 

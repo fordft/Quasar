@@ -7,7 +7,7 @@ body:
       value: |
         Thanks for taking the time to report this. A precise report is the fastest way to a fix.
 
-        Security problems must not be filed here. Use [private vulnerability reporting](https://github.com/zephium-browser/Zephium/security/advisories/new) instead.
+        Security problems must not be filed here. Use [private vulnerability reporting](https://github.com/fordft/Quasar/security/advisories/new) instead.
 
   - type: input
     id: version

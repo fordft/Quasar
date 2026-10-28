@@ -302,7 +302,7 @@ impl LeadTarget {
             headers.insert("x-title", HeaderValue::from_static("Quasar"));
             headers.insert(
                 "http-referer",
-                HeaderValue::from_static("https://zephium.app"),
+                HeaderValue::from_static("https://github.com/fordft/Quasar"),
             );
         }
         Ok(())

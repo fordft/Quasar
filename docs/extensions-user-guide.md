@@ -1,7 +1,7 @@
-# Using extensions in Zephium
+# Using extensions in Quasar
 
-Open an extension's Chrome Web Store page and choose **Add to Zephium** in the
-sidebar. Zephium downloads the original package directly from Google. Review
+Open an extension's Chrome Web Store page and choose **Add to Quasar** in the
+sidebar. Quasar downloads the original package directly from Google. Review
 its access and any compatibility limitations before installing. Installation
 does not guarantee that every feature of an extension works on every platform.
 
@@ -12,7 +12,7 @@ to the extension itself, with websites and other extensions unable to connect.
 Unsupported required APIs still prevent installation.
 
 Use the extension manager to disable or remove an extension, change optional
-permissions, or choose **Check for updates**. Zephium also checks automatically in the background.
+permissions, or choose **Check for updates**. Quasar also checks automatically in the background.
 An update requesting new required access needs your approval; it cannot silently expand permissions.
 
 If an installed extension is **Not active**, its entry shows the last known
@@ -25,27 +25,27 @@ the current package and permissions.
 
 To share accounts and unlocking with the 1Password desktop app:
 
-1. Install the signed Zephium application and the 1Password desktop app.
+1. Install the signed Quasar application and the 1Password desktop app.
 2. Open and unlock 1Password.
 3. Open **Settings → Browser**, enable **Connect with 1Password in the browser**,
    and choose **Add Browser** under additional browsers.
-4. Select the Zephium application you actually use. A separately named QA or lab
+4. Select the Quasar application you actually use. A separately named QA or lab
    build has its own application identity; approving one does not necessarily
    approve another.
-5. Return to Zephium and reopen the extension. If it still shows a loading
-   indicator, fully quit and reopen Zephium after checking the selected app.
+5. Return to Quasar and reopen the extension. If it still shows a loading
+   indicator, fully quit and reopen Quasar after checking the selected app.
 
 See [1Password's complete additional-browser instructions](https://support.1password.com/additional-browsers/)
 for macOS, Windows and Linux. On macOS use a properly signed application;
 unsigned local development builds cannot establish the same trust.
 
 The modern 1Password browser extension can operate independently of the desktop
-app in supported browsers. Zephium testing has confirmed successful use after
+app in supported browsers. Testing in the upstream Quasar project confirmed successful use after
 desktop setup and continued use after closing the desktop app. Fresh setup in
-Zephium without the desktop app remains unqualified. Do not interpret those
+Quasar without the desktop app remains unqualified. Do not interpret those
 different scenarios as equivalent.
 
-Zephium currently discloses limitations such as unavailable HTTP authentication
+Quasar currently discloses limitations such as unavailable HTTP authentication
 autofill, idle detection and extension-managed downloads. An active extension
 can still have these feature limitations. Browser passkeys also depend on the
 platform and signed application's capabilities.

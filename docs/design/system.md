@@ -1,4 +1,4 @@
-# Zephium interface system
+# Quasar interface system
 
 The implementation follows `product-system.md`: Browse stands alone; Work
 makes useful state visible. Geist, neutral surfaces, optical alignment, and

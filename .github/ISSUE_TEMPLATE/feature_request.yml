@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Zephium has a focused product direction, so a clear problem matters more than a proposed solution. Please read [CONTRIBUTING.md](https://github.com/zephium-browser/Zephium/blob/main/CONTRIBUTING.md) before proposing larger changes. For open-ended ideas, start a [Discussion](https://github.com/zephium-browser/Zephium/discussions).
+        Quasar has a focused product direction, so a clear problem matters more than a proposed solution. Please read [CONTRIBUTING.md](https://github.com/fordft/Quasar/blob/main/CONTRIBUTING.md) before proposing larger changes. For open-ended ideas, start a [Discussion](https://github.com/fordft/Quasar/discussions).
 
   - type: textarea
     id: problem

@@ -191,7 +191,7 @@ Do not duplicate domain records or execution authority in Svelte.
 
 ## Visual direction
 
-Use Zephium's shared type and semantic tokens. Establish hierarchy through title
+Use Quasar's shared type and semantic tokens. Establish hierarchy through title
 legibility, alignment, spacing, and restrained surface differences. Keep native
 material in chrome; content remains stable and readable over varied backgrounds.
 Avoid nested filled cards, a capsule around every property, decorative glass,

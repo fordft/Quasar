@@ -4,6 +4,7 @@
   import * as m from "$shared/i18n/messages";
   import { identityAvatar, profiles } from "$domain/profiles";
   import ProfileAvatar from "$shared/ui/ProfileAvatar";
+  import QuasarTile from "$shared/ui/QuasarTile";
   import * as settings from "../lib/settings-state.svelte";
 
   onMount(() => {
@@ -43,7 +44,7 @@
         >{#if signedIn}<ProfileAvatar
             size={30}
             view={identityAvatar(profiles.current(), initials(account.email, account.name), null)}
-          />{:else}<img class="mark" src="/zephium-icon.png" alt="" />{/if}<span class="copy"
+          />{:else}<QuasarTile size={30} />{/if}<span class="copy"
           ><strong>{title}</strong><small>{detail}</small></span
         ></button
       >{/if}
@@ -60,12 +61,6 @@
     gap: 10px;
     min-block-size: 46px;
     padding: 7px 9px;
-  }
-
-  .mark {
-    flex: none;
-    inline-size: 30px;
-    block-size: 30px;
   }
 
   .copy {

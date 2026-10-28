@@ -1,19 +1,19 @@
-# Contributing to Zephium
+# Contributing to Quasar
 
-Zephium is a solo-maintained project with a strong product direction. Contributions are welcome, but **alignment matters more than volume**.
+Quasar is a solo-maintained project with a strong product direction. Contributions are welcome, but **alignment matters more than volume**.
 
 This document is about *whether* and *how* to contribute in a way that's likely to get merged, so neither of us wastes time. It's intentionally about principles, not internals - for how the code is actually laid out, read [docs/architecture.md](docs/architecture.md).
 
 ## How this project is run
 
-- Zephium has one active maintainer ([@crynta](https://github.com/crynta)).
+- Quasar has one active maintainer ([@fordft](https://github.com/fordft)).
 - Review bandwidth is limited.
 - Not every contribution can be accepted, even if it's technically correct. Alignment with project direction matters as much as code quality.
 - For scope and direction, read [docs/product-system.md](docs/product-system.md) before opening anything non-trivial.
 
 This is normal for a solo maintained project. A "no" on a PR is not personal.
 
-## What Zephium is
+## What Quasar is
 
 A lightweight, FOSS, zero-telemetry browser on the OS-native webview, Rust-heavy. Supported platforms are macOS (Apple Silicon) and Windows; Linux is not supported yet.
 
@@ -68,7 +68,7 @@ The [documentation index](docs/README.md) lists the rest.
 
 - **Small fixes and improvements** (a bug fix, a typo, a small UX polish): open a PR directly. No issue needed.
 - **A bigger feature or change**: please open an issue first, with the feature template, so we can agree on the approach before you put time into it. Then open the PR and link the issue in its description (`Closes #123`).
-- **Questions and ideas** ("should I work on X?", design or scope questions): start a [Discussion](https://github.com/zephium-browser/Zephium/discussions).
+- **Questions and ideas** ("should I work on X?", design or scope questions): start a [Discussion](https://github.com/fordft/Quasar/discussions).
 
 ## What makes a good contribution
 
@@ -95,7 +95,7 @@ A large PR that arrives without that conversation may be closed if it doesn't fi
 
 ## Respect the architecture
 
-Zephium's boundaries are enforced by CI, not by review vigilance - a PR that violates them won't pass. The ones to know:
+Quasar's boundaries are enforced by CI, not by review vigilance - a PR that violates them won't pass. The ones to know:
 
 - The core stays pure: no I/O, no platform coupling, no `unsafe`. Side effects live at the edges, behind narrow interfaces.
 - Network access is centralized and tightly limited. This is how the **zero-telemetry guarantee is enforced structurally**, not by policy - nothing outside that one path may reach the network.
@@ -107,7 +107,7 @@ If your change needs to bend one of these, that's a design discussion before it'
 
 ## Quality bar
 
-Zephium positions itself as **lightweight, fast, secure, production-grade**. Every PR is reviewed against:
+Quasar positions itself as **lightweight, fast, secure, production-grade**. Every PR is reviewed against:
 
 - Type-checks, lints, and formatters are clean.
 - All tests pass.
@@ -134,7 +134,7 @@ The bar is real coverage of the contract - the edge, the deny path, the malforme
 
 Pure UI, themes, and anything the type-checker already guarantees don't need tests.
 
-## What Zephium is not
+## What Quasar is not
 
 - Not aiming for pixel-perfect rendering parity with Chrome/Firefox. We use the system webview **by design**; rendering fidelity is a known, accepted tradeoff.
 - **No telemetry, no analytics, no account requirement, no data collection - ever.** Any change that phones home will be closed.
@@ -196,7 +196,7 @@ Mixed-concern PRs · large architectural PRs without prior discussion · new dep
 
 ## Security issues
 
-Don't file them as public issues. See [SECURITY.md](SECURITY.md) or use [private vulnerability reporting](https://github.com/zephium-browser/Zephium/security/advisories/new).
+Don't file them as public issues. See [SECURITY.md](SECURITY.md) or use [private vulnerability reporting](https://github.com/fordft/Quasar/security/advisories/new).
 
 ## License
 

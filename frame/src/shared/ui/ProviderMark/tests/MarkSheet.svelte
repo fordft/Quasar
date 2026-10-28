@@ -1,6 +1,6 @@
 <script lang="ts">
   import ProviderMark from "../ProviderMark.svelte";
-  import ZephiumTile from "$shared/ui/ZephiumTile";
+  import QuasarTile from "$shared/ui/QuasarTile";
 
   const providers = [
     "anthropic",
@@ -22,9 +22,9 @@
       {#each providers as provider (provider)}<span class="tile" style:--tile={`${size + 12}px`}
           ><ProviderMark {provider} {size} /></span
         >{/each}
-      <ZephiumTile size={size + 12} />
+      <QuasarTile size={size + 12} />
     </div>{/each}
-  <div class="row"><ZephiumTile size={32} /><ZephiumTile size={36} /><ZephiumTile size={52} /></div>
+  <div class="row"><QuasarTile size={32} /><QuasarTile size={36} /><QuasarTile size={52} /></div>
 </div>
 
 <style>

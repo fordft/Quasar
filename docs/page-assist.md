@@ -1,6 +1,6 @@
 # The sidebar assistant (page assist): design as built
 
-Status as of 2026-10-23, branch `feat/work-production`. The assistant is named **Zephium** in the product ("Ask Zephium…"); the code keeps the subsystem name `page_assist`. It replaced the one-shot Ask panel of 2026-10-22.
+Status as of 2026-10-23, branch `feat/work-production`. The assistant is named **Quasar** in the product ("Ask Quasar…"); the code keeps the subsystem name `page_assist`. It replaced the one-shot Ask panel of 2026-10-22.
 
 ## Shape
 

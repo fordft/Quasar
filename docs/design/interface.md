@@ -1,4 +1,4 @@
-# Zephium interface design
+# Quasar interface design
 
 Architecture and implemented hosting follow [the frontend contract](../frontend.md).
 This document retains earlier visual proposals; use the current contract where they differ.
@@ -11,7 +11,7 @@ shaped the way it is; read it before proposing a layout change.
 
 Arc and Zen are Firefox and Chromium forks. Their chrome and their page content
 live in one compositor tree, so a popover floating over the page costs nothing.
-Zephium composes independent native WebViews. Our chrome WebView physically
+Quasar composes independent native WebViews. Our chrome WebView physically
 ends at the sidebar rectangle and cannot paint a single pixel over page content.
 
 This is a design asset, not a handicap. Arc's real failure is not visual: it is

@@ -1,4 +1,4 @@
-# Zephium documentation
+# Quasar documentation
 
 Code and tests are the evidence of present behavior. Where documents appear to
 disagree, `security-model.md` controls claims about enforced security,
@@ -9,7 +9,7 @@ controls product intent.
 
 - [Architecture](architecture.md): implemented browser structure, domain ownership and native lifecycle.
 - [Security model](security-model.md): the guarantees the tree enforces and the gates for disabled capabilities.
-- [Product system](product-system.md): what Zephium is, the first-release scope and the target architecture.
+- [Product system](product-system.md): what Quasar is, the first-release scope and the target architecture.
 - [Frontend contract](frontend.md): stack, ownership, import boundaries and native presentation rules for `frame/`.
 
 ## Browser features
