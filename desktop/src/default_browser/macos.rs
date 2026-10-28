@@ -26,6 +26,19 @@ fn same_file(a: &NSURL, b: &NSURL) -> bool {
     }
 }
 
+/// The browser macOS opens web links in, unless that is Quasar itself. Sign-in
+/// uses it so the person completes it where they are already signed in, and
+/// never in a tab of the app that is asking.
+pub(crate) fn external_browser() -> Option<Retained<NSURL>> {
+    let probe = NSURL::URLWithString(&objc2_foundation::NSString::from_str("https://example.com"))?;
+    let handler = NSWorkspace::sharedWorkspace().URLForApplicationToOpenURL(&probe)?;
+    let is_quasar = own_bundle().is_some_and(|own| same_file(&handler, &own))
+        || handler
+            .path()
+            .is_some_and(|path| super::names_quasar_app(&path.to_string()));
+    (!is_quasar).then_some(handler)
+}
+
 pub(crate) fn can_request() -> bool {
     own_bundle().is_some()
 }

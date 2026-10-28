@@ -218,13 +218,17 @@ async fn open_system(app: &tauri::AppHandle, url: String, external_auth: bool) -
                 };
                 use objc2_foundation::{NSArray, NSError, NSString, NSURL};
                 if external_auth {
-                    // A browser must not send OAuth URLs or ID-token hints to
-                    // its own tab/chrome projections when it becomes default.
+                    // Sign-in follows the person's default browser. When that
+                    // is Quasar itself, Safari is used instead, so OAuth URLs
+                    // and ID-token hints never reach Quasar's own tab/chrome
+                    // projections.
                     let workspace = NSWorkspace::sharedWorkspace();
                     let target = NSURL::URLWithString(&NSString::from_str(&url));
-                    let browser = workspace.URLForApplicationWithBundleIdentifier(
-                        &NSString::from_str("com.apple.Safari"),
-                    );
+                    let browser = crate::default_browser::external_browser().or_else(|| {
+                        workspace.URLForApplicationWithBundleIdentifier(&NSString::from_str(
+                            "com.apple.Safari",
+                        ))
+                    });
                     let (Some(target), Some(browser)) = (target, browser) else {
                         let _ = send.send(false);
                         return;
@@ -257,9 +261,10 @@ async fn open_system(app: &tauri::AppHandle, url: String, external_auth: bool) -
                 use windows::core::{w, PCWSTR};
                 use windows::Win32::UI::Shell::ShellExecuteW;
                 use windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
-                // The stock external browser keeps the OAuth flow outside
-                // Quasar even when Quasar owns the http/https associations.
-                let address = if external_auth {
+                // Sign-in follows the person's default browser. Edge is used
+                // only when Quasar owns https links, which keeps the OAuth
+                // flow outside Quasar.
+                let address = if external_auth && crate::default_browser::windows::handles_https() {
                     format!("microsoft-edge:{url}")
                 } else {
                     url

@@ -9,8 +9,45 @@ use super::*;
 mod linux;
 #[cfg(target_os = "macos")]
 mod macos;
+#[cfg(target_os = "macos")]
+pub(crate) use macos::external_browser;
 #[cfg(target_os = "windows")]
 pub(crate) mod windows;
+
+/// Whether an application path is a Quasar build (Quasar.app, Quasar Dev.app).
+/// A link handed to one would open inside the app that is signing in.
+#[cfg(any(target_os = "macos", test))]
+fn names_quasar_app(path: &str) -> bool {
+    std::path::Path::new(path)
+        .file_stem()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| name.starts_with("Quasar"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::names_quasar_app;
+
+    #[test]
+    fn recognises_every_quasar_build_but_no_other_browser() {
+        for ours in [
+            "/Applications/Quasar.app",
+            "/Applications/Quasar Dev.app/",
+            "/Users/me/Applications/Quasar.app",
+        ] {
+            assert!(names_quasar_app(ours), "{ours}");
+        }
+        for other in [
+            "/Applications/Arc.app",
+            "/Applications/Safari.app",
+            "/Applications/Google Chrome.app",
+            "/Applications/Firefox.app",
+            "",
+        ] {
+            assert!(!names_quasar_app(other), "{other}");
+        }
+    }
+}
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, specta::Type, PartialEq, Eq)]
 pub(crate) struct DefaultBrowserStatus {

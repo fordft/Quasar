@@ -2,7 +2,7 @@
 
 Quasar uses Sign in with ChatGPT as its only product AI connection. On macOS
 and Windows, open Settings → Account (also available under Settings → AI) and
-choose **Continue with ChatGPT**. Complete sign-in in Safari on macOS or Microsoft Edge on Windows and
+choose **Continue with ChatGPT**. Complete sign-in in your default browser and
 allow ChatGPT plan usage. An eligible ChatGPT Plus or Pro plan is required.
 Identity sign-in alone does not enable AI. **Manage usage** opens ChatGPT's own
 usage settings. Quasar does not receive the user's ChatGPT conversation history.
@@ -19,9 +19,11 @@ protected storage. `desktop/src/account.rs` owns the system-browser handoff and
 privileged IPC. The Svelte frame sees display state and closed faults only:
 never a bearer, refresh token, authorization code, ID token or authorization URL.
 
-Authorization always opens in the stock external browser, so becoming the
-default browser cannot route OAuth URLs or ID-token hints into Quasar's own tab
-and chrome projections. Manage usage opens the ordinary system browser.
+Authorization opens in the person's default browser, so they finish sign-in
+where they are already signed in. When Quasar itself is the default browser,
+authorization opens in Safari on macOS or Microsoft Edge on Windows instead, so
+OAuth URLs and ID-token hints never reach Quasar's own tab and chrome
+projections. Manage usage opens the ordinary system browser.
 
 The native runtime binds `127.0.0.1` on an ephemeral port before opening the
 browser. Every attempt has fresh state, nonce and S256 PKCE. The redirect is

@@ -29,6 +29,17 @@ pub(crate) fn is_default() -> bool {
     })
 }
 
+/// Whether the person's own choice for https links is Quasar, so a link opened
+/// through the system would land back in this app.
+pub(crate) fn handles_https() -> bool {
+    read_string(
+        r"Software\Microsoft\Windows\Shell\Associations\UrlAssociations\https\UserChoice",
+        "ProgId",
+    )
+    .as_deref()
+        == Some(PROG_ID)
+}
+
 /// Registers Zephium as a browser for the current user. Idempotent; the
 /// command line always points at the running executable, so it follows a
 /// moved or updated install.
