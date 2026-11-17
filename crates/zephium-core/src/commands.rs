@@ -63,6 +63,15 @@ pub struct CommandSpec {
 }
 
 impl CommandSpec {
+    /// Platform support is independent of whether a default shortcut exists.
+    pub fn available_on(&self, platform: Platform) -> bool {
+        self.id != "sidebar.toggleAutoHide" || platform == Platform::Mac
+    }
+
+    pub fn available(&self) -> bool {
+        self.available_on(Platform::CURRENT)
+    }
+
     pub fn default_accelerator(&self) -> Option<&'static str> {
         self.keys.on(Platform::CURRENT)
     }
@@ -523,6 +532,7 @@ pub fn resolve(overrides: &HashMap<String, String>) -> Vec<ResolvedCommand> {
 fn resolve_on(overrides: &HashMap<String, String>, platform: Platform) -> Vec<ResolvedCommand> {
     REGISTRY
         .iter()
+        .filter(|c| c.available_on(platform))
         .map(|c| {
             let canonical =
                 |text: &str| Accelerator::parse(text, platform).map(|a| a.format(platform));
@@ -553,6 +563,7 @@ fn resolve_on(overrides: &HashMap<String, String>, platform: Platform) -> Vec<Re
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum KeymapError {
     UnknownCommand,
+    Unavailable,
     Fixed,
     Accelerator(AcceleratorError),
     /// Already bound to another command, named here.
@@ -576,6 +587,9 @@ fn validate_binding_on(
     platform: Platform,
 ) -> Result<Option<String>, KeymapError> {
     let spec = get(id).ok_or(KeymapError::UnknownCommand)?;
+    if !spec.available_on(platform) {
+        return Err(KeymapError::Unavailable);
+    }
     if !spec.customizable() {
         return Err(KeymapError::Fixed);
     }
@@ -735,6 +749,55 @@ mod tests {
         assert_eq!(command.group, Group::View);
         assert_eq!(command.keys.on(Platform::Mac), Some("CmdOrCtrl+S"));
         assert_eq!(command.keys.on(Platform::Other), None);
+        assert!(command.available_on(Platform::Mac));
+        assert!(!command.available_on(Platform::Other));
+    }
+
+    #[test]
+    fn unsupported_commands_cannot_be_resolved_or_customized() {
+        let id = "sidebar.toggleAutoHide";
+        let overrides = HashMap::from([(id.into(), "CmdOrCtrl+Shift+F12".into())]);
+        let resolved = resolve_on(&overrides, Platform::Other);
+        assert!(!resolved.iter().any(|command| command.id == id));
+        for accelerator in [None, Some("Ctrl+Shift+F12")] {
+            assert_eq!(
+                validate_binding_on(&resolved, id, accelerator, Platform::Other),
+                Err(KeymapError::Unavailable)
+            );
+        }
+        let resolved = resolve_on(&overrides, Platform::Mac);
+        let command = resolved.iter().find(|command| command.id == id).unwrap();
+        assert!(command.customized);
+        assert_eq!(command.accelerator.as_deref(), Some("Cmd+Shift+F12"));
+        assert_eq!(
+            validate_binding_on(&resolved, id, None, Platform::Mac),
+            Ok(None)
+        );
+    }
+
+    #[test]
+    fn missing_default_shortcuts_do_not_make_other_commands_unavailable() {
+        for platform in PLATFORMS {
+            for command in REGISTRY {
+                if command.id != "sidebar.toggleAutoHide" {
+                    assert!(
+                        command.available_on(platform),
+                        "{} on {platform:?}",
+                        command.id
+                    );
+                }
+            }
+        }
+        let resolved = resolve_on(&HashMap::new(), Platform::Other);
+        for id in ["note.new", "split.choose"] {
+            assert!(resolved
+                .iter()
+                .any(|command| command.id == id && command.accelerator.is_none()));
+            assert_eq!(
+                validate_binding_on(&resolved, id, Some("Ctrl+Shift+F12"), Platform::Other),
+                Ok(Some("Ctrl+Shift+F12".into()))
+            );
+        }
     }
 
     #[test]

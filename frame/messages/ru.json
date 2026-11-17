@@ -3182,7 +3182,7 @@
   "assist_fault_no_answer": "Quasar не нашел, что ответить. Повторите или спросите иначе.",
   "assist_fault_step_failed": "Один из шагов на странице не сработал.",
   "assist_refusal_no_model": "Выберите модель",
-  "assist_refusal_no_model_help": "Quasar нужна модель. Выберите ее или добавьте ключ.",
+  "assist_refusal_no_model_help": "В разделе «Настройки → ИИ» подключите ChatGPT и разрешите использование тарифа, затем обновите список моделей и выберите одну.",
   "assist_refusal_unsupported": "В этой системе страницы читать нельзя",
   "assist_refusal_unsupported_help": "Quasar пока не может читать открытые здесь страницы. Созданные вами стили страниц продолжают действовать.",
   "assist_this_page": "эта страница",

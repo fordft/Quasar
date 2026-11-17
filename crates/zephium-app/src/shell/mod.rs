@@ -939,7 +939,14 @@ impl Shell {
                 call,
                 done,
             } => self.bookmark_call(expected_profile, *call, done),
-            Command::Import { work, done } => self.import_into_focused(*work, done),
+            Command::ImportDestination { reply } => {
+                let _ = reply.try_send(self.import_destination());
+            }
+            Command::Import {
+                destination,
+                work,
+                done,
+            } => self.import_into_profile(destination, *work, done),
             Command::AttachFaviconProber(attachment) => self.attach_favicon_prober(attachment.0),
             Command::ProbeFavicons { profile, origins } => self.probe_favicons(profile, origins),
             Command::FaviconProbed {

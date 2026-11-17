@@ -1,5 +1,6 @@
 import {
   commands,
+  type PageAssistAskResponseV1,
   type PageAssistAttachV1,
   type PageAssistChangedV1,
   type PageAssistCiteV1,
@@ -25,6 +26,8 @@ const MAX_OTHERS = 3;
 /** A picked element, with the address its page had when it was picked. */
 export type Pick = PageAssistPickV1 & { url: string | null };
 
+type Navigation = { generation: number; settled: Promise<void>; finish: () => void };
+
 const quietly = <T>(promise: Promise<T>, fallback: T) => promise.catch(() => fallback);
 
 /**
@@ -45,26 +48,134 @@ export class AssistSession {
   unavailable = $state(false);
   /** The words each streaming text block received last, by `reply:block`. */
   arrivals = $state.raw<Readonly<Record<string, readonly Arrival[]>>>({});
-  picks = $state.raw<Pick[]>([]);
+  private picked = $state.raw<Pick[]>([]);
+  private reservedPicks = $state.raw<readonly Pick[]>([]);
   /** The tab an element is being picked on. */
   picking = $state<string | null>(null);
   /** The person took the page chip off for the next message. */
-  pageOff = $state(false);
+  private pageExcluded = $state(false);
   /** Other tabs of the Space the person attached to the next message. */
-  others = $state.raw<string[]>([]);
-  selectionOn = $state(false);
+  private otherTabs = $state.raw<string[]>([]);
+  private selectionIncluded = $state(false);
   /** Why the last message or pick did not start. */
-  notice = $state.raw<PageAssistFaultV1 | null>(null);
+  private lastNotice = $state.raw<PageAssistFaultV1 | null>(null);
   sending = $state(false);
   styles = $state.raw<PageStylesV1 | null>(null);
   past = $state.raw<PageAssistPastV1[] | null>(null);
 
   private generation = 0;
+  private conversationEpoch = 0;
+  /** Older generations expire only when native or its projection confirms a switch. */
+  private composerEpoch = $state(0);
+  private navigations = $state.raw<Navigation[]>([]);
+  private pendingSend: object | null = null;
+  private revisions = { others: 0, page: 0, selection: 0, notice: 0 };
   private queue: PageAssistChangedV1[] | null = null;
   private stopListening: (() => void) | null = null;
   private active = false;
 
   constructor(readonly profile: string) {}
+
+  /** A composer generation, independent of snapshot refreshes. */
+  get conversationGeneration() {
+    return this.conversationEpoch;
+  }
+
+  /** A refused navigation keeps ownership of the unchanged admitted composer. */
+  async settleComposer(generation: number, settle: () => void) {
+    while (this.navigations.length > 0 && generation >= this.composerEpoch)
+      await Promise.all(this.navigations.map((navigation) => navigation.settled));
+    if (generation >= this.composerEpoch) settle();
+  }
+
+  get navigating() {
+    return this.navigations.some((navigation) => navigation.generation >= this.composerEpoch);
+  }
+
+  pickPending(pick: Pick) {
+    return this.reservedPicks.includes(pick);
+  }
+
+  /** A visible reserved chip cannot promise its pick to another message. */
+  get attachmentsPending() {
+    return this.picks.some((pick) => this.pickPending(pick));
+  }
+
+  get picks() {
+    return this.picked;
+  }
+  set picks(value: Pick[]) {
+    this.picked = value;
+  }
+  get others() {
+    return this.otherTabs;
+  }
+  set others(value: string[]) {
+    this.revisions.others++;
+    this.otherTabs = value;
+  }
+  get pageOff() {
+    return this.pageExcluded;
+  }
+  set pageOff(value: boolean) {
+    this.revisions.page++;
+    this.pageExcluded = value;
+  }
+  get selectionOn() {
+    return this.selectionIncluded;
+  }
+  set selectionOn(value: boolean) {
+    this.revisions.selection++;
+    this.selectionIncluded = value;
+  }
+  get notice() {
+    return this.lastNotice;
+  }
+  set notice(value: PageAssistFaultV1 | null) {
+    this.revisions.notice++;
+    this.lastNotice = value;
+  }
+
+  private leaveConversation() {
+    this.composerEpoch = ++this.conversationEpoch;
+    this.pendingSend = null;
+    this.sending = false;
+    this.notice = null;
+  }
+
+  private beginNavigation(): Navigation {
+    let finish!: () => void;
+    const settled = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    const navigation = { generation: ++this.conversationEpoch, settled, finish };
+    this.navigations = [...this.navigations, navigation];
+    this.sending = false;
+    this.notice = null;
+    return navigation;
+  }
+
+  private async finishNavigation(navigation: Navigation, switched: boolean) {
+    if (!this.navigations.includes(navigation)) return false;
+    if (switched) {
+      // Superseded successes still changed native state. Read what is current;
+      // neither request order nor acknowledgement order determines that state.
+      await this.read();
+      if (!this.navigations.includes(navigation)) return false;
+      // A projection may already have replaced the composer before the ack.
+      if (navigation.generation >= this.composerEpoch) this.leaveConversation();
+    }
+    this.navigations = this.navigations.filter((pending) => pending !== navigation);
+    navigation.finish();
+    this.sending = this.pendingSend !== null;
+    return true;
+  }
+
+  private cancelNavigation() {
+    const navigations = this.navigations;
+    this.navigations = [];
+    for (const navigation of navigations) navigation.finish();
+  }
 
   get latest() {
     return latestReply(this.conversation);
@@ -113,6 +224,8 @@ export class AssistSession {
     if (space !== this.space) {
       if (this.space) void quietly(commands.pageAssistClose(this.space), false);
       this.generation++;
+      this.cancelNavigation();
+      this.leaveConversation();
       this.space = space;
       this.tab = tab;
       this.status = null;
@@ -171,6 +284,7 @@ export class AssistSession {
     this.unavailable = !status.conversation.id && status.availability === "unavailable";
     this.status = status;
     if (status.conversation.id !== this.conversation.id) {
+      this.leaveConversation();
       this.arrivals = {};
       this.picking = null;
     }
@@ -243,11 +357,31 @@ export class AssistSession {
     return out.slice(0, MAX_ATTACHMENTS);
   }
 
+  private submittedPicks(attachments: PageAssistAttachV1[]) {
+    return this.picks.filter((pick) =>
+      attachments.some(
+        (attachment) =>
+          attachment.kind === "element" &&
+          attachment.tab === pick.tab &&
+          attachment.pick === pick.pick,
+      ),
+    );
+  }
+
   /** True when Rust admitted the message; what it says arrives as events. */
   async ask(text: string, suggestion: PageAssistSuggestionV1 | null = null): Promise<boolean> {
     const words = text.trim().slice(0, MESSAGE_LIMIT);
     const space = this.space;
-    if (!space || (!words && !suggestion) || this.busy || !this.talks || this.sending) return false;
+    if (
+      !space ||
+      (!words && !suggestion) ||
+      this.busy ||
+      !this.talks ||
+      this.sending ||
+      this.navigating ||
+      this.attachmentsPending
+    )
+      return false;
     return this.send(space, words, suggestion, this.attachments(), true);
   }
 
@@ -255,7 +389,7 @@ export class AssistSession {
   async retry(reply: number): Promise<boolean> {
     const space = this.space;
     const asked = askedBy(this.conversation, reply);
-    if (!space || !asked || this.busy || this.sending) return false;
+    if (!space || !asked || this.busy || this.sending || this.navigating) return false;
     const attachments = asked.attachments.flatMap<PageAssistAttachV1>((attachment) =>
       attachment.kind === "page"
         ? [{ kind: "page", tab: attachment.tab }]
@@ -273,33 +407,52 @@ export class AssistSession {
     attachments: PageAssistAttachV1[],
     composed: boolean,
   ): Promise<boolean> {
+    const conversation = this.conversation.id;
+    const generation = this.conversationEpoch;
+    const turn = {};
+    this.pendingSend = turn;
     this.sending = true;
     this.notice = null;
+    const submitted = { ...this.revisions };
+    const submittedPicks = this.submittedPicks(attachments);
+    this.reservedPicks = [...this.reservedPicks, ...submittedPicks];
+    const current = () =>
+      this.pendingSend === turn &&
+      this.space === space &&
+      this.conversation.id === conversation &&
+      generation >= this.composerEpoch;
+    let response: PageAssistAskResponseV1 | null = null;
     try {
-      const response = await commands.pageAssistAsk({
+      response = await commands.pageAssistAsk({
         space,
-        conversation: this.conversation.id,
+        conversation,
         text,
         suggestion,
         attachments,
       });
-      if (response.reply === null) {
-        this.notice = response.fault ?? { reason: "unavailable" };
-        if (response.fault?.reason === "invalid") this.refresh();
-        return false;
-      }
-      if (composed) {
-        this.picks = [];
-        this.others = [];
-        this.pageOff = false;
-        this.selectionOn = false;
-      }
-      return true;
+      // Native consumes these exact submitted objects even across navigation.
+      // A later pick may reuse the same tab/token; it has a different lifetime.
+      if (composed && response.reply !== null)
+        this.picks = this.picks.filter((pick) => !submittedPicks.includes(pick));
+      return response.reply !== null;
     } catch {
-      this.notice = { reason: "unavailable" };
       return false;
     } finally {
-      this.sending = false;
+      this.reservedPicks = this.reservedPicks.filter((pick) => !submittedPicks.includes(pick));
+      void this.settleComposer(generation, () => {
+        if (!current()) return;
+        if (!response || response.reply === null) {
+          if (this.revisions.notice === submitted.notice)
+            this.notice = response?.fault ?? { reason: "unavailable" };
+          if (response?.fault?.reason === "invalid") this.refresh();
+        } else if (composed) {
+          if (this.revisions.others === submitted.others) this.others = [];
+          if (this.revisions.page === submitted.page) this.pageOff = false;
+          if (this.revisions.selection === submitted.selection) this.selectionOn = false;
+        }
+        this.pendingSend = null;
+        this.sending = false;
+      });
     }
   }
 
@@ -393,8 +546,11 @@ export class AssistSession {
   }
 
   async newConversation() {
-    if (!this.space || this.conversation.messages.length === 0) return;
-    if (await quietly(commands.pageAssistNew(this.space), false)) this.refresh();
+    const space = this.space;
+    if (!space || this.conversation.messages.length === 0) return;
+    const navigation = this.beginNavigation();
+    const created = await quietly(commands.pageAssistNew(space), false);
+    await this.finishNavigation(navigation, created);
   }
 
   async history() {
@@ -404,9 +560,12 @@ export class AssistSession {
   }
 
   async openPast(id: string) {
-    if (!this.space) return false;
-    const opened = await quietly(commands.pageAssistOpen(this.space, id), false);
-    if (opened) this.refresh();
+    const space = this.space;
+    if (!space) return false;
+    if (id === this.conversation.id) return true;
+    const navigation = this.beginNavigation();
+    const opened = await quietly(commands.pageAssistOpen(space, id), false);
+    if (!(await this.finishNavigation(navigation, opened))) return false;
     return opened;
   }
 
@@ -448,6 +607,8 @@ export class AssistSession {
     if (this.space) void quietly(commands.pageAssistClose(this.space), false);
     this.active = false;
     this.generation++;
+    this.cancelNavigation();
+    this.leaveConversation();
     this.stopListening?.();
     this.stopListening = null;
     this.queue = null;

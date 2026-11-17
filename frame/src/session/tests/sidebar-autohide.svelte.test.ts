@@ -185,6 +185,81 @@ describe("auto-hide", () => {
     expect(sidebar.isHidden()).toBe(true);
   });
 
+  it("holds a hover-revealed column while a prompt needs its expansion", () => {
+    sidebar.setAutoHide(true);
+    sidebar.pointerEnteredEdge();
+    vi.advanceTimersByTime(sidebar.REVEAL_DELAY);
+    const restore = sidebar.expandBriefly();
+    sidebar.pointerLeft();
+    vi.advanceTimersByTime(sidebar.HIDE_DELAY * 3);
+    expect(sidebar.isHidden()).toBe(false);
+    expect(widths()).toEqual([0, 240]);
+    restore();
+    vi.advanceTimersByTime(sidebar.HIDE_DELAY);
+    expect(sidebar.isHidden()).toBe(true);
+    expect(widths()).toEqual([0, 240, 0]);
+  });
+
+  it("restores a compact column only after the last nested expansion releases", () => {
+    sidebar.setMode("compact");
+    sidebar.setAutoHide(true);
+    const first = sidebar.expandBriefly();
+    const second = sidebar.expandBriefly();
+    first();
+    first();
+    vi.advanceTimersByTime(sidebar.HIDE_DELAY * 3);
+    expect(sidebar.sidebarMode()).toBe("default");
+    expect(sidebar.isHidden()).toBe(false);
+    second();
+    expect(sidebar.sidebarMode()).toBe("compact");
+    vi.advanceTimersByTime(sidebar.HIDE_DELAY);
+    expect(sidebar.isHidden()).toBe(true);
+  });
+
+  it("keeps outstanding holds through auto-hide and page preference transitions", () => {
+    const first = sidebar.expandBriefly();
+    const second = sidebar.revealHeld();
+    sidebar.pointerLeft();
+    sidebar.setAutoHide(true);
+    expect(sidebar.isHidden()).toBe(false);
+    sidebar.setAutoHide(false);
+    sidebar.setAutoHide(true);
+    sidebar.setAutoHideApplies(false);
+    sidebar.setAutoHideApplies(true);
+    vi.advanceTimersByTime(sidebar.HIDE_DELAY * 3);
+    expect(sidebar.isHidden()).toBe(false);
+    first();
+    vi.advanceTimersByTime(sidebar.HIDE_DELAY * 3);
+    expect(sidebar.isHidden()).toBe(false);
+    second();
+    vi.advanceTimersByTime(sidebar.HIDE_DELAY - 1);
+    expect(sidebar.isHidden()).toBe(false);
+    vi.advanceTimersByTime(1);
+    expect(sidebar.isHidden()).toBe(true);
+  });
+
+  it("does not restore a rail after its shape was deliberately changed during nested holds", () => {
+    sidebar.setMode("compact");
+    const first = sidebar.expandBriefly();
+    const second = sidebar.expandBriefly();
+    sidebar.toggleMode();
+    second();
+    first();
+    expect(sidebar.sidebarMode()).toBe("default");
+  });
+
+  it("honors a hold when a restored preference enables auto-hide", () => {
+    const release = sidebar.holdRevealed();
+    sidebar.pointerLeft();
+    sidebar.adoptAutoHide(true);
+    expect(sidebar.isHidden()).toBe(false);
+    vi.advanceTimersByTime(sidebar.HIDE_DELAY * 3);
+    expect(sidebar.isHidden()).toBe(false);
+    release();
+    vi.advanceTimersByTime(sidebar.HIDE_DELAY);
+    expect(sidebar.isHidden()).toBe(true);
+  });
+
   it("brings out a hidden rail as the full column, and puts both back", () => {
     sidebar.setMode("compact");
     sidebar.setAutoHide(true);

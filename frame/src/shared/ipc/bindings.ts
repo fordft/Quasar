@@ -374,9 +374,16 @@ export const commands = {
 	 */
 	accessibility: boolean,
 } | null>("launcher_trigger"),
-	launcherSetShortcut: (accelerator: string) => __TAURI_INVOKE<{ type: "applied"; trigger: LauncherTrigger } | { type: "rejected"; reason: Rejection; trigger: LauncherTrigger } | null>("launcher_set_shortcut", { accelerator }),
+	launcherSetShortcut: (accelerator: string, token: {
+	owner: string,
+	/**  The native revision observed before this Start was issued. */
+	revision: string,
+} | null) => __TAURI_INVOKE<{ type: "applied"; trigger: LauncherTrigger } | { type: "rejected"; reason: Rejection; trigger: LauncherTrigger } | null>("launcher_set_shortcut", { accelerator, token }),
 	/**  Silences the current shortcut while a new one is being recorded. */
-	launcherRecordShortcut: (active: boolean) => __TAURI_INVOKE<void>("launcher_record_shortcut", { active }),
+	launcherRecordShortcut: (request: ShortcutRecordingRequest) => __TAURI_INVOKE<{
+	revision: string,
+	owner: string | null,
+} | null>("launcher_record_shortcut", { request }),
 	launcherSetDoubleTap: (mode: DoubleTap) => __TAURI_INVOKE<{
 	shortcut: string,
 	default_shortcut: string,
@@ -478,7 +485,10 @@ export const commands = {
 	 *  Starts or ends recording in Keyboard settings. Chrome ends it on every exit
 	 *  path: a recorded key, Escape, losing focus, and leaving the page.
 	 */
-	keymapRecord: (active: boolean) => __TAURI_INVOKE<boolean>("keymap_record", { active }),
+	keymapRecord: (request: ShortcutRecordingRequest) => __TAURI_INVOKE<{
+	revision: string,
+	owner: string | null,
+} | null>("keymap_record", { request }),
 	defaultBrowserStatus: () => __TAURI_INVOKE<{
 	is_default: boolean,
 	/**
@@ -517,8 +527,8 @@ export const commands = {
 	pageFind: (query: string | null, forward: boolean) => __TAURI_INVOKE<boolean>("page_find", { query, forward }),
 	importSources: () => __TAURI_INVOKE<ImportSourceView[]>("import_sources"),
 	/**
-	 *  Starts importing `kinds` from one profile of one source into the focused
-	 *  profile. Refused while another import runs.
+	 *  Starts importing `kinds` from one source profile into the Quasar profile
+	 *  captured by the shell at admission. Refused while another import runs.
 	 */
 	importStart: (source: string, profile: string, kinds: ImportKindView[]) => __TAURI_INVOKE<boolean>("import_start", { source, profile, kinds }),
 	importCancel: () => __TAURI_INVOKE<boolean>("import_cancel"),
@@ -2482,6 +2492,19 @@ export type SearchResults = {
 	 */
 	completion: string | null,
 	results: SearchResult[],
+};
+
+export type ShortcutRecordingRequest = { kind: "inspect" } | { kind: "start"; token: ShortcutRecordingToken } | { kind: "stop"; token: ShortcutRecordingToken };
+
+export type ShortcutRecordingToken = {
+	owner: string,
+	/**  The native revision observed before this Start was issued. */
+	revision: string,
+};
+
+export type ShortcutRecordingView = {
+	revision: string,
+	owner: string | null,
 };
 
 export type ShutSiteView = {

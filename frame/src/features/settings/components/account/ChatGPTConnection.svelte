@@ -62,6 +62,11 @@
         <Button pending={busy === "sign_in"} disabled={!!busy} onclick={() => void session.signIn()}
           ><ProviderMark provider="open_ai" size={18} />{m.chatgpt_continue()}</Button
         >
+        {#if account.profiles.length > 0}<Button
+            variant="ghost"
+            disabled={!!busy || account.profiles.length >= 8}
+            onclick={() => void session.signIn(null, true)}>{m.chatgpt_add_account()}</Button
+          >{/if}
       </SettingsRow>
     {/if}
     {#each account.profiles.filter((p) => p.signed_in && p.id !== account.active) as profile (profile.id)}

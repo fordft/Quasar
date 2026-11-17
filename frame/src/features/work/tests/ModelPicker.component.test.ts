@@ -163,6 +163,34 @@ test("the effort shows in a word, and the card turns into its control to set it"
   expect(document.querySelector(".model-menu .face.effort")?.hasAttribute("inert")).toBe(true);
 });
 
+test("the page picker chooses its model without showing or changing Work's Max effort", async () => {
+  const initial = view("openai/gpt-6-luna", null, "max");
+  native.read.mockResolvedValue({
+    ...initial,
+    effective: { ...initial.effective, page: "openai/gpt-6-luna" },
+  });
+  const next = view("openai/gpt-6-luna", null, "max");
+  native.choose.mockResolvedValue({
+    ...next,
+    effective: { ...next.effective, page: "openai/gpt-6-sol" },
+  });
+  const efforts = native.effort.mock.calls.length;
+  const screen = await render(ModelPicker, { profile: PROFILE, role: "page" });
+  const trigger = screen.getByRole("button", { name: "Model: GPT-6 Luna", exact: true });
+  await trigger.click();
+  await expect.element(page.getByRole("option", { name: /GPT-6 Sol/u })).toBeVisible();
+  await expect.element(page.getByRole("button", { name: /^Effort:/u })).not.toBeInTheDocument();
+  await expect.element(page.getByRole("slider", { name: "Effort" })).not.toBeInTheDocument();
+  await expect.element(page.getByRole("region", { name: "GPT-6 Luna" })).not.toBeInTheDocument();
+  await expect.element(page.getByText("Max", { exact: true })).not.toBeInTheDocument();
+  await page.getByRole("option", { name: /GPT-6 Sol/u }).click();
+  expect(native.choose).toHaveBeenLastCalledWith(PROFILE, "page", "openai/gpt-6-sol");
+  expect(native.effort).toHaveBeenCalledTimes(efforts);
+  await expect
+    .element(screen.getByRole("button", { name: "Model: GPT-6 Sol", exact: true }))
+    .toBeVisible();
+});
+
 test("Escape turns the open effort back first, and only then closes the menu", async () => {
   await page.viewport(1200, 800);
   native.ready.mockImplementation(ready(true));

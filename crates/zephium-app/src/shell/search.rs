@@ -240,6 +240,14 @@ impl Shell {
         {
             return operation_result(OperationOutcome::Rejected, OperationReason::InvalidScope);
         }
+        if let SearchAction::RunCommand { id } = &action {
+            if commands::get(id).is_some_and(|spec| !spec.available()) {
+                return operation_result(
+                    OperationOutcome::Rejected,
+                    OperationReason::UnsupportedCommand,
+                );
+            }
+        }
         if let SearchAction::OpenUrl { url } = &action {
             if let Some(result) = self
                 .search
@@ -442,6 +450,7 @@ impl Shell {
             results.extend(
                 commands::REGISTRY
                     .iter()
+                    .filter(|c| c.available())
                     // New Tab is an address field, not a command palette. Browser
                     // commands stay in the launcher, which is the surface built
                     // for them; the field offers only places to go.

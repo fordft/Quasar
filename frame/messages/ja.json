@@ -3182,7 +3182,7 @@
   "assist_fault_no_answer": "Quasarから返答がありませんでした。もう一度試すか、言い方を変えてください。",
   "assist_fault_step_failed": "ページ上の操作がうまくいきませんでした。",
   "assist_refusal_no_model": "モデルを選択",
-  "assist_refusal_no_model_help": "Quasarにはモデルが必要です。モデルを選ぶか、キーを追加してください。",
+  "assist_refusal_no_model_help": "設定 → AI で ChatGPT に接続してプランの使用を許可し、モデルを更新して選んでください。",
   "assist_refusal_unsupported": "このシステムではページを読み取れません",
   "assist_refusal_unsupported_help": "Quasarはまだここで開いているページを読み取れません。作成済みのページスタイルは引き続き適用されます。",
   "assist_this_page": "このページ",

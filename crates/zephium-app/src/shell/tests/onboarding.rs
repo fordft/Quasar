@@ -233,6 +233,7 @@ fn essentials_from_another_browser_join_the_kept_sites_once_each_unloaded() {
     };
     let (send, receive) = std::sync::mpsc::channel();
     shell.handle(Command::Import {
+        destination: shell.windows.focused().unwrap().profile,
         work: Box::new(crate::ImportWork::Essentials(vec![
             site("https://mail.example/", "Mail"),
             site("https://mail.example/", "Mail again"),

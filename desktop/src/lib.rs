@@ -2221,8 +2221,6 @@ const MAX_COMMAND_ID_BYTES: usize = 128;
 const MAX_KEPT_SITE_ID_BYTES: usize = 32;
 const MAX_PROFILE_NAME_BYTES: usize = 256;
 const MAX_WINDOW_COORDINATE: f64 = 1_000_000.0;
-#[cfg(test)]
-use zephium_core::layout::{MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH};
 
 /// The tab a native context menu was opened for.
 ///
@@ -3354,6 +3352,12 @@ fn accepted_ui_operation() -> zephium_ipc::OperationAdmission {
     }
 }
 
+/// Availability applies before keymap installation as well as after it.
+fn command_offered(id: &str, keymap: Option<&keymap::Keymap>) -> bool {
+    zephium_core::commands::get(id).is_none_or(|spec| spec.available())
+        && keymap.is_none_or(|keymap| !keymap.is_recording() && keymap.offers(id))
+}
+
 fn execute_command(app: &tauri::AppHandle, id: &str) -> zephium_ipc::OperationAdmission {
     if id == "browser.quit" {
         app.exit(0);
@@ -3362,11 +3366,9 @@ fn execute_command(app: &tauri::AppHandle, id: &str) -> zephium_ipc::OperationAd
     if shutdown_started(app) {
         return rejected_operation();
     }
-    // A feature switched off has no way in, from any menu, key or launcher.
-    if !app
-        .try_state::<keymap::Keymap>()
-        .is_none_or(|keymap| keymap.offers(id))
-    {
+    // Unsupported commands and features switched off have no menu/key/launcher path.
+    let keymap = app.try_state::<keymap::Keymap>();
+    if !command_offered(id, keymap.as_deref()) {
         return rejected_operation();
     }
     if matches!(
@@ -4802,38 +4804,61 @@ fn launcher_edit(
 
 #[tauri::command]
 #[specta::specta]
-fn launcher_trigger(caller: WebviewWindow) -> Option<launcher_trigger::LauncherTrigger> {
-    authorize(&caller, CallerPolicy::Main, "launcher_trigger")
-        .then(|| launcher_trigger::snapshot(caller.app_handle()))
+async fn launcher_trigger(caller: WebviewWindow) -> Option<launcher_trigger::LauncherTrigger> {
+    if !authorize(&caller, CallerPolicy::Main, "launcher_trigger") {
+        return None;
+    }
+    keymap::on_main_thread(caller.app_handle(), launcher_trigger::snapshot).await
 }
 
 #[tauri::command]
 #[specta::specta]
-fn launcher_set_shortcut(
+async fn launcher_set_shortcut(
     caller: WebviewWindow,
     accelerator: String,
+    token: Option<keymap::ShortcutRecordingToken>,
 ) -> Option<launcher_trigger::TriggerChange> {
-    authorize(&caller, CallerPolicy::Main, "launcher_set_shortcut")
-        .then(|| launcher_trigger::set_shortcut(caller.app_handle(), &accelerator))
+    if !authorize(&caller, CallerPolicy::Main, "launcher_set_shortcut") {
+        return None;
+    }
+    keymap::on_main_thread(caller.app_handle(), move |app| {
+        let admitted = app
+            .try_state::<keymap::Keymap>()
+            .map_or(token.is_none(), |keymap| {
+                keymap.recording_token_current(token.as_ref())
+            });
+        admitted.then(|| launcher_trigger::set_shortcut(app, &accelerator))
+    })
+    .await
+    .flatten()
 }
 
 /// Silences the current shortcut while a new one is being recorded.
 #[tauri::command]
 #[specta::specta]
-fn launcher_record_shortcut(caller: WebviewWindow, active: bool) {
-    if authorize(&caller, CallerPolicy::Main, "launcher_record_shortcut") {
-        launcher_trigger::recording(caller.app_handle(), active);
+async fn launcher_record_shortcut(
+    caller: WebviewWindow,
+    request: keymap::ShortcutRecordingRequest,
+) -> Option<keymap::ShortcutRecordingView> {
+    if !authorize(&caller, CallerPolicy::Main, "launcher_record_shortcut") {
+        return None;
     }
+    keymap::record_shortcut(caller.app_handle(), request).await
 }
 
 #[tauri::command]
 #[specta::specta]
-fn launcher_set_double_tap(
+async fn launcher_set_double_tap(
     caller: WebviewWindow,
     mode: launcher_trigger::DoubleTap,
 ) -> Option<launcher_trigger::LauncherTrigger> {
-    authorize(&caller, CallerPolicy::Main, "launcher_set_double_tap")
-        .then(|| launcher_trigger::set_double_tap(caller.app_handle(), mode))
+    if !authorize(&caller, CallerPolicy::Main, "launcher_set_double_tap") {
+        return None;
+    }
+    keymap::on_main_thread(caller.app_handle(), move |app| {
+        launcher_trigger::set_double_tap(app, mode)
+    })
+    .await
 }
 
 #[tauri::command]
@@ -5046,6 +5071,18 @@ fn build_command_menu_item(
     build_command_menu_item_enabled(handle, resolved, id, true)
 }
 
+fn menu_accelerator<'a>(
+    handle: &tauri::AppHandle,
+    id: &str,
+    accelerator: Option<&'a str>,
+) -> Option<&'a str> {
+    handle
+        .try_state::<keymap::Keymap>()
+        .map_or(accelerator, |keymap| {
+            keymap.menu_accelerator(id, accelerator)
+        })
+}
+
 fn build_command_menu_item_enabled(
     handle: &tauri::AppHandle,
     resolved: &[zephium_core::commands::ResolvedCommand],
@@ -5064,7 +5101,8 @@ fn build_command_menu_item_enabled(
         })?;
     let mut builder =
         MenuItemBuilder::with_id(command.id, menu_text::label(command.title)).enabled(enabled);
-    if let Some(accelerator) = &command.accelerator {
+    if let Some(accelerator) = menu_accelerator(handle, command.id, command.accelerator.as_deref())
+    {
         builder = builder.accelerator(accelerator);
     }
     builder.build(handle)
@@ -5095,6 +5133,11 @@ fn build_menu(
 
     let resolved = zephium_core::commands::resolve(overrides);
     let item = |id: &str| build_command_menu_item(handle, &resolved, id);
+    // AppKit's predefined window selectors bypass command admission entirely.
+    // Omit their key equivalents while recording; Quit and Edit remain intact.
+    let window_actions = handle
+        .try_state::<keymap::Keymap>()
+        .is_none_or(|keymap| !keymap.is_recording());
 
     // About is Settings' About page: the system panel cannot open links in a tab.
     let about =
@@ -5106,13 +5149,19 @@ fn build_menu(
         .item(&item("browser.settings")?)
         .separator();
     #[cfg(target_os = "macos")]
-    let app_menu = app_menu
-        .services_with_text(menu_text::label("Services"))
-        .separator()
-        .hide_with_text(menu_text::label("Hide Quasar"))
-        .hide_others_with_text(menu_text::label("Hide Others"))
-        .show_all_with_text(menu_text::label("Show All"))
-        .separator();
+    let app_menu = {
+        let menu = app_menu
+            .services_with_text(menu_text::label("Services"))
+            .separator();
+        if window_actions {
+            menu.hide_with_text(menu_text::label("Hide Quasar"))
+                .hide_others_with_text(menu_text::label("Hide Others"))
+                .show_all_with_text(menu_text::label("Show All"))
+                .separator()
+        } else {
+            menu
+        }
+    };
     let app_menu = app_menu.item(&build_quit_menu_item(handle)?).build()?;
     let file = SubmenuBuilder::new(handle, menu_text::label("File"))
         .item(&item("tab.new")?)
@@ -5186,10 +5235,18 @@ fn build_menu(
         .item(&item("tool.bookmarks")?)
         .build()?;
     let spaces = spaces::build_menu_section(handle, overrides)?;
-    let window = SubmenuBuilder::new(handle, menu_text::label("Window"))
-        .minimize_with_text(menu_text::label("Minimize"));
+    let window = SubmenuBuilder::new(handle, menu_text::label("Window"));
+    let window = if window_actions {
+        window.minimize_with_text(menu_text::label("Minimize"))
+    } else {
+        window
+    };
     #[cfg(target_os = "macos")]
-    let window = window.fullscreen_with_text(menu_text::label("Enter Full Screen"));
+    let window = if window_actions {
+        window.fullscreen_with_text(menu_text::label("Enter Full Screen"))
+    } else {
+        window
+    };
     let window = window
         .separator()
         .item(&item("tab.next")?)
@@ -7041,11 +7098,37 @@ mod frame_sources;
 
 #[cfg(test)]
 mod tests {
-
     use tauri::Url;
+    use zephium_core::layout::{MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH};
     use zephium_ipc::{
         OperationDisposition, OperationOutcome, OperationReason, OperationStatus, SearchAction,
     };
+
+    #[test]
+    fn command_availability_does_not_depend_on_keymap_installation() {
+        let keymap = super::keymap::Keymap::default();
+        for installed in [None, Some(&keymap)] {
+            assert_eq!(
+                super::command_offered("sidebar.toggleAutoHide", installed),
+                cfg!(target_os = "macos")
+            );
+            assert!(super::command_offered("tab.new", installed));
+        }
+        keymap.follow_preference("notes.enabled", "false");
+        assert!(!super::command_offered("note.new", Some(&keymap)));
+    }
+
+    #[test]
+    fn recording_does_not_dispatch_ordinary_commands_and_restores_them_afterward() {
+        let keymap = super::keymap::Keymap::default();
+        assert!(super::command_offered("tab.new", Some(&keymap)));
+        keymap.set_recording(true);
+        assert!(!super::command_offered("tab.new", Some(&keymap)));
+        assert!(!super::command_offered("settings.about", Some(&keymap)));
+        keymap.set_recording(false);
+        assert!(super::command_offered("tab.new", Some(&keymap)));
+        assert!(super::command_offered("settings.about", Some(&keymap)));
+    }
 
     fn completion(operation_id: &str) -> OperationDisposition {
         OperationDisposition {
@@ -8895,11 +8978,9 @@ mod tests {
             0.0
         ));
 
-        assert!(super::sidebar_width_in_bounds(super::MIN_SIDEBAR_WIDTH));
-        assert!(super::sidebar_width_in_bounds(super::MAX_SIDEBAR_WIDTH));
-        assert!(!super::sidebar_width_in_bounds(
-            super::MIN_SIDEBAR_WIDTH - 1.0
-        ));
+        assert!(super::sidebar_width_in_bounds(MIN_SIDEBAR_WIDTH));
+        assert!(super::sidebar_width_in_bounds(MAX_SIDEBAR_WIDTH));
+        assert!(!super::sidebar_width_in_bounds(MIN_SIDEBAR_WIDTH - 1.0));
         assert!(!super::sidebar_width_in_bounds(f64::NAN));
     }
 

@@ -3,7 +3,12 @@
  * current keys and its defaults. Native owns validation and storage; this is
  * the mirror Keyboard settings draws and the chrome key handler matches.
  */
-import { commands, type KeymapEntry, type KeymapOutcome } from "$shared/ipc/bindings";
+import {
+  commands,
+  type KeymapEntry,
+  type KeymapOutcome,
+  type ShortcutRecordingRequest,
+} from "$shared/ipc/bindings";
 import { events } from "$shared/ipc/native-events";
 import { sameAccelerator } from "$shared/lib/accelerator";
 
@@ -88,6 +93,6 @@ export async function reset(id: string | null): Promise<boolean> {
 
 /** While recording, native window-level key handlers stand aside so the keys
  *  reach the recorder. */
-export async function record(active: boolean): Promise<void> {
-  await commands.keymapRecord(active).catch(() => {});
+export function record(request: ShortcutRecordingRequest) {
+  return commands.keymapRecord(request);
 }

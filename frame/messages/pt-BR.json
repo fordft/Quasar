@@ -3182,7 +3182,7 @@
   "assist_fault_no_answer": "O Quasar voltou sem nada a dizer. Tente de novo ou pergunte de outro jeito.",
   "assist_fault_step_failed": "Uma etapa na página não funcionou.",
   "assist_refusal_no_model": "Escolha um modelo",
-  "assist_refusal_no_model_help": "O Quasar precisa de um modelo. Escolha um ou adicione uma chave.",
+  "assist_refusal_no_model_help": "Em Ajustes → IA, conecte o ChatGPT e permita o uso do plano. Depois, atualize os modelos e escolha um.",
   "assist_refusal_unsupported": "Não é possível ler páginas neste sistema",
   "assist_refusal_unsupported_help": "O Quasar ainda não consegue ler páginas abertas aqui. Os estilos de página que você criou continuam valendo.",
   "assist_this_page": "esta página",

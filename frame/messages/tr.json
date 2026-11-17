@@ -3182,7 +3182,7 @@
   "assist_fault_no_answer": "Quasar'un söyleyecek bir şeyi olmadı. Yeniden deneyin veya başka türlü sorun.",
   "assist_fault_step_failed": "Sayfadaki bir adım çalışmadı.",
   "assist_refusal_no_model": "Bir model seçin",
-  "assist_refusal_no_model_help": "Quasar'un bir modele ihtiyacı var. Bir model seçin veya anahtar ekleyin.",
+  "assist_refusal_no_model_help": "Ayarlar → Yapay Zekâ bölümünde ChatGPT’yi bağlayıp plan kullanımına izin verin, ardından modelleri yenileyip birini seçin.",
   "assist_refusal_unsupported": "Bu sistemde sayfalar okunamıyor",
   "assist_refusal_unsupported_help": "Quasar burada açık sayfaları henüz okuyamıyor. Oluşturduğunuz sayfa stilleri yine de geçerli.",
   "assist_this_page": "bu sayfa",

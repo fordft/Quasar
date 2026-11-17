@@ -1,4 +1,5 @@
 import * as m from "$shared/i18n/messages";
+import { IS_MAC, IS_WINDOWS } from "$shared/platform";
 export const fields = {
   "privacy.cleanup": {
     preview: true,
@@ -231,6 +232,7 @@ export const fields = {
   },
   "tabs.automatic-pip": {
     section: "tabs",
+    available: () => IS_MAC || IS_WINDOWS,
     label: m.pref_tabs_automatic_pip,
     description: m.pref_tabs_automatic_pip_help,
     initial: true,
@@ -550,3 +552,8 @@ export const fields = {
   },
 } as const;
 export type FieldId = keyof typeof fields;
+
+export function fieldAvailable(id: FieldId): boolean {
+  const field = fields[id];
+  return (IS_MAC || !("macOnly" in field)) && (!("available" in field) || field.available());
+}

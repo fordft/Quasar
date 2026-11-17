@@ -1,10 +1,11 @@
 //! Bringing bookmarks and history over from another browser. Reading happens
 //! on a blocking worker from fresh discovery, never from a path chrome named;
-//! writing goes through the shell into the focused profile. Progress reaches
+//! writing goes through the shell into the native-captured profile. Progress reaches
 //! chrome as whole snapshots of the one job that may run at a time.
 
 use super::*;
 use std::sync::Mutex;
+use zephium_core::ids::ProfileId;
 use zephium_import::{Browser, ImportError, Locations};
 
 const EVENT_IMPORT_PROGRESS: &str = "zephium:import-progress";
@@ -147,11 +148,11 @@ pub(crate) async fn import_sources(caller: WebviewWindow) -> Vec<ImportSourceVie
         .collect()
 }
 
-/// Starts importing `kinds` from one profile of one source into the focused
-/// profile. Refused while another import runs.
+/// Starts importing `kinds` from one source profile into the Quasar profile
+/// captured by the shell at admission. Refused while another import runs.
 #[tauri::command]
 #[specta::specta]
-pub(crate) fn import_start(
+pub(crate) async fn import_start(
     caller: WebviewWindow,
     app: tauri::AppHandle,
     source: String,
@@ -183,13 +184,23 @@ pub(crate) fn import_start(
         }
         *running = Some(cancelled.clone());
     }
+    let destination = destination(&app).await;
+    let Some(destination) =
+        destination.filter(|_| !cancelled.load(Ordering::Acquire) && !shutdown_started(&app))
+    else {
+        *jobs
+            .running
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = None;
+        return false;
+    };
     let ordered: Vec<ImportKindView> = KIND_ORDER
         .into_iter()
         .filter(|kind| kinds.contains(kind))
         .collect();
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
-        run(&app, browser, profile, ordered, cancelled).await;
+        run(&app, browser, profile, destination, ordered, cancelled).await;
         if let Some(jobs) = app.try_state::<ImportJobs>() {
             *jobs
                 .running
@@ -240,6 +251,7 @@ async fn run(
     app: &tauri::AppHandle,
     browser: Browser,
     profile: String,
+    destination: ProfileId,
     kinds: Vec<ImportKindView>,
     cancelled: Arc<AtomicBool>,
 ) {
@@ -282,7 +294,7 @@ async fn run(
                     job.cancelled = true;
                 } else {
                     sites.note(&work);
-                    match write(app, work).await {
+                    match write(app, destination, work).await {
                         Some(added) => {
                             progress.done = added;
                             progress.state = ImportStateView::Done;
@@ -301,7 +313,7 @@ async fn run(
     // imported rows show real marks without asking any site.
     #[cfg(feature = "work-product")]
     if !job.cancelled && !cancelled.load(Ordering::Acquire) {
-        import_icons(app, browser, &profile, sites.wanted()).await;
+        import_icons(app, browser, &profile, destination, sites.wanted()).await;
     }
     #[cfg(not(feature = "work-product"))]
     let _ = sites;
@@ -376,6 +388,7 @@ async fn import_icons(
     app: &tauri::AppHandle,
     browser: Browser,
     profile: &str,
+    destination: ProfileId,
     wanted: Vec<String>,
 ) {
     if wanted.is_empty() {
@@ -400,7 +413,7 @@ async fn import_icons(
     .unwrap_or_default();
     // Sent even when empty: storing it is what refreshes the sidebar, so a
     // source with no icons of its own still has its Essentials fetched.
-    let _ = write(app, zephium_app::ImportWork::Icons(icons)).await;
+    let _ = write(app, destination, zephium_app::ImportWork::Icons(icons)).await;
 }
 
 async fn read(
@@ -470,10 +483,32 @@ fn links(nodes: &[zephium_import::ImportNode]) -> u32 {
         .fold(0u32, u32::saturating_add)
 }
 
-async fn write(app: &tauri::AppHandle, work: zephium_app::ImportWork) -> Option<u32> {
+/// Enqueued before the first source read. The actor owns both bootstrap and
+/// focus, so chrome never supplies or substitutes the destination identity.
+async fn destination(app: &tauri::AppHandle) -> Option<ProfileId> {
+    let shell = app.try_state::<Handle>()?.inner().clone();
+    let (reply, receive) = std::sync::mpsc::sync_channel(1);
+    if !shell.dispatch(Command::ImportDestination { reply }) {
+        return None;
+    }
+    tauri::async_runtime::spawn_blocking(move || {
+        receive.recv_timeout(std::time::Duration::from_secs(4))
+    })
+    .await
+    .ok()?
+    .ok()
+    .flatten()
+}
+
+async fn write(
+    app: &tauri::AppHandle,
+    destination: ProfileId,
+    work: zephium_app::ImportWork,
+) -> Option<u32> {
     let shell = app.try_state::<Handle>()?.inner().clone();
     let (send, receive) = tokio::sync::oneshot::channel();
     if !shell.dispatch(Command::Import {
+        destination,
         work: Box::new(work),
         done: zephium_app::ImportCompletion::new(move |added| {
             let _ = send.send(added);

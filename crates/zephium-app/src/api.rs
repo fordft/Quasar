@@ -310,9 +310,14 @@ pub enum Command {
     Focus(zephium_ipc::FocusControl),
     /// The running focus session reached its next change.
     FocusWake,
-    /// Writes what was read from another browser into the focused profile,
-    /// restoring the session first when it has not been yet (onboarding).
+    /// Captures the writable Quasar destination before reading another
+    /// browser. Restores the session first when needed during onboarding.
+    ImportDestination {
+        reply: SyncSender<Option<ProfileId>>,
+    },
+    /// Writes to the native-captured destination even after focus changes.
     Import {
+        destination: ProfileId,
         work: Box<crate::store_reads::ImportWork>,
         done: ImportCompletion,
     },

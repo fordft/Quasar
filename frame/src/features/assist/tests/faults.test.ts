@@ -21,6 +21,15 @@ test("a missing or refused key leads to Settings → AI", () => {
   expect(faultView({ reason: "no_model" }).fix?.command).toBe("settings.ai");
 });
 
+test("a missing model explains ChatGPT consent and catalog recovery in Settings → AI", () => {
+  const view = faultView({ reason: "no_model" });
+  expect(view.message).toContain("connect ChatGPT and allow plan usage");
+  expect(view.message).toContain("refresh the models and choose one");
+  expect(view.message).not.toContain("key");
+  expect(view.fix?.command).toBe("settings.ai");
+  expect(availabilityView("no_model").help).toBe(view.message);
+});
+
 test("a plan a model needs and the daily limit point at the account", () => {
   expect(model("plan_required").fix?.command).toBe("settings.account");
   expect(model("daily_limit").message).toContain("resets");

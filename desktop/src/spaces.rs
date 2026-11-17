@@ -427,7 +427,10 @@ fn space_items(
         let key = resolved
             .iter()
             .find(|entry| entry.id == command)
-            .and_then(|entry| entry.accelerator.clone());
+            .and_then(|entry| {
+                super::menu_accelerator(handle, entry.id, entry.accelerator.as_deref())
+            })
+            .map(str::to_owned);
         let id = if key.is_some() {
             command
         } else {

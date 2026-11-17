@@ -3182,7 +3182,7 @@
   "assist_fault_no_answer": "Quasar hatte nichts zu sagen. Versuch es erneut oder frag anders.",
   "assist_fault_step_failed": "Ein Schritt auf der Seite hat nicht geklappt.",
   "assist_refusal_no_model": "Wähle ein Modell",
-  "assist_refusal_no_model_help": "Quasar braucht ein Modell. Wähle eines oder füge einen Schlüssel hinzu.",
+  "assist_refusal_no_model_help": "Verbinde ChatGPT unter Einstellungen → KI und erlaube die Nutzung deines Tarifs. Aktualisiere dann die Modelle und wähle eines aus.",
   "assist_refusal_unsupported": "Seiten können auf diesem System nicht gelesen werden",
   "assist_refusal_unsupported_help": "Quasar kann geöffnete Seiten hier noch nicht lesen. Von dir erstellte Seitenstile gelten weiterhin.",
   "assist_this_page": "diese Seite",

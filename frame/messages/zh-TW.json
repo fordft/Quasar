@@ -3182,7 +3182,7 @@
   "assist_fault_no_answer": "Quasar 沒有給出回覆。請再試一次，或換個方式提問。",
   "assist_fault_step_failed": "網頁上的某個步驟沒有成功。",
   "assist_refusal_no_model": "選擇模型",
-  "assist_refusal_no_model_help": "Quasar 需要一個模型。請選擇一個，或新增金鑰。",
+  "assist_refusal_no_model_help": "在「設定 → AI」中連接 ChatGPT 並允許使用方案，然後重新整理模型清單並選擇一個模型。",
   "assist_refusal_unsupported": "這個系統上無法讀取網頁",
   "assist_refusal_unsupported_help": "Quasar 暫時還無法在這裡讀取已開啟的網頁。你已建立的網頁樣式仍會生效。",
   "assist_this_page": "這個網頁",

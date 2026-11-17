@@ -133,7 +133,7 @@ function applyAutoHide(next: boolean, travel: boolean) {
   if (next === autoHide) return;
   autoHide = next;
   clearTimers();
-  revealed = false;
+  revealed = holds > 0;
   pointerInside = false;
   settleHidden(travel);
 }
@@ -170,12 +170,12 @@ export function toggleAutoHide() {
 }
 
 /** Page and tools tell whether the sidebar may hide; back from a place it
- *  could not, it stays out only if the pointer is still on it. */
+ *  could not, it stays out while held or if the pointer is still on it. */
 export function setAutoHideApplies(applies: boolean) {
   if (applies === autoHideApplies) return;
   autoHideApplies = applies;
   clearTimers();
-  revealed = applies && pointerInside;
+  revealed = holds > 0 || (applies && pointerInside);
   settleHidden(true);
 }
 
@@ -219,11 +219,13 @@ export function pointerLeft() {
 }
 
 /**
- * Keeps a revealed sidebar out while something needs it: a tab being dragged
+ * Keeps the sidebar out while something needs it: a tab being dragged
  * toward the page, a field being used. Returns the release.
  */
 export function holdRevealed(): () => void {
   holds++;
+  clearTimers();
+  reveal();
   let released = false;
   return () => {
     if (released) return;
@@ -235,17 +237,10 @@ export function holdRevealed(): () => void {
 
 /**
  * Brings a hidden sidebar out for as long as something there needs an answer:
- * a request from a page, a permission prompt. Nothing changes when the sidebar
- * is already out. Returns the release.
+ * a request from a page, a permission prompt. Returns the release.
  */
 export function revealHeld(): () => void {
-  const release = holdRevealed();
-  if (hidden()) {
-    clearTimers();
-    revealed = true;
-    settleHidden(true);
-  }
-  return release;
+  return holdRevealed();
 }
 
 export function applyDragWidth(value: number) {
@@ -346,23 +341,29 @@ export function setMode(next: SidebarMode) {
   save(next);
 }
 
+let briefExpansions = 0;
+
 /**
  * Shows the full column for a moment without touching the preference. The
- * returned function puts the rail back, unless a shape was chosen meanwhile.
+ * last release puts the rail back, unless a shape was chosen meanwhile.
  */
 export function expandBriefly(): () => void {
   cancelSidebarResize();
+  briefExpansions++;
   const wasHidden = hidden();
   const wasCompact = mode === "compact";
   if (wasCompact) mode = "default";
-  // A hidden sidebar comes out for as long as the caller needs it, in the
-  // shape it is being given: one change of width, not two.
-  const release = wasHidden ? revealHeld() : () => {};
-  if (!wasCompact) return release;
-  if (!wasHidden) publish(true);
+  // Every caller holds its expansion, including a column revealed by hover.
+  // A hidden rail comes out in its expanded shape in one change of width.
+  const release = revealHeld();
+  if (wasCompact && !wasHidden) publish(true);
+  let released = false;
   return () => {
+    if (released) return;
+    released = true;
+    briefExpansions--;
     release();
-    if (mode !== "default" || desiredMode !== "compact") return;
+    if (briefExpansions > 0 || mode !== "default" || desiredMode !== "compact") return;
     cancelSidebarResize();
     mode = "compact";
     publish(true);

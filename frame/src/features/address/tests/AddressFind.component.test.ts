@@ -5,6 +5,7 @@ import "$styles/global.css";
 import { emitNativeEvent } from "$shared/testing/native-events";
 import { revision, tabFixture } from "$shared/testing/fixtures";
 import { tabs } from "$domain/tabs";
+import * as sidebar from "$session/sidebar-mode.svelte";
 import * as find from "../lib/find.svelte";
 import AddressField from "../components/AddressField.svelte";
 
@@ -15,11 +16,13 @@ vi.mock("$shared/ipc/bindings", async () => {
     tabsBootstrap: async () => {},
     pageFind: native.find,
     sidebarSetWidth: async () => {},
+    settingSet: async () => ({ accepted: true, operation_id: null }),
   });
 });
 
 afterEach(() => {
   find.dispose();
+  sidebar.setAutoHide(false);
   tabs.dispose();
   vi.clearAllMocks();
 });
@@ -83,4 +86,24 @@ test("find next with the field closed picks up the last search", async () => {
   await expect.element(screen.getByRole("searchbox")).toHaveValue("wiki");
   emitNativeEvent("find", { query: "wiki", matches: 0, active: null });
   await expect.element(screen.getByText("No results")).toBeVisible();
+});
+
+test("open Find keeps its column visible across auto-hide toggles until it closes", async () => {
+  const { screen, address, tab } = await field();
+  find.show(tab.id);
+  await expect.element(screen.getByRole("searchbox")).toHaveFocus();
+  sidebar.pointerLeft();
+  window.dispatchEvent(new Event("blur"));
+  sidebar.setAutoHide(true);
+  expect(sidebar.isHidden()).toBe(false);
+  sidebar.setAutoHide(false);
+  sidebar.setAutoHide(true);
+  find.show(tab.id);
+  await new Promise((resolve) => setTimeout(resolve, sidebar.HIDE_DELAY + 80));
+  expect(sidebar.isHidden()).toBe(false);
+  await expect.element(screen.getByRole("searchbox")).toBeVisible();
+  expect(address.value).toBe("www.wikipedia.org");
+  find.hide();
+  await new Promise((resolve) => setTimeout(resolve, sidebar.HIDE_DELAY + 80));
+  expect(sidebar.isHidden()).toBe(true);
 });

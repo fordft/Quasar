@@ -2,6 +2,7 @@ import { observe, pause } from "$shared/lib/observe";
 import { commands } from "$shared/ipc/bindings";
 import { events } from "$shared/ipc/native-events";
 import { settle } from "$domain/operations";
+import { IS_LINUX } from "$shared/platform";
 
 const defaults = {
   appearance: "system",
@@ -19,8 +20,8 @@ const defaults = {
   "ui.newtab-clock-format": "system",
   "ui.newtab-tasks": "true",
   "ui.tab-layout": "vertical",
-  "ai.enabled": "true",
-  "work.enabled": "true",
+  "ai.enabled": IS_LINUX ? "false" : "true",
+  "work.enabled": IS_LINUX ? "false" : "true",
   "work.screenshots": "true",
   "ui.language": "system",
   "ui.density": "comfortable",

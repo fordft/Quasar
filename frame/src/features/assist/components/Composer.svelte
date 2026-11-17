@@ -32,6 +32,7 @@
   let field = $state<HTMLTextAreaElement>();
   let dictating = $state(false);
   let voice = $state<{ toggle(): void }>();
+  let draftRevision = 0;
 
   const status = $derived(session.status);
   const page = $derived(session.pageAttached ? (status?.page ?? null) : null);
@@ -57,7 +58,14 @@
   /** Rust said this conversation cannot talk; until it answers, the field is open to typing. */
   const off = $derived(!!status && !session.talks);
   const busy = $derived(session.busy);
-  const ready = $derived(!!draft.trim() && session.talks && !busy && !session.sending);
+  const ready = $derived(
+    !!draft.trim() &&
+      session.talks &&
+      !busy &&
+      !session.sending &&
+      !session.navigating &&
+      !session.attachmentsPending,
+  );
   const picking = $derived(session.picking !== null);
   const notice = $derived(session.notice ? faultView(session.notice).message : null);
   const chips = $derived(
@@ -86,7 +94,20 @@
 
   async function send() {
     if (!ready) return;
-    if (await session.ask(draft)) ondraft("");
+    const owner = session;
+    const generation = owner.conversationGeneration;
+    const submitted = draft;
+    const revision = draftRevision;
+    if (await owner.ask(submitted))
+      await owner.settleComposer(generation, () => {
+        if (owner === session && revision === draftRevision && draft === submitted) ondraft("");
+      });
+  }
+
+  function editDraft(text: string) {
+    draftRevision++;
+    session.notice = null;
+    ondraft(text);
   }
 
   function onkeydown(event: KeyboardEvent) {
@@ -115,7 +136,7 @@
 
   function commit(text: string) {
     const before = draft.trimEnd();
-    ondraft(before ? `${before} ${text}` : text);
+    editDraft(before ? `${before} ${text}` : text);
     dictating = false;
     requestAnimationFrame(() => {
       field?.focus();
@@ -183,7 +204,13 @@
         </li>
       {/if}
       {#each session.picks as picked (picked.pick)}
-        <li class="chip" title={`${picked.label} · ${picked.host}`}>
+        {@const pending = session.pickPending(picked)}
+        <li
+          class="chip"
+          class:hint={pending}
+          aria-busy={pending || undefined}
+          title={pending ? m.panel_loading() : `${picked.label} · ${picked.host}`}
+        >
           <Icon icon={Target02Icon} size={12} strokeWidth={1.8} />
           <span class="name">{picked.label}</span>
           {@render drop(picked.label, () => session.detach(picked))}
@@ -223,8 +250,7 @@
       value={draft}
       onfocus={() => session.refresh()}
       oninput={(event) => {
-        session.notice = null;
-        ondraft(event.currentTarget.value);
+        editDraft(event.currentTarget.value);
       }}
       {onkeydown}></textarea>
   {/if}

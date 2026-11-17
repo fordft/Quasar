@@ -172,9 +172,20 @@ fn empty() -> AccountV1 {
     }
 }
 async fn reply(result: Result<(), AccountFaultV1>) -> AccountReplyV1 {
+    let session = match SERVICE.get() {
+        Some(runtime) => Some(runtime.session().await),
+        None => None,
+    };
+    project_reply(session, result)
+}
+
+fn project_reply(
+    session: Option<Result<quasar_chatgpt::SessionView, Error>>,
+    result: Result<(), AccountFaultV1>,
+) -> AccountReplyV1 {
     let mut account = empty();
-    if let Some(runtime) = SERVICE.get() {
-        match runtime.session().await {
+    if let Some(session) = session {
+        match session {
             Ok(session) => {
                 let active = session.active();
                 account.signed_in = active.is_some_and(|p| p.signed_in);
@@ -345,10 +356,8 @@ pub(crate) async fn account_sign_in(
     let app = caller.app_handle().clone();
     if !open_system(&app, authorization.url().to_owned(), true).await {
         runtime.cancel();
-        return AccountReplyV1 {
-            account: empty(),
-            fault: Some(AccountFaultV1::Unavailable),
-        };
+        changed(&app);
+        return reply(Err(AccountFaultV1::Browser)).await;
     }
     changed(&app);
     tauri::async_runtime::spawn(async move {
@@ -437,4 +446,47 @@ pub(crate) async fn account_retry_cleanup(caller: WebviewWindow) -> AccountReply
         Ok(())
     })
     .await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn browser_failure_preserves_authoritative_account_after_cancellation() {
+        let session = quasar_chatgpt::SessionView {
+            active: Some("existing".into()),
+            profiles: vec![
+                quasar_chatgpt::ProfileView {
+                    id: "existing".into(),
+                    label: "ChatGPT connection 1".into(),
+                    email: Some("ada@example.com".into()),
+                    signed_in: true,
+                    sharing: true,
+                },
+                quasar_chatgpt::ProfileView {
+                    id: "retained".into(),
+                    label: "ChatGPT connection 2".into(),
+                    email: None,
+                    signed_in: false,
+                    sharing: false,
+                },
+            ],
+            pending: false,
+            fault: None,
+        };
+
+        let response = project_reply(Some(Ok(session)), Err(AccountFaultV1::Browser));
+
+        assert_eq!(response.fault, Some(AccountFaultV1::Browser));
+        assert!(response.account.signed_in);
+        assert!(response.account.sharing);
+        assert!(!response.account.pending);
+        assert_eq!(response.account.active.as_deref(), Some("existing"));
+        assert_eq!(response.account.email.as_deref(), Some("ada@example.com"));
+        assert_eq!(response.account.profiles.len(), 2);
+        assert!(response.account.profiles[0].signed_in);
+        assert!(!response.account.profiles[1].signed_in);
+        assert_eq!(response.account.fault, None);
+    }
 }

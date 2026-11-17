@@ -17,6 +17,103 @@ const MAX_ACCELERATOR_BYTES: usize = 64;
 
 type EngineTable = Box<dyn Fn(Vec<Shortcut>) + Send + Sync>;
 
+#[derive(Clone, Debug, Serialize, Deserialize, specta::Type)]
+pub(crate) struct ShortcutRecordingToken {
+    pub(crate) owner: String,
+    /// The native revision observed before this Start was issued.
+    pub(crate) revision: String,
+}
+
+impl ShortcutRecordingToken {
+    fn base_revision(&self) -> Option<u64> {
+        if self.owner.is_empty()
+            || self.owner.len() > 64
+            || !self
+                .owner
+                .bytes()
+                .all(|c| c.is_ascii_alphanumeric() || c == b'-')
+            || self.revision.len() > 20
+        {
+            return None;
+        }
+        let revision = self.revision.parse::<u64>().ok()?;
+        (revision.to_string() == self.revision).then_some(revision)
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, specta::Type)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub(crate) enum ShortcutRecordingRequest {
+    Inspect,
+    Start { token: ShortcutRecordingToken },
+    Stop { token: ShortcutRecordingToken },
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, specta::Type)]
+pub(crate) struct ShortcutRecordingView {
+    pub(crate) revision: String,
+    pub(crate) owner: Option<String>,
+}
+
+#[derive(Default)]
+struct RecordingLease {
+    revision: u64,
+    owner: Option<ShortcutRecordingToken>,
+}
+
+impl RecordingLease {
+    fn view(&self) -> ShortcutRecordingView {
+        ShortcutRecordingView {
+            revision: self.revision.to_string(),
+            owner: self.owner.as_ref().map(|token| token.owner.clone()),
+        }
+    }
+
+    fn owns(&self, token: &ShortcutRecordingToken) -> bool {
+        token.base_revision().is_some()
+            && self
+                .owner
+                .as_ref()
+                .is_some_and(|known| known.owner == token.owner && known.revision == token.revision)
+    }
+
+    /// A cancelled idle revision is a tombstone for a Start still in transit.
+    /// Replacing a lease advances the revision, so old Stops cannot release it.
+    fn apply(
+        &mut self,
+        request: ShortcutRecordingRequest,
+    ) -> Option<(ShortcutRecordingView, bool)> {
+        let (start, token) = match request {
+            ShortcutRecordingRequest::Inspect => return Some((self.view(), false)),
+            ShortcutRecordingRequest::Start { token } => (true, token),
+            ShortcutRecordingRequest::Stop { token } => (false, token),
+        };
+        let expected = token.base_revision()?;
+        if start && self.owns(&token) {
+            // Reassert suspension after a refused launcher registration.
+            return Some((self.view(), true));
+        }
+        let accepted = if start {
+            expected == self.revision
+        } else {
+            self.owns(&token) || expected == self.revision
+        };
+        if accepted {
+            self.revision = self.revision.checked_add(1)?;
+            if start {
+                self.owner = Some(token);
+            } else if self.owns(&token) {
+                self.owner = None;
+            } else if self.owner.is_some() {
+                // Cancel a pending takeover without releasing the current
+                // owner. Its grant token remains valid as the clock advances.
+                return Some((self.view(), false));
+            }
+        }
+        Some((self.view(), accepted))
+    }
+}
+
 #[derive(Default)]
 pub(crate) struct Keymap {
     overrides: RwLock<HashMap<String, String>>,
@@ -27,6 +124,7 @@ pub(crate) struct Keymap {
     /// Keyboard settings is recording a shortcut: window-level handlers stand
     /// aside so the keys reach the recorder instead of running commands.
     recording: AtomicBool,
+    recording_lease: Mutex<RecordingLease>,
     engine: OnceLock<EngineTable>,
     /// Read by the GTK key handlers of the main and launcher windows.
     #[cfg(target_os = "linux")]
@@ -59,7 +157,7 @@ impl Keymap {
         *write(&keymap.overrides) = stored
             .into_iter()
             .filter(|(id, value)| {
-                commands::get(id).is_some_and(|spec| spec.customizable())
+                commands::get(id).is_some_and(|spec| spec.available() && spec.customizable())
                     && value.len() <= MAX_ACCELERATOR_BYTES
             })
             .take(commands::MAX_OVERRIDES)
@@ -87,6 +185,9 @@ impl Keymap {
     /// registered on its own; Work keys exist only while the pane is shown, so
     /// a bare Escape never leaves an ordinary page.
     fn engine_table(&self) -> Vec<Shortcut> {
+        if self.is_recording() {
+            return Vec::new();
+        }
         let shown = self.work_pane_shown.load(Ordering::Acquire);
         self.resolved()
             .iter()
@@ -164,7 +265,8 @@ impl Keymap {
 
     /// Whether a command's feature is on, so it is matched, listed and run.
     pub(crate) fn offers(&self, command: &str) -> bool {
-        commands::feature_of(command).is_none_or(|feature| self.feature_on(feature))
+        commands::get(command).is_none_or(|spec| spec.available())
+            && commands::feature_of(command).is_none_or(|feature| self.feature_on(feature))
     }
 
     /// Follows a stored feature switch: off, its keys stop matching anywhere.
@@ -184,7 +286,29 @@ impl Keymap {
         changed
     }
 
-    fn set_recording(&self, recording: bool) {
+    pub(crate) fn is_recording(&self) -> bool {
+        self.recording.load(Ordering::Acquire)
+    }
+
+    pub(crate) fn recording_token_current(&self, token: Option<&ShortcutRecordingToken>) -> bool {
+        let lease = self
+            .recording_lease
+            .lock()
+            .unwrap_or_else(|p| p.into_inner());
+        token.map_or(lease.owner.is_none(), |token| lease.owns(token))
+    }
+
+    /// Only custom browser menu keys stand aside. Quit keeps its safety path;
+    /// standard Edit selectors are native predefined items, outside this map.
+    pub(crate) fn menu_accelerator<'a>(
+        &self,
+        id: &str,
+        accelerator: Option<&'a str>,
+    ) -> Option<&'a str> {
+        accelerator.filter(|_| id == "browser.quit" || !self.is_recording())
+    }
+
+    pub(crate) fn set_recording(&self, recording: bool) {
         if self.recording.swap(recording, Ordering::AcqRel) != recording {
             self.refresh_tables();
         }
@@ -446,6 +570,7 @@ pub(crate) fn keymap_bind(
             command: command.to_owned(),
         },
         Err(KeymapError::UnknownCommand) => KeymapOutcome::Invalid,
+        Err(KeymapError::Unavailable) => KeymapOutcome::Unavailable,
         Err(KeymapError::Fixed) => KeymapOutcome::Fixed,
         Err(KeymapError::Accelerator(AcceleratorError::Invalid)) => KeymapOutcome::Invalid,
         Err(KeymapError::Accelerator(AcceleratorError::Unbindable)) => KeymapOutcome::Unbindable,
@@ -457,14 +582,70 @@ pub(crate) fn keymap_bind(
 /// path: a recorded key, Escape, losing focus, and leaving the page.
 #[tauri::command]
 #[specta::specta]
-pub(crate) fn keymap_record(caller: WebviewWindow, app: tauri::AppHandle, active: bool) -> bool {
+pub(crate) async fn keymap_record(
+    caller: WebviewWindow,
+    app: tauri::AppHandle,
+    request: ShortcutRecordingRequest,
+) -> Option<ShortcutRecordingView> {
     if !authorize(&caller, CallerPolicy::Main, "keymap_record") {
+        return None;
+    }
+    record_shortcut(&app, request).await
+}
+
+/// Native recording admission and every related side effect finish on the main
+/// thread before the renderer can receive an acknowledgement.
+pub(crate) async fn on_main_thread<T: Send + 'static>(
+    app: &tauri::AppHandle,
+    action: impl FnOnce(&tauri::AppHandle) -> T + Send + 'static,
+) -> Option<T> {
+    let handle = app.clone();
+    let (send, receive) = tokio::sync::oneshot::channel();
+    app.run_on_main_thread(move || {
+        let _ = send.send(action(&handle));
+    })
+    .ok()?;
+    receive.await.ok()
+}
+
+pub(crate) async fn record_shortcut(
+    app: &tauri::AppHandle,
+    request: ShortcutRecordingRequest,
+) -> Option<ShortcutRecordingView> {
+    on_main_thread(app, move |app| {
+        let keymap = app.try_state::<Keymap>()?;
+        let (view, synchronize) = keymap
+            .recording_lease
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .apply(request)?;
+        if synchronize && !synchronize_recording(app, &keymap, view.owner.is_some()) {
+            // A failed suspension is never acknowledged as ready. Invalidate
+            // its token and restore every surface before reporting the error.
+            let mut lease = keymap
+                .recording_lease
+                .lock()
+                .unwrap_or_else(|p| p.into_inner());
+            lease.revision = lease.revision.saturating_add(1);
+            lease.owner = None;
+            drop(lease);
+            let _ = synchronize_recording(app, &keymap, false);
+            return None;
+        }
+        Some(view)
+    })
+    .await
+    .flatten()
+}
+
+fn synchronize_recording(app: &tauri::AppHandle, keymap: &Keymap, active: bool) -> bool {
+    keymap.set_recording(active);
+    launcher_trigger::recording(app, active);
+    #[cfg(target_os = "macos")]
+    if install_menu_bar(app, &keymap.overrides(), keymap.work_pane_shown()).is_err() {
+        write_diagnostic(format_args!("recording: menu bar was not rebuilt"));
         return false;
     }
-    let Some(keymap) = app.try_state::<Keymap>() else {
-        return false;
-    };
-    keymap.set_recording(active);
     true
 }
 
@@ -498,6 +679,247 @@ pub(crate) fn keymap_reset(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn token(owner: &str, revision: &str) -> ShortcutRecordingToken {
+        ShortcutRecordingToken {
+            owner: owner.into(),
+            revision: revision.into(),
+        }
+    }
+
+    #[test]
+    fn recording_stop_before_delayed_start_invalidates_the_idle_base_revision() {
+        let mut lease = RecordingLease::default();
+        let a = token("command-recorder", "0");
+        let (stopped, changed) = lease
+            .apply(ShortcutRecordingRequest::Stop { token: a.clone() })
+            .unwrap();
+        assert!(changed);
+        assert_eq!(stopped.revision, "1");
+        assert_eq!(stopped.owner, None);
+        let (late, changed) = lease
+            .apply(ShortcutRecordingRequest::Start { token: a })
+            .unwrap();
+        assert!(!changed);
+        assert_eq!(late.revision, "1");
+        assert_eq!(late.owner, None);
+    }
+
+    #[test]
+    fn recording_stop_after_start_does_not_need_its_acknowledgement() {
+        let mut lease = RecordingLease::default();
+        let a = token("launcher-recorder", "0");
+        let (unacknowledged, _) = lease
+            .apply(ShortcutRecordingRequest::Start { token: a.clone() })
+            .unwrap();
+        assert_eq!(unacknowledged.owner.as_deref(), Some("launcher-recorder"));
+        let (released, changed) = lease
+            .apply(ShortcutRecordingRequest::Stop { token: a.clone() })
+            .unwrap();
+        assert!(changed);
+        assert_eq!(released.owner, None);
+        assert!(!lease.owns(&a));
+        assert!(
+            !lease
+                .apply(ShortcutRecordingRequest::Start { token: a })
+                .unwrap()
+                .1
+        );
+        assert_eq!(lease.view().owner, None);
+    }
+
+    #[test]
+    fn recording_cancelled_takeover_preserves_foreign_grant_and_tombstones_late_start() {
+        let mut lease = RecordingLease::default();
+        let current = token("command-recorder", "0");
+        let pending = token("launcher-recorder", "1");
+        lease
+            .apply(ShortcutRecordingRequest::Start {
+                token: current.clone(),
+            })
+            .unwrap();
+        let (view, synchronize) = lease
+            .apply(ShortcutRecordingRequest::Stop {
+                token: pending.clone(),
+            })
+            .unwrap();
+        assert!(!synchronize);
+        assert_eq!(view.owner.as_deref(), Some("command-recorder"));
+        assert_eq!(view.revision, "2");
+        assert!(lease.owns(&current));
+        assert!(
+            !lease
+                .apply(ShortcutRecordingRequest::Start { token: pending })
+                .unwrap()
+                .1
+        );
+        let (view, _) = lease
+            .apply(ShortcutRecordingRequest::Stop { token: current })
+            .unwrap();
+        assert_eq!(view.owner, None);
+    }
+
+    #[test]
+    fn recording_foreign_stops_starts_and_applies_cannot_change_a_newer_owner() {
+        let keymap = Keymap::default();
+        let a = token("command-recorder", "0");
+        let b = token("launcher-recorder", "1");
+        {
+            let mut lease = keymap.recording_lease.lock().unwrap();
+            assert!(
+                lease
+                    .apply(ShortcutRecordingRequest::Start { token: a.clone() })
+                    .unwrap()
+                    .1
+            );
+            assert!(
+                lease
+                    .apply(ShortcutRecordingRequest::Start { token: b.clone() })
+                    .unwrap()
+                    .1
+            );
+            for request in [
+                ShortcutRecordingRequest::Stop { token: a.clone() },
+                ShortcutRecordingRequest::Start { token: a.clone() },
+                ShortcutRecordingRequest::Start {
+                    token: token("other-recorder", "0"),
+                },
+                ShortcutRecordingRequest::Stop {
+                    token: token("launcher-recorder", "0"),
+                },
+            ] {
+                let (view, changed) = lease.apply(request).unwrap();
+                assert!(!changed);
+                assert_eq!(view.owner.as_deref(), Some("launcher-recorder"));
+                assert_eq!(view.revision, "2");
+            }
+        }
+        assert!(!keymap.recording_token_current(Some(&a)));
+        assert!(!keymap.recording_token_current(None));
+        assert!(keymap.recording_token_current(Some(&b)));
+        keymap
+            .recording_lease
+            .lock()
+            .unwrap()
+            .apply(ShortcutRecordingRequest::Stop { token: b })
+            .unwrap();
+        assert!(keymap.recording_token_current(None));
+    }
+
+    #[test]
+    fn recording_suspends_and_restores_native_tables_without_changing_bindings() {
+        let keymap = Keymap::default();
+        write(&keymap.overrides).insert("tab.new".into(), "CmdOrCtrl+Shift+F12".into());
+        keymap.work_pane_shown.store(true, Ordering::Release);
+        keymap.refresh_tables();
+        let bindings = keymap.overrides();
+        let resolved = keymap.resolved();
+        let original = keymap.engine_table();
+        let engine_updates = Arc::new(Mutex::new(Vec::new()));
+        let changes = engine_updates.clone();
+        keymap.attach_engine(Box::new(move |table| {
+            changes.lock().expect("engine updates").push(table);
+        }));
+        #[cfg(target_os = "macos")]
+        let original_keys = read(&keymap.key_table).clone();
+
+        keymap.set_recording(true);
+
+        assert!(keymap.is_recording());
+        assert!(keymap.engine_table().is_empty());
+        assert!(engine_updates
+            .lock()
+            .expect("engine updates")
+            .last()
+            .expect("recording table")
+            .is_empty());
+        #[cfg(target_os = "linux")]
+        assert!(read(&keymap.window_table).is_empty());
+        #[cfg(target_os = "macos")]
+        assert!(read(&keymap.key_table).is_empty());
+        for command in &resolved {
+            assert_eq!(
+                keymap.menu_accelerator(command.id, command.accelerator.as_deref()),
+                None,
+                "{} still has a menu key while recording",
+                command.id
+            );
+        }
+        // Quit is independent of registry bindings; native Edit selectors do
+        // not enter the custom command accelerator path at all.
+        assert_eq!(
+            keymap.menu_accelerator("browser.quit", Some("CmdOrCtrl+Q")),
+            Some("CmdOrCtrl+Q")
+        );
+        assert_eq!(keymap.overrides(), bindings);
+
+        keymap.set_recording(false);
+
+        assert!(!keymap.is_recording());
+        let restored = keymap.engine_table();
+        let signature = |table: &[Shortcut]| {
+            table
+                .iter()
+                .map(|key| (key.id.clone(), key.ctrl, key.alt, key.shift, key.key))
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(signature(&restored), signature(&original));
+        assert_eq!(
+            signature(
+                engine_updates
+                    .lock()
+                    .expect("engine updates")
+                    .last()
+                    .expect("restored table")
+            ),
+            signature(&original)
+        );
+        #[cfg(target_os = "linux")]
+        assert_eq!(signature(&read(&keymap.window_table)), signature(&original));
+        #[cfg(target_os = "macos")]
+        assert_eq!(*read(&keymap.key_table), original_keys);
+        for command in &resolved {
+            assert_eq!(
+                keymap.menu_accelerator(command.id, command.accelerator.as_deref()),
+                command.accelerator.as_deref()
+            );
+        }
+        assert_eq!(keymap.overrides(), bindings);
+    }
+
+    #[test]
+    fn unavailable_commands_leave_keymap_offerings_and_tables_even_with_overrides() {
+        let keymap = Keymap::default();
+        write(&keymap.overrides).insert(
+            "sidebar.toggleAutoHide".into(),
+            "CmdOrCtrl+Shift+F12".into(),
+        );
+        let supported = cfg!(target_os = "macos");
+        assert_eq!(keymap.offers("sidebar.toggleAutoHide"), supported);
+        assert_eq!(
+            keymap
+                .resolved()
+                .iter()
+                .any(|command| command.id == "sidebar.toggleAutoHide"),
+            supported
+        );
+        if !supported {
+            assert!(!keymap
+                .engine_table()
+                .iter()
+                .any(|shortcut| shortcut.id == "sidebar.toggleAutoHide"));
+            assert_eq!(
+                commands::validate_binding(
+                    &keymap.resolved(),
+                    "sidebar.toggleAutoHide",
+                    Some("Ctrl+Shift+F12")
+                ),
+                Err(KeymapError::Unavailable)
+            );
+        }
+        // These have no default shortcut on Windows/Linux, but remain supported.
+        assert!(keymap.offers("note.new") && keymap.offers("split.choose"));
+    }
 
     #[test]
     fn page_tables_carry_work_keys_only_while_the_pane_is_shown() {

@@ -111,3 +111,56 @@ test("a failed native request cannot claim a connected account", async () => {
     .element(screen.getByText("Using ChatGPT plan", { exact: true }))
     .not.toBeInTheDocument();
 });
+
+test("after sign-out, normal reauthentication and adding a different account stay explicit", async () => {
+  const signedOut = accountFixture({
+    active: "one",
+    profiles: connected().profiles.map((profile) => ({
+      ...profile,
+      signed_in: false,
+      sharing: false,
+    })),
+  });
+  native.get.mockResolvedValue(reply(connected()));
+  native.signOut.mockResolvedValue(reply(signedOut));
+  native.signIn.mockResolvedValue(reply(signedOut));
+  const screen = await render(AccountPage);
+  await screen.getByRole("button", { name: "Sign out", exact: true }).click();
+  await screen.getByRole("button", { name: "Continue with ChatGPT", exact: true }).click();
+  expect(native.signIn).toHaveBeenLastCalledWith(null, false, false);
+  await screen.getByRole("button", { name: "Add another account", exact: true }).click();
+  expect(native.signIn).toHaveBeenLastCalledWith(null, true, false);
+});
+
+test("signed-out retained profiles still respect the eight-account registration bound", async () => {
+  native.get.mockResolvedValue(
+    reply(
+      accountFixture({
+        active: "one",
+        profiles: Array.from({ length: 8 }, (_, index) => ({
+          id: index ? `profile-${index}` : "one",
+          label: `ChatGPT connection ${index + 1}`,
+          email: null,
+          signed_in: false,
+          sharing: false,
+        })),
+      }),
+    ),
+  );
+  const screen = await render(AccountPage);
+  await expect
+    .element(screen.getByRole("button", { name: "Add another account", exact: true }))
+    .toBeDisabled();
+});
+
+test("a browser launch fault retains the connected account and sign-out action", async () => {
+  native.get.mockResolvedValue(reply(connected()));
+  native.signIn.mockResolvedValue({ account: connected(), fault: "browser" });
+  const screen = await render(AccountPage);
+  await screen.getByRole("button", { name: "Add another account", exact: true }).click();
+  await expect
+    .element(screen.getByText("Could not open the system browser. Try again."))
+    .toBeVisible();
+  await expect.element(screen.getByText("Using ChatGPT plan", { exact: true })).toBeVisible();
+  await expect.element(screen.getByRole("button", { name: "Sign out", exact: true })).toBeVisible();
+});

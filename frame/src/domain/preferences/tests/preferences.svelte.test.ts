@@ -6,6 +6,12 @@ const native = vi.hoisted(() => ({
   stop: vi.fn(),
   listener: null as null | ((event: { payload: string }) => void),
   listen: vi.fn(),
+  linux: false,
+}));
+vi.mock("$shared/platform", () => ({
+  get IS_LINUX() {
+    return native.linux;
+  },
 }));
 vi.mock("$shared/ipc/bindings", async () => {
   const { mockBindings } = await import("$shared/testing/bindings");
@@ -18,6 +24,7 @@ beforeEach(() => {
   vi.useFakeTimers();
   vi.resetAllMocks();
   native.listener = null;
+  native.linux = false;
   native.listen.mockImplementation((listener: typeof native.listener) => {
     native.listener = listener;
     return Promise.resolve(native.stop);
@@ -28,6 +35,40 @@ beforeEach(() => {
 });
 afterEach(() => vi.useRealTimers());
 describe("preference observation lifecycle", () => {
+  it("resets Linux preferences without enabling unsupported AI or Work", async () => {
+    native.linux = true;
+    const stored = new Map([
+      ["ui.language", "fr"],
+      ["tabs.after-close", "previous"],
+      ["performance.after", "30"],
+    ]);
+    native.get.mockImplementation(async (key: string) =>
+      key === "ai.enabled" || key === "work.enabled" ? "false" : (stored.get(key) ?? null),
+    );
+    native.set.mockImplementation(async (key: string, next: string) => {
+      if (key === "ai.enabled" || key === "work.enabled") throw new Error("unsupported feature");
+      stored.set(key, next);
+      return { accepted: true, operation_id: "0000000000000001" };
+    });
+    native.settle.mockImplementation(async (admission: Promise<unknown>) => {
+      await admission;
+      return { outcome: "applied", disposition: null };
+    });
+    const preferences = await import("../preferences.svelte");
+    await preferences.init();
+    expect(await preferences.resetAll()).toBe(true);
+    expect(preferences.aiEnabled()).toBe(false);
+    expect(preferences.enabled("work")).toBe(false);
+    expect(preferences.value("ui.language")).toBe("system");
+    expect(preferences.value("tabs.after-close")).toBe("next");
+    expect(preferences.value("performance.after")).toBe("15");
+    expect(native.set.mock.calls.map(([key]) => key)).toEqual([
+      "ui.language",
+      "tabs.after-close",
+      "performance.after",
+    ]);
+    preferences.dispose();
+  });
   it("initializes once and keeps a live update ahead of an older startup read", async () => {
     const preferences = await import("../preferences.svelte");
     let finish!: (value: string) => void;

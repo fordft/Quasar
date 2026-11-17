@@ -90,10 +90,11 @@
   $effect(() => {
     if (asking) return revealHeld();
   });
-  // Typing in the column keeps it out, wherever the pointer has gone.
-  let editing = $state(false);
+  // Fields and keyboard navigation keep the column out wherever the pointer
+  // has gone. Pointer clicks on ordinary buttons still allow it to hide.
+  let focusHeld = $state(false);
   $effect(() => {
-    if (editing) return holdRevealed();
+    if (focusHeld) return holdRevealed();
   });
   let hidden = $derived(isHidden());
   // Coming out or going away is one change of width, travelled like any other.
@@ -212,11 +213,15 @@
       pointerIn = false;
       pointerLeft();
     };
+    const blur = () => {
+      out();
+      focusHeld = false;
+    };
     document.documentElement.addEventListener("mouseleave", out);
-    window.addEventListener("blur", out);
+    window.addEventListener("blur", blur);
     return () => {
       document.documentElement.removeEventListener("mouseleave", out);
-      window.removeEventListener("blur", out);
+      window.removeEventListener("blur", blur);
     };
   });
 
@@ -263,11 +268,26 @@
   data-header-fresh={headerFresh}
   data-pointer-in={pointerIn}
   inert={hidden || undefined}
-  onfocusin={(event) =>
-    (editing =
+  onfocusin={(event) => {
+    if (
       event.target instanceof Element &&
-      event.target.matches("input, textarea, [contenteditable]:not([contenteditable=false])"))}
-  onfocusout={() => (editing = false)}
+      event.target.matches(
+        "input, textarea, [contenteditable]:not([contenteditable=false]), :focus-visible",
+      )
+    )
+      focusHeld = true;
+  }}
+  onfocusout={(event) => {
+    if (event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget))
+      return;
+    focusHeld = false;
+  }}
+  onpointerdown={(event) => {
+    focusHeld =
+      event.target instanceof Element &&
+      event.target.closest("input, textarea, [contenteditable]:not([contenteditable=false])") !==
+        null;
+  }}
   onpointerenter={() => {
     pointerIn = true;
     pointerEnteredSidebar();

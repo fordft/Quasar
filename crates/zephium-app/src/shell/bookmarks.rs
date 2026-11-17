@@ -222,19 +222,32 @@ impl Shell {
         views
     }
 
-    pub(super) fn import_into_focused(&mut self, work: ImportWork, done: ImportCompletion) {
+    pub(super) fn import_destination(&mut self) -> Option<ProfileId> {
         if !self.bootstrapped {
             self.bootstrap();
         }
-        let Some(profile) = self
-            .windows
+        self.windows
             .focused()
             .map(|window| window.profile)
-            .filter(|profile| self.bookmarks_writable(*profile))
-        else {
+            .filter(|profile| self.import_writable(*profile))
+    }
+
+    fn import_writable(&self, profile: ProfileId) -> bool {
+        self.bootstrapped
+            && self.bookmarks_writable(profile)
+            && !self.profile_deletion_quarantines(profile)
+    }
+
+    pub(super) fn import_into_profile(
+        &mut self,
+        profile: ProfileId,
+        work: ImportWork,
+        done: ImportCompletion,
+    ) {
+        if !self.import_writable(profile) {
             done.finish(None);
             return;
-        };
+        }
         if let ImportWork::Essentials(sites) = work {
             done.finish(Some(self.keep_imported_sites(profile, sites)));
             return;

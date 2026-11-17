@@ -41,7 +41,7 @@ test("the identity card opens Account and holds the plate while it is current", 
   await page.viewport(400, 900);
   settings.select("general");
   const screen = await render(SettingsNavigation);
-  const card = screen.getByRole("button", { name: /^Sign in/u });
+  const card = screen.getByRole("button", { name: /^Continue with ChatGPT/u });
   await expect.element(card).toBeVisible();
   const groups = [...screen.container.querySelectorAll(".settings-nav-group h2")].map(
     (heading) => heading.textContent,

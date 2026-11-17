@@ -75,6 +75,59 @@ describe("browser import", () => {
     expect(browserImport.current()?.finished).toBe(false);
   });
 
+  it("keeps a running job when dismissed or redetected, including pending cancellation", async () => {
+    const { port, emit } = adapter();
+    browserImport.provide(port);
+    await browserImport.detect();
+    emit(running(false));
+    await browserImport.cancel();
+    browserImport.dismiss();
+    await browserImport.detect();
+    expect(port.cancel).toHaveBeenCalledOnce();
+    expect(browserImport.busy()).toBe(true);
+    expect(browserImport.current()).toEqual(running(false));
+    expect(await browserImport.start("other", "Default", ["history"])).toBe(false);
+    expect(port.start).not.toHaveBeenCalled();
+  });
+
+  it("can dismiss a failed attempt, refresh permission, and retry without claiming success", async () => {
+    const { port, emit } = adapter();
+    const sources = vi.fn(port.sources);
+    port.sources = sources;
+    browserImport.provide(port);
+    await browserImport.detect();
+    expect(await browserImport.start("chrome:default", "Default", ["history"])).toBe(true);
+    const failed: ImportJob = {
+      ...running(true),
+      kinds: [{ kind: "history", state: "failed", done: 0, total: null, problem: "permission" }],
+    };
+    emit(failed);
+    await browserImport.openPermissionSettings(failed.source);
+    await browserImport.detect();
+    expect(port.openPermissionSettings).toHaveBeenCalledWith(failed.source);
+    expect(browserImport.current()).toEqual(failed);
+    browserImport.dismiss();
+    expect(browserImport.current()).toBeNull();
+    expect(await browserImport.start(failed.source, failed.profile, ["history"])).toBe(true);
+    expect(port.start).toHaveBeenCalledTimes(2);
+    expect(sources).toHaveBeenCalledTimes(2);
+    expect(browserImport.current()).toBeNull();
+    emit(running(false));
+    expect(browserImport.busy()).toBe(true);
+  });
+
+  it("can put a finished result away and import another browser", async () => {
+    const { port, emit } = adapter();
+    browserImport.provide(port);
+    await browserImport.detect();
+    emit(running(true));
+    browserImport.dismiss();
+    expect(await browserImport.start("firefox", "profile-2", ["bookmarks"])).toBe(true);
+    expect(port.start).toHaveBeenCalledWith("firefox", "profile-2", ["bookmarks"]);
+    emit({ ...running(false), source: "firefox", profile: "profile-2" });
+    expect(browserImport.current()?.source).toBe("firefox");
+  });
+
   it("refuses to start with nothing chosen", async () => {
     const { port } = adapter();
     browserImport.provide(port);

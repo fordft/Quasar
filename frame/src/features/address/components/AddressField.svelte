@@ -93,11 +93,15 @@
     // At rail width the field is not drawn; the launcher stands in for it.
     const tab = untrack(() => tabs.activeTab());
     // A sidebar that has stepped away leaves the field out of reach as well.
-    if ((compact || untrack(() => isHidden())) && tab?.url && (tab.content ?? "web") === "web") {
-      // Work has no page in front, so there the launcher opens empty.
-      if (untrack(() => surface.currentPage()) === "work")
-        void commands.runCommand("launcher.toggle");
-      else void commands.launcherEdit(tab.id, tab.url);
+    if (compact || untrack(() => isHidden())) {
+      // Work, blank tabs and extension pages have no web address to edit.
+      if (
+        untrack(() => surface.currentPage()) !== "work" &&
+        tab?.url &&
+        (tab.content ?? "web") === "web"
+      )
+        void commands.launcherEdit(tab.id, tab.url);
+      else void commands.runCommand("launcher.toggle");
       return;
     }
     input.focus();

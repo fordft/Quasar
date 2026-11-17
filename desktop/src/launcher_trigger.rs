@@ -256,14 +256,15 @@ pub fn install(app: &AppHandle, keymap_override: Option<String>) {
 }
 
 pub fn snapshot(app: &AppHandle) -> LauncherTrigger {
-    let (shortcut, registered, double_tap) = app.try_state::<Trigger>().map_or_else(
-        || (DEFAULT.to_owned(), false, DoubleTap::Off),
+    let (shortcut, registered, double_tap, suspended) = app.try_state::<Trigger>().map_or_else(
+        || (DEFAULT.to_owned(), false, DoubleTap::Off, DoubleTap::Off),
         |trigger| {
             let state = trigger.0.lock().unwrap_or_else(|e| e.into_inner());
             (
                 state.shortcut.clone(),
                 state.registered.is_some() || state.recording,
                 state.double_tap,
+                effective_double_tap(&state),
             )
         },
     );
@@ -272,11 +273,14 @@ pub fn snapshot(app: &AppHandle) -> LauncherTrigger {
         // Permission can be granted in System Settings at any time; the
         // settings page asks again when it is shown, which is when the
         // observers are brought in line with it.
-        double_tap::apply(app, double_tap);
+        double_tap::apply(app, suspended);
         double_tap::trusted()
     };
     #[cfg(not(target_os = "macos"))]
-    let accessibility = false;
+    let accessibility = {
+        let _ = suspended;
+        false
+    };
     LauncherTrigger {
         shortcut,
         default_shortcut: DEFAULT.into(),
@@ -303,32 +307,55 @@ pub fn set_shortcut(app: &AppHandle, accelerator: &str) -> TriggerChange {
     let Some(trigger) = app.try_state::<Trigger>() else {
         return rejected(Rejection::Unavailable);
     };
-    let previous = {
+    let applied = {
         let mut state = trigger.0.lock().unwrap_or_else(|e| e.into_inner());
-        state.recording = false;
-        state.registered.take()
+        replace_shortcut(
+            &mut state,
+            accelerator,
+            shortcut,
+            |shortcut| register(app, shortcut),
+            |shortcut| unregister(app, shortcut),
+        )
     };
-    if let Some(previous) = &previous {
-        unregister(app, previous);
-    }
-    if !register(app, &shortcut) {
-        // Put back what worked rather than leave the launcher unreachable.
-        let restored = previous.filter(|previous| register(app, previous));
-        trigger
-            .0
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .registered = restored;
+    if !applied {
         return rejected(Rejection::Unavailable);
-    }
-    {
-        let mut state = trigger.0.lock().unwrap_or_else(|e| e.into_inner());
-        state.shortcut = accelerator.to_owned();
-        state.registered = Some(shortcut);
     }
     persist(SHORTCUT_KEY, accelerator);
     TriggerChange::Applied {
         trigger: snapshot(app),
+    }
+}
+
+/// Test registration without ending an active native recording lease. Its
+/// remembered shortcut is restored only when that lease is explicitly released.
+fn replace_shortcut(
+    state: &mut State,
+    accelerator: &str,
+    shortcut: Shortcut,
+    mut register: impl FnMut(&Shortcut) -> bool,
+    mut unregister: impl FnMut(&Shortcut),
+) -> bool {
+    let previous = state.registered.take();
+    if let Some(previous) = &previous {
+        unregister(previous);
+    }
+    if !register(&shortcut) {
+        state.registered = previous.filter(|previous| state.recording || register(previous));
+        return false;
+    }
+    if state.recording {
+        unregister(&shortcut);
+    }
+    state.shortcut = accelerator.to_owned();
+    state.registered = Some(shortcut);
+    true
+}
+
+fn effective_double_tap(state: &State) -> DoubleTap {
+    if state.recording {
+        DoubleTap::Off
+    } else {
+        state.double_tap
     }
 }
 
@@ -345,7 +372,11 @@ pub fn recording(app: &AppHandle, active: bool) {
     state.recording = active;
     let current = state.registered.take();
     let shortcut = state.shortcut.clone();
+    #[cfg(target_os = "macos")]
+    let double_tap = effective_double_tap(&state);
     drop(state);
+    #[cfg(target_os = "macos")]
+    double_tap::apply(app, double_tap);
     if active {
         if let Some(current) = &current {
             unregister(app, current);
@@ -398,6 +429,50 @@ pub fn open_accessibility_settings() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn changing_shortcut_during_recording_never_restores_global_activation() {
+        for accepted in [false, true] {
+            let previous = Shortcut::from_str(DEFAULT).unwrap();
+            let next = Shortcut::from_str("Ctrl+Alt+KeyK").unwrap();
+            let mut state = State {
+                shortcut: DEFAULT.into(),
+                registered: Some(previous),
+                recording: true,
+                double_tap: DoubleTap::Command,
+            };
+            let live = std::cell::RefCell::new(Vec::new());
+            assert_eq!(
+                replace_shortcut(
+                    &mut state,
+                    "Ctrl+Alt+KeyK",
+                    next,
+                    |shortcut| {
+                        if accepted {
+                            live.borrow_mut().push(*shortcut);
+                        }
+                        accepted
+                    },
+                    |shortcut| live.borrow_mut().retain(|known| known != shortcut)
+                ),
+                accepted
+            );
+            assert!(
+                live.borrow().is_empty(),
+                "an active recorder must keep global keys suspended"
+            );
+            assert!(state.recording);
+            assert_eq!(
+                state.registered,
+                Some(if accepted { next } else { previous })
+            );
+            assert_eq!(effective_double_tap(&state), DoubleTap::Off);
+            state.double_tap = DoubleTap::Option;
+            assert_eq!(effective_double_tap(&state), DoubleTap::Off);
+            state.recording = false;
+            assert_eq!(effective_double_tap(&state), DoubleTap::Option);
+        }
+    }
 
     #[test]
     fn launcher_shortcuts_need_a_real_modifier() {

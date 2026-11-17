@@ -46,7 +46,7 @@
     profile: string;
     /** Which of the person's models it chooses: Work's lead, or the sidebar assistant's page model. */
     role?: "lead" | "page";
-    /** Opens Settings → Models, where keys are added. */
+    /** Opens Settings → Models for the ChatGPT connection and catalog. */
     onsettings?: () => void;
   } = $props();
 
@@ -154,13 +154,14 @@
 
   /** The effort the person last set while the menu is open, ahead of Rust's answer. */
   let intent = $state<WorkModelReasoning | null>(null);
-  const levels = $derived(effortLevels(models, chosen));
+  // Sidebar requests own their capped effort in Rust; this preference belongs to Work's lead.
+  const levels = $derived(role === "lead" ? effortLevels(models, chosen) : []);
   const effort = $derived<WorkModelReasoning | null>(
     levels.length ? (intent ? nearestEffort(levels, intent) : (models?.effort ?? null)) : null,
   );
 
   const card = $derived.by<CardSubject | null>(() => {
-    if (!current) return null;
+    if (role !== "lead" || !current) return null;
     return { entry: current, tier: tierOf[current.id] ?? null, levels, effort };
   });
 
@@ -191,7 +192,7 @@
     return () => (live = false);
   });
   /** No model can run yet: the one thing to do is add a key, so the control is that, not a menu. */
-  const keyless = $derived(!!models && leadMissing);
+  const keyless = $derived(role === "lead" && !!models && leadMissing);
 
   /** The card shows the effort control until it is put away: by Escape, a click elsewhere, or a rest. */
   let effortOpen = $state(false);
@@ -222,6 +223,7 @@
   }
 
   function toggleEffort() {
+    if (role !== "lead") return;
     if (effortOpen) {
       putAway();
       return;
@@ -323,12 +325,13 @@
   let wanted: WorkModelReasoning | null = null;
   let sending = false;
   async function setEffort(level: WorkModelReasoning) {
+    if (role !== "lead") return;
     intent = level;
     wanted = level;
     if (sending) return;
     sending = true;
     try {
-      while (session && wanted && wanted !== models?.effort) {
+      while (role === "lead" && session && wanted && wanted !== models?.effort) {
         const asked: WorkModelReasoning = wanted;
         if (!(await session.setEffort(asked))) {
           if (session.busy) {

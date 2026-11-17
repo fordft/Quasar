@@ -1,7 +1,6 @@
 import * as m from "$shared/i18n/messages";
 import { preferences } from "$domain/preferences";
-import { fields } from "./catalog";
-import { IS_MAC } from "$shared/platform";
+import { fields, fieldAvailable, type FieldId } from "./catalog";
 import {
   Settings01Icon,
   PaintBoardIcon,
@@ -194,10 +193,10 @@ export function searchSettings(query: string) {
   const shown = new Set<string>(offered.map((section) => section.id));
   const preferences = Object.entries(fields)
     .filter(
-      ([, field]) =>
+      ([id, field]) =>
         shown.has(field.section) &&
         (showPreviews || !("preview" in field)) &&
-        (IS_MAC || !("macOnly" in field)) &&
+        fieldAvailable(id as FieldId) &&
         matches(field.label() + " " + field.description()),
     )
     .map(([id, field]) => ({
@@ -228,14 +227,14 @@ export function searchSections(query: string) {
       [
         section.title(),
         section.description(),
-        ...Object.values(fields)
+        ...Object.entries(fields)
           .filter(
-            (f) =>
+            ([id, f]) =>
               f.section === section.id &&
               (showPreviews || !("preview" in f)) &&
-              (IS_MAC || !("macOnly" in f)),
+              fieldAvailable(id as FieldId),
           )
-          .flatMap((f) => [f.label(), f.description()]),
+          .flatMap(([, f]) => [f.label(), f.description()]),
       ]
         .join(" ")
         .toLocaleLowerCase()

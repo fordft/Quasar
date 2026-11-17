@@ -2041,6 +2041,7 @@ mod extension_browser_surface;
 mod favicons;
 mod fullscreen;
 mod history;
+mod imports;
 mod lookup;
 #[path = "navigation.rs"]
 mod navigation_tests;
