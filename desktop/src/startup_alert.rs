@@ -80,6 +80,8 @@ impl StartupProblem {
                 .iter()
                 .any(|operation| error.contains(operation)))
             || (cfg!(target_os = "macos") && error.contains("(os error 35)"))
+            // Linux preview: flock and fcntl locks refuse with EAGAIN.
+            || (cfg!(all(unix, not(target_os = "macos"))) && error.contains("(os error 11)"))
         {
             Self::StillClosing
         } else if UNWRITABLE.iter().any(|stable| error.contains(stable)) {

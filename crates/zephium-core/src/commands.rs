@@ -148,7 +148,7 @@ pub const REGISTRY: &[CommandSpec] = &[
     // nothing, so they stay out of the menus.
     command(
         "mini.openInMain",
-        "Open Mini Window in Zephium",
+        "Open Mini Window in Quasar",
         Keys::same("CmdOrCtrl+O"),
         Group::Keys,
     ),
@@ -440,7 +440,7 @@ pub const REGISTRY: &[CommandSpec] = &[
     ),
     command(
         "tool.ai",
-        "Ask Zephium",
+        "Ask Quasar",
         Keys::same("CmdOrCtrl+E"),
         Group::Window,
     ),
