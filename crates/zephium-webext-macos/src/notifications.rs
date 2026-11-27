@@ -86,7 +86,7 @@ pub(crate) fn create(
         return Err("Notifications are unavailable in this build.".into());
     }
     if CENTER.with(|center| center.borrow().authorized) == Some(false) {
-        return Err("Notifications are turned off for Zephium.".into());
+        return Err("Notifications are turned off for Quasar.".into());
     }
     let id: String = message
         .get("id")

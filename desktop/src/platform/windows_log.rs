@@ -3,7 +3,7 @@ use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
-const ACTIVE_LOG_NAME: &str = "zephium.log";
+const ACTIVE_LOG_NAME: &str = "quasar.log";
 const LOG_LOCK_NAME: &str = ".zephium-log.lock";
 
 #[derive(Clone, Copy)]
@@ -140,7 +140,7 @@ impl RotatingLog {
 }
 
 fn archive_path(directory: &Path, index: usize) -> PathBuf {
-    directory.join(format!("zephium.{index}.log"))
+    directory.join(format!("quasar.{index}.log"))
 }
 
 fn is_reparse_point(metadata: &Metadata) -> bool {

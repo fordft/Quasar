@@ -76,11 +76,11 @@ body:
     attributes:
       label: Diagnostics
       description: |
-        In Zephium, open Settings (Cmd+, on macOS, Ctrl+, on Windows), choose About, and click **Copy Diagnostics**. Then paste it here, with no code fence of your own.
+        In Quasar, open Settings (Cmd+, on macOS, Ctrl+, on Windows), choose About, and click **Copy Diagnostics**. Then paste it here, with no code fence of your own.
 
         It holds your version, your system and the recent log. Web addresses, searches, page titles, accounts, keys and file locations are removed before it is copied, and **Show What Is Copied** lets you read all of it first. Nothing is sent anywhere, so skim it before you post.
 
-        If Zephium will not start, attach `zephium.log` instead: on Windows from the **Show log folder** button in the startup error (or `%APPDATA%\app.zephium`), on macOS from `~/Library/Logs/app.zephium`. Those files are the raw log and are not redacted, so read them before you attach.
+        If Quasar will not start, attach `quasar.log` instead: on Windows from the **Show log folder** button in the startup error (or `%APPDATA%\app.quasar`), on macOS from `~/Library/Logs/app.quasar`. Those files are the raw log and are not redacted, so read them before you attach.
       render: text
 
   - type: checkboxes

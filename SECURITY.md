@@ -13,16 +13,19 @@ Only the latest release receives security fixes.
 
 ## Local secrets and browser data
 
-Zephium stores account session tokens, provider API keys and MCP connection
-secrets (including OAuth tokens and environment values marked secret) in Windows
-Credential Manager or the macOS login Keychain. These are OS-managed vaults,
-not plaintext settings files. Credential Manager is scoped to the Windows user,
-not to the Zephium executable; it does not exclude malicious processes running
-as that user. Zephium does not maintain its own website-password vault.
+The ChatGPT OAuth session is AES-256-GCM encrypted with a random 32-byte key
+held in the macOS login Keychain or Windows Credential Manager, and MCP
+connection secrets (including OAuth tokens and environment values marked
+secret) live in the same OS-managed vaults, not plaintext settings files.
+Retired provider API keys appear only as leftover entries the first-run
+cleanup removes; Quasar never stores new ones. Credential Manager is scoped to
+the Windows user, not to the Quasar executable; it does not exclude malicious
+processes running as that user. Quasar does not maintain its own
+website-password vault.
 
 On Windows, WebView2 owns cookies and site storage beneath
-`%APPDATA%\app.zephium\web-content\profiles\<id>\EBWebView` (the development
-identity and Work stores use separate directories). Zephium restricts its profile
+`%APPDATA%\app.quasar\web-content\profiles\<id>\EBWebView` (the development
+identity and Work stores use separate directories). Quasar restricts its profile
 root and individual profile-directory DACLs to the current user and SYSTEM before
 admitting them, refusing access if restriction fails. The inheritable permissions also
 apply to new children and Windows propagates them to existing inheriting children;
@@ -33,21 +36,21 @@ WebView2 password autosave and general autofill are disabled and read back befor
 use. This prevents new saves, but does not erase older saved passwords or prevent
 their autofill, as documented by
 [Microsoft's settings API](https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/icorewebview2settings4).
-WebView2 owns its cookie encryption and keys; Zephium adds no app-bound layer.
+WebView2 owns its cookie encryption and keys; Quasar adds no app-bound layer.
 The pinned SDK exposes no supported app-bound encryption or custom storage-key
 hook. DPAPI-wrapped cookie keys do not protect against another process running as
 the user. Site storage (including localStorage and IndexedDB) and extension
-storage are not Zephium-encrypted vaults and may contain tokens saved by sites or
+storage are not Quasar-encrypted vaults and may contain tokens saved by sites or
 extensions. Profile separation does not make them separate OS security principals.
 See Microsoft's [user data folder](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/user-data-folder)
 and [profile API](https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/icorewebview2profile)
 documentation. Chromium's [app-bound protection](https://chromium.googlesource.com/chromium/src/+/refs/heads/main/chrome/browser/os_crypt/app_bound_encryption_win.cc)
 depends on its privileged service and supported installation, not a WebView2
-setting that Zephium can enable.
+setting that Quasar can enable.
 
 On macOS, WKWebView and WebKit own website cookies, site data and native extension
 storage; system password autofill and passkeys remain system-owned. App-owned
-engine directories use owner-only Unix permissions. Zephium does not add a
+engine directories use owner-only Unix permissions. Quasar does not add a
 separate encryption layer to WebKit data. On either platform, general local data
 such as history, notes, conversations, downloads and connection settings is not
 a secret vault: sensitive text entered there, or connection values not marked

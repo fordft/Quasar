@@ -1,4 +1,4 @@
-# Using extensions in Zephium
+# Using extensions in Quasar
 
 Extensions are available on Windows and macOS. Compatibility depends on the
 extension and the platform; successful installation does not guarantee that all
@@ -6,8 +6,8 @@ of its features work.
 
 ## Install and review access
 
-Open the extension's Chrome Web Store listing and choose **Add to Zephium**.
-Zephium acquires the original package from Google. Review the requested access
+Open the extension's Chrome Web Store listing and choose **Add to Quasar**.
+Quasar acquires the original package from Google. Review the requested access
 and compatibility limitations before accepting installation.
 
 Review any reported limitations: declared APIs and features may be unavailable
@@ -18,7 +18,7 @@ or catalog entry is not a permission grant or a permanent compatibility guarante
 ## Manage and update
 
 Use the extension manager to enable, disable or remove an extension and change
-its site access. Zephium checks Store-installed extensions for updates in the
+its site access. Quasar checks Store-installed extensions for updates in the
 background. Updates that need additional access wait for review. Extensions
 installed from local files or folders are not updated automatically.
 

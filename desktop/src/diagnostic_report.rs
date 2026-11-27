@@ -16,8 +16,8 @@ use crate::webext::WebExtensions;
 use crate::{authorize, CallerPolicy};
 use redact::Redactor;
 
-const LOG: &str = "zephium.log";
-const OLDER_LOG: &str = "zephium.1.log";
+const LOG: &str = "quasar.log";
+const OLDER_LOG: &str = "quasar.1.log";
 const CRASH: &str = "last-crash.txt";
 const LOG_LINES: usize = 300;
 /// A GitHub issue holds 65,536 characters in all, so the log leaves room for
@@ -192,7 +192,7 @@ fn redactor(app: &tauri::AppHandle) -> Redactor {
 fn app_line(app: &tauri::AppHandle) -> String {
     let version = app.package_info().version.to_string();
     let revision = option_env!("ZEPHIUM_BUILD_REVISION").unwrap_or("unknown");
-    format!("Zephium {version}, {}", build_label(revision))
+    format!("Quasar {version}, {}", build_label(revision))
 }
 
 /// The commit and whether the tree was clean: `882c92d8f1a2`, `…+dirty`.
@@ -392,7 +392,7 @@ fn compose(rows: &[(&str, String)], crash: Vec<String>, log: Vec<String>) -> Str
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_or(0, |since| since.as_secs());
-    let mut text = format!("Zephium diagnostics\nCreated: {}\n", utc(now));
+    let mut text = format!("Quasar diagnostics\nCreated: {}\n", utc(now));
     for (label, value) in rows {
         text.push_str(&format!("{label}: {value}\n"));
     }
@@ -538,14 +538,14 @@ mod tests {
     #[test]
     fn a_recent_crash_is_included_and_an_old_one_is_not() {
         let dir = tempfile::tempdir().unwrap();
-        let report = "Zephium 1.0.3 stopped at desktop/src/lib.rs:1:2: bad value for https://example.com/a\nstack\n\nframe /Users/jane/x\n";
+        let report = "Quasar 1.0.3 stopped at desktop/src/lib.rs:1:2: bad value for https://example.com/a\nstack\n\nframe /Users/jane/x\n";
         std::fs::write(dir.path().join(CRASH), report).unwrap();
         let now = SystemTime::now();
         let lines = crash_lines(dir.path(), &mut redactor(), now);
         assert!(lines[0].starts_with("Last crash, 20"));
         assert_eq!(
             lines[1],
-            "Zephium 1.0.3 stopped at desktop/src/lib.rs:1:2: bad value for <url>"
+            "Quasar 1.0.3 stopped at desktop/src/lib.rs:1:2: bad value for <url>"
         );
         assert_eq!(lines.last().map(String::as_str), Some("frame <path>"));
         let later = now + CRASH_AGE + Duration::from_secs(60);
@@ -567,15 +567,15 @@ mod tests {
         std::fs::write(dir.path().join(LOG), log.join("\n") + "\n").unwrap();
         let lines = recent_lines(dir.path(), &mut redactor());
         let rows = vec![
-            ("App", "Zephium 1.0.3, build 882c92d8f1a2".to_owned()),
+            ("App", "Quasar 1.0.3, build 882c92d8f1a2".to_owned()),
             ("Channel", "stable".to_owned()),
             ("System", "macOS 26.1.0 (arm64)".to_owned()),
             ("Web engine", "WebKit 21622.2.11 (Safari 26.1)".to_owned()),
         ];
         let text = compose(&rows, Vec::new(), lines);
 
-        assert!(text.starts_with("Zephium diagnostics\nCreated: 20"));
-        assert!(text.contains("\nApp: Zephium 1.0.3, build 882c92d8f1a2\n"));
+        assert!(text.starts_with("Quasar diagnostics\nCreated: 20"));
+        assert!(text.contains("\nApp: Quasar 1.0.3, build 882c92d8f1a2\n"));
         assert!(text.contains("\nLog, last 7 lines"));
         assert!(text.contains("WebView2 runtime selected at launch: 156.0.4314.42"));
         assert!(text.contains("zephium.db for <email>"));

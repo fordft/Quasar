@@ -10584,7 +10584,7 @@ mod tests {
             config
                 .get("productName")
                 .and_then(serde_json::Value::as_str),
-            Some("app.zephium")
+            Some("app.quasar")
         );
         for pointer in [
             "/bundle/linux/deb/desktopTemplate",
@@ -10598,7 +10598,7 @@ mod tests {
         let template = include_str!("../linux/quasar.desktop.hbs");
         for exact in [
             "Name=Quasar",
-            "StartupWMClass=app.zephium",
+            "StartupWMClass=app.quasar",
             "Exec={{exec}} %U",
             "Icon={{icon}}",
         ] {

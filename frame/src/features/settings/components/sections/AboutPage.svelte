@@ -149,7 +149,7 @@
 <header class="settings-about hero">
   <QuasarTile size={88} />
   <div class="identity">
-    <span class="zephium-wordmark" role="img" aria-label="Zephium"></span>
+    <span class="quasar-wordmark" role="img" aria-label="Quasar"></span>
     <p class="meta">
       <span class="version">{about ? m.about_version({ version: about.version }) : ""}</span>
       {#if updatable && about}<Button
@@ -325,7 +325,7 @@
     gap: 6px;
   }
 
-  .zephium-wordmark {
+  .quasar-wordmark {
     inline-size: 150px;
     block-size: 22px;
   }

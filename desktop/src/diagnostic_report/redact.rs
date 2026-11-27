@@ -1239,8 +1239,8 @@ mod tests {
     #[test]
     fn home_folders_become_a_tilde_on_both_systems() {
         assert_eq!(
-            clean("log at /Users/jane/Library/Logs/app.zephium/zephium.log"),
-            "log at ~/Library/Logs/app.zephium/zephium.log"
+            clean("log at /Users/jane/Library/Logs/app.quasar/quasar.log"),
+            "log at ~/Library/Logs/app.quasar/quasar.log"
         );
         assert_eq!(
             clean(r"opened C:\Users\Jane Doe\AppData\Roaming\app.zephium\zephium.db"),
