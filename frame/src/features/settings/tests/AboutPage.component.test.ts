@@ -182,16 +182,14 @@ test.each(["macOS 26.1.0", "Windows 11", null])(
   },
 );
 
-test("the links open Zephium's own pages in a tab", async () => {
+test("the links open Quasar's own pages in a tab", async () => {
   native.status = { state: "upToDate" };
   const screen = await render(AboutPage);
-  const links = screen.getByRole("navigation", { name: "Zephium on the web" });
+  const links = screen.getByRole("navigation", { name: "Quasar on the web" });
   for (const [name, url] of [
-    ["Website", "https://zephium.app"],
-    [IS_MAC ? "Docs" : "Help", "https://zephium.app/docs"],
-    ["GitHub", "https://github.com/zephium-browser/Zephium"],
-    ["Discord", "https://discord.gg/tyveTUyEp7"],
-    ["YouTube", "https://www.youtube.com/@crynta"],
+    ["Website", "https://github.com/fordft/Quasar"],
+    [IS_MAC ? "Docs" : "Help", "https://github.com/fordft/Quasar/tree/main/docs"],
+    ["GitHub", "https://github.com/fordft/Quasar"],
   ] as const) {
     await links.getByRole("link", { name }).click();
     expect(native.openUrl).toHaveBeenLastCalledWith(url, true);

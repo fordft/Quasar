@@ -372,28 +372,6 @@ test("handoff: the hero card in each of its states", async () => {
   }
 });
 
-test("faults: a rate limit counts down, credits lead to the account", async () => {
-  const screen = await open(
-    thread(
-      person(1, "Summarize this"),
-      reply(2, [], {
-        state: "failed",
-        cost: null,
-        fault: { reason: "model", fault: "rate_limited", retry_after_ms: 12_000 },
-      }),
-      person(3, "Try again"),
-      reply(4, [], {
-        state: "failed",
-        cost: null,
-        fault: { reason: "model", fault: "hosted_usage", retry_after_ms: null },
-      }),
-    ),
-  );
-  await expect.element(screen.getByRole("button", { name: "Buy credits" })).toBeVisible();
-  await expect.element(screen.getByText("Zephium AI needs a short breather.")).toBeVisible();
-  await capture(screen.container, "faults");
-});
-
 test("composer: page and selection chips; + holds the page, the picker and other tabs", async () => {
   setTabs({
     tabs: [
