@@ -2,7 +2,7 @@ import { expect, test } from "vitest";
 import { callback, callbackSource } from "$shared/testing/svelte-handlers";
 
 test("Escape cannot natively close a controlled dialog whose owner vetoes dismissal", () => {
-  const file = new URL("../components/account/AccountDialog.svelte", import.meta.url);
+  const file = new URL("../components/SettingsDialog.svelte", import.meta.url);
   const source = callbackSource(file, "event", "oncancel");
   let pending = true;
   let nativeOpen = true;

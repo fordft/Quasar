@@ -9,11 +9,6 @@ const native = vi.hoisted(() => ({
   listen: vi.fn(),
   linux: false,
 }));
-vi.mock("$shared/platform", () => ({
-  get IS_LINUX() {
-    return native.linux;
-  },
-}));
 vi.mock("$shared/ipc/bindings", async () => {
   const { mockBindings } = await import("$shared/testing/bindings");
   return mockBindings({
@@ -23,8 +18,10 @@ vi.mock("$shared/ipc/bindings", async () => {
   });
 });
 const platform = vi.hoisted(() => ({ IS_MAC: false, IS_WINDOWS: false }));
-vi.mock("$shared/platform", async (original) => ({
-  ...(await original<object>()),
+vi.mock("$shared/platform", () => ({
+  get IS_LINUX() {
+    return native.linux;
+  },
   get IS_MAC() {
     return platform.IS_MAC;
   },
@@ -58,7 +55,7 @@ describe("preference observation lifecycle", () => {
     const stored = new Map([
       ["ui.language", "fr"],
       ["tabs.after-close", "previous"],
-      ["performance.after", "30"],
+      ["performance.after", "60"],
     ]);
     native.get.mockImplementation(async (key: string) =>
       key === "ai.enabled" || key === "work.enabled" ? "false" : (stored.get(key) ?? null),
@@ -79,7 +76,7 @@ describe("preference observation lifecycle", () => {
     expect(preferences.enabled("work")).toBe(false);
     expect(preferences.value("ui.language")).toBe("system");
     expect(preferences.value("tabs.after-close")).toBe("next");
-    expect(preferences.value("performance.after")).toBe("15");
+    expect(preferences.value("performance.after")).toBe("30");
     expect(native.set.mock.calls.map(([key]) => key)).toEqual([
       "ui.language",
       "tabs.after-close",
