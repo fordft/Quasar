@@ -1,10 +1,16 @@
 # Quasar preview builds
 
 The Preview workflow builds the fork's current `main` and publishes experimental
-downloads when manually dispatched with `platform: both` and `publish: true`.
-Ordinary pushes build artifacts without creating a release. The production
-Release workflow remains separate and requires signing credentials.
-Publication also requires the full main CI run to pass for the same commit.
+`quasar-preview-<run>` prereleases when manually dispatched with
+`platform: both` and `publish: true`. Ordinary pushes build artifacts without
+creating a release. Previews are never marked latest and never produce updater
+payloads: they remain a manual test channel.
+
+Production releases are separate `v<version>` tags built by the Release workflow.
+On macOS and Windows, installed release builds use Quasar's signed automatic
+update feed. Linux remains a manual AppImage download and is not in the updater
+manifest. Preview publication also requires the full main CI run to pass for the
+same commit.
 
 ## macOS
 
@@ -54,8 +60,10 @@ source archives and Debian packaging patches.
 ## Verification and development
 
 Each published preview includes `SHA256SUMS`. Compare the checksum of the file
-you downloaded before opening it. Automatic updates are disabled; install each
-new preview manually.
+you downloaded before opening it. Preview builds are not published as updater
+payloads, so install each new preview manually. Production macOS and Windows
+release builds check Quasar's signed release feed and can update themselves;
+Linux releases remain manual downloads either way.
 
 CI runs frontend checks, production asset builds, Rust formatting, core tests
 and the emitted style gate before packaging. It then requires the packaged app

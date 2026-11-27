@@ -1,283 +1,222 @@
 # Releasing Quasar
 
-Pushing a `v*` tag runs [`release.yml`](workflows/release.yml). It builds and
-verifies macOS (Apple Silicon) and Windows (x64), then creates a **draft**
-GitHub release. Nothing is public until a maintainer publishes the draft.
+Quasar releases are owned by `fordft/Quasar`, not by the upstream Zephium
+project. Pushing a `v*` tag runs [`release.yml`](workflows/release.yml) only in
+this repository. The workflow checks the tagged source, builds macOS, Windows
+and Linux artifacts, signs the updater payloads, attests build provenance and
+creates a **draft** GitHub release. Nothing becomes public until a maintainer
+publishes that draft.
 
-Quasar's in-app updater is disabled. Configure Quasar's own verification key
-and endpoint in `desktop/tauri.conf.json`, then enable the platform support gate
-in `desktop/src/updates.rs` only after signed updates have been qualified.
-The upstream Zephium signing key and update feed are not used by this fork.
+The in-app updater trusts Quasar's own minisign public key and reads only:
+`https://github.com/fordft/Quasar/releases/latest/download/latest.json`.
+Upstream Zephium keys, endpoints, accounts and releases are not used.
 
-## One-time setup
+## Version scheme
 
-### Secrets
+Quasar has its own semantic-version line, independent of upstream Zephium.
+`desktop/Cargo.toml` `[package] version` is the only version source;
+`desktop/tauri.conf.json` must not repeat it. The release tag is exactly
+`v` plus that version, for example `v1.2.0` or `v1.2.0-beta.1`. The workflow
+rejects a tag that is not valid semver or does not equal the desktop crate
+version.
 
-Add these under **Settings → Secrets and variables → Actions** as repository
-secrets. The release gate fails with the names of any that are missing.
+Do not reuse, move or mutate a published tag. Fix forward with a higher Quasar
+version.
 
-| Secret | Value |
-| --- | --- |
-| `APPLE_CERTIFICATE` | Base64 of the Developer ID Application `.p12` (`base64 -i cert.p12`) |
-| `APPLE_CERTIFICATE_PASSWORD` | The `.p12` export password |
-| `APPLE_SIGNING_IDENTITY` | `Developer ID Application: <Name> (<TEAMID>)` |
-| `APPLE_TEAM_ID` | The 10-character team ID; the workflow checks the app is signed by it |
-| `APPLE_API_ISSUER` | App Store Connect API issuer ID (Users and Access → Integrations → Keys) |
-| `APPLE_API_KEY` | That API key's key ID |
-| `APPLE_API_KEY_PATH` | The **contents** of `AuthKey_<KEYID>.p8`; the workflow writes it to disk |
-| `TAURI_SIGNING_PRIVATE_KEY` | The updater private key (file contents) |
-| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | Its password |
+## Secrets and signing configuration
 
-The API key needs the Developer role to notarize.
+The updater signing secrets are required for every release:
 
-### Updater key
+- `TAURI_SIGNING_PRIVATE_KEY`
+- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
 
-Generate the minisign key pair once and keep the private key and password in a
-password manager:
+Apple signing is optional as one complete set. If all are present, the macOS
+release is Developer ID signed and notarized. If none are present, it is
+ad-hoc signed and not notarized. Any partial set fails the release gate:
 
-```sh
-pnpm --dir desktop tauri signer generate -w ~/.tauri/zephium-updater.key
-```
+- `APPLE_CERTIFICATE`
+- `APPLE_CERTIFICATE_PASSWORD`
+- `APPLE_SIGNING_IDENTITY`
+- `APPLE_TEAM_ID`
+- `APPLE_API_ISSUER`
+- `APPLE_API_KEY`
+- `APPLE_API_KEY_PATH`
 
-The public key (the `.pub` file contents) is embedded in
-`desktop/tauri.conf.json` at `plugins.updater.pubkey`. Installed copies trust
-only that key: losing the private key or changing the public key strands every
-existing install on its current version.
+Windows SignPath signing is also optional as one complete set. If all are
+present, the installer is Authenticode signed and timestamped before its final
+updater signature is made. If none are present, the installer remains unsigned
+and the notes say so. Any partial set fails the release gate:
 
-### Repository
+- `SIGNPATH_API_TOKEN` (secret)
+- `SIGNPATH_ORGANIZATION_ID` (secret)
+- `SIGNPATH_SIGNER_SUBJECT` (variable, because it is the public certificate
+  subject rather than a secret)
 
-- The repository must be public: build provenance attestations and the
-  `releases/latest/download/…` links depend on it.
-- Protect `v*` tags with a ruleset so only maintainers can create them.
+When configuring SignPath, use project slug `quasar`, signing policy
+`release-signing` and artifact configuration `windows-nsis`, restricted to this
+repository, `.github/workflows/release.yml`, protected `v*` tags and
+GitHub-hosted runners. The workflow verifies publisher trust, the exact subject
+and a timestamp before replacing the installer. It then re-signs the final
+installer bytes for the updater in both signed and unsigned configurations.
+
+Never print, commit or paste private keys or passwords into issues, pull
+requests, logs or documentation.
+
+## Updater key custody
+
+The maintainer keeps the updater private key and its password in offline key
+custody, with the GitHub Actions secrets serving only the release workflow.
+The public key in `desktop/tauri.conf.json` is not secret.
+
+Losing the private key or password means every installed copy can never accept
+another signed update. There is no recovery path that existing installs can
+trust. Rotation therefore requires advance custody of the old key: ship one
+release whose embedded public key is the new key while its updater payload is
+still signed with the old key. Once enough users have that release, later
+payloads can be signed with the new key. If the old key is lost before that
+transition, users must reinstall manually. Treat a leaked key as a security
+incident and rotate it the same way.
 
 ## Cutting a release
 
-1. **Refresh the blocker seed.** The release gate rejects a seed whose oldest
-   list is more than 30 days old, and quick fixes changes several times a day,
-   so do this right before tagging:
+1. **Refresh the blocker seed** immediately before tagging when it is near its
+   freshness boundary. Supply reviewed source files and preserve all license
+   and provenance checks:
 
    ```sh
-   mkdir -p /tmp/blocker-seed && cd /tmp/blocker-seed
-   curl -fsSL -o easylist.txt https://easylist.to/easylist/easylist.txt
-   curl -fsSL -o easyprivacy.txt https://easylist.to/easylist/easyprivacy.txt
-   curl -fsSL -o ublock-filters.txt https://ublockorigin.github.io/uAssets/filters/filters.min.txt
-   curl -fsSL -o ublock-quick-fixes.txt https://ublockorigin.github.io/uAssets/filters/quick-fixes.txt
-   curl -fsSL -o ublock-link-shorteners.txt https://ublockorigin.github.io/uAssets/filters/ubo-link-shorteners.txt
-   curl -fsSL -o ublock-privacy.txt https://ublockorigin.github.io/uAssets/filters/privacy.min.txt
-   curl -fsSL -o ublock-resource-abuse.txt https://ublockorigin.github.io/uAssets/filters/resource-abuse.txt
-   curl -fsSL -o ublock-unbreak.txt https://ublockorigin.github.io/uAssets/filters/unbreak.min.txt
-   curl -fsSL -o ublock-badware.txt https://ublockorigin.github.io/uAssets/filters/badware.min.txt
-   cd -
-   cargo xtask update-blocker-seed --sources /tmp/blocker-seed \
+   sources="${HOME}/.cache/quasar-blocker-seed-sources"
+   mkdir -p "${sources}"
+   curl -fsSL -o "${sources}/easylist.txt" https://easylist.to/easylist/easylist.txt
+   curl -fsSL -o "${sources}/easyprivacy.txt" https://easylist.to/easylist/easyprivacy.txt
+   curl -fsSL -o "${sources}/ublock-filters.txt" https://ublockorigin.github.io/uAssets/filters/filters.min.txt
+   curl -fsSL -o "${sources}/ublock-quick-fixes.txt" https://ublockorigin.github.io/uAssets/filters/quick-fixes.txt
+   curl -fsSL -o "${sources}/ublock-link-shorteners.txt" https://ublockorigin.github.io/uAssets/filters/ubo-link-shorteners.txt
+   curl -fsSL -o "${sources}/ublock-privacy.txt" https://ublockorigin.github.io/uAssets/filters/privacy.min.txt
+   curl -fsSL -o "${sources}/ublock-resource-abuse.txt" https://ublockorigin.github.io/uAssets/filters/resource-abuse.txt
+   curl -fsSL -o "${sources}/ublock-unbreak.txt" https://ublockorigin.github.io/uAssets/filters/unbreak.min.txt
+   curl -fsSL -o "${sources}/ublock-badware.txt" https://ublockorigin.github.io/uAssets/filters/badware.min.txt
+   cargo xtask update-blocker-seed --sources "${sources}" \
      --license assets/blocker-seed/v1/LICENSE-CC-BY-SA-3.0.txt \
      --gpl-license assets/blocker-seed/v1/LICENSE-GPL-3.0.txt
+   cargo xtask check-blocker-seed
    ```
 
-   Then copy the new WebKit digest into the native seed probe and its policy
-   test, which pin it (`scripts/ci/probe_macos_blocker_seed.swift` and
-   `scripts/ci/test_macos_blocker_seed_probe.sh`):
+   If the seed changes, update the pinned digest/count evidence described in
+   [the adblock maintenance guide](../docs/adblock.md#official-list-maintenance)
+   and run the focused blocker tests.
 
-   ```sh
-   jq -r '.compilers[] | select(.target == "webkit") | .native_artifact_sha256' \
-     assets/blocker-seed/v1/compile-report.json
-   ```
+2. **Bump the version in a pull request.** Edit only `desktop/Cargo.toml`'s
+   package version and run `cargo check -p zephium-desktop` so `Cargo.lock`
+   agrees, then verify the result with `--locked`. Review the updater
+   public key and endpoint in `desktop/tauri.conf.json`; they are release
+   trust configuration, not routine version-bump edits.
 
-   The tests in `desktop/src/blocker_service.rs` pin the seed's revision, source
-   bytes, manifest digest, rule counts (runtime `accepted_rules` on Windows,
-   WebKit's on macOS) and the YouTube marker its quick fixes key on. Update them
-   from the refreshed catalog and compile report, then verify the production
-   loader and worker:
-
-   ```sh
-   cargo test -p zephium-desktop --lib --locked blocker_service::tests
-   ```
-
-2. **Bump the version** in `desktop/Cargo.toml` (`[package] version`, e.g.
-   `1.0.0-beta.1`). It is the only version source: `tauri.conf.json` has none.
-   Run `cargo check -p zephium-desktop` so `Cargo.lock` follows.
-3. **Run the release gate locally.** It is the same check the workflow runs
-   first: strict engine-floor and advisory reviews, seed freshness, and
-   outstanding vendor fixes.
+3. **Run the local release security gate**:
 
    ```sh
    cargo xtask check-release-engine-security
    ```
 
-4. Merge to `main` with CI green.
-5. **Tag and push** the merged commit:
+4. Merge the version bump to `main` and wait for the complete main CI run for
+   that exact commit to succeed. Release creation requires it again.
+
+5. **Create and push an annotated tag** for the merged commit:
 
    ```sh
-   git tag -a v1.0.0-beta.1 -m "Quasar 1.0.0-beta.1"
-   git push origin v1.0.0-beta.1
+   git tag -a vX.Y.Z -m "Quasar X.Y.Z"
+   git push origin vX.Y.Z
    ```
 
-6. **Review the draft** once the workflow finishes. For a stable version,
-   review the final assets below and use **Publish stable draft**. For a prerelease,
-   install the DMG and Windows installer and review the notes before publication.
-   After a stable release exists, publish betas with "Set as a pre-release"
+6. **Let the Release workflow draft the release.** It verifies the tag/version
+   match, updater endpoint and public key, required updater secrets, optional
+   signing sets, release security policy and successful main CI. It runs the
+   WebKit component suite unless an explicit emergency dispatch skips it, then
+   builds:
+
+   - macOS Apple Silicon `.app`, DMG and updater archive;
+   - Windows x64 NSIS installer and updater signature;
+   - Linux x86_64 AppImage plus its runtime source archive, using the same
+     runtime preparation, finalization and startup smoke test as the preview
+     pipeline.
+
+   The draft receives `SHA256SUMS`, `latest.json` and build-provenance
+   attestations. Linux is never listed in `latest.json`.
+
+7. **Review the draft before publishing.** Check the exact assets, hashes,
+   provenance, updater manifest, release notes and the notes' statements about
+   macOS notarization and Windows Authenticode signing for this release. Install
+   and qualify the final DMG and Windows installer on their native platforms.
+   The Linux AppImage smoke test is workflow evidence, not full Linux product
+   qualification.
+
+8. **Publish.** For a stable `vX.Y.Z`, dispatch
+   [`publish-stable.yml`](workflows/publish-stable.yml) with the same tag. It
+   downloads the existing draft, verifies the complete asset set, updater
+   manifest, signatures, exact candidate CI/Release runs and attestations, then
+   marks the release non-draft and non-prerelease. It never rebuilds or replaces
+   assets. The newest stable candidate becomes the latest release, so
+   `releases/latest/download/latest.json` serves the updater feed; an older
+   candidate cannot silently downgrade that feed.
+
+   Prerelease tags are not stable publication input. After a stable release exists, publish betas with "Set as a pre-release"
    checked and "Set as the latest release" unchecked: both the website and the
    updater resolve through `releases/latest`, which skips pre-releases.
 
-To rebuild a tag (for example after a flaky runner), select the same tag in
-both **Actions → Release → Run workflow → Use workflow from** and the `tag`
-input. The gate binds that tag to the workflow commit; CI and both build jobs
-then check out the immutable `github.sha`, even if the tag moves later. With the
-CLI, pass the tag ref explicitly:
-
-```sh
-gh workflow run release.yml --ref v1.0.0-beta.1 -f tag=v1.0.0-beta.1
-```
-
-The [CLI defaults to the default branch](https://cli.github.com/manual/gh_workflow_run)
-without `--ref`. Release refuses a different workflow ref or checkout commit so
-its workflow `head_sha` and provenance describe the candidate's tag commit.
-An existing draft for that tag is replaced; a published release is never
-touched.
-
-## Draft review and stable publication
-
-Draft creation requires main CI for the exact release commit, both build/sign
-jobs, the release security gate and every WebKit component shard. Components use
-one retry (`--retry=1`) to tolerate an isolated runner failure.
-
-For an urgent release, dispatch **Release** from the candidate tag with the same
-`tag` input and set the boolean **`emergency`** input to `true`. This skips only
-components; main CI, security, build and signing checks still gate the draft.
-The generated release notes visibly state **EMERGENCY: Component tests were
-skipped for this release.** Review that disclosure before publishing.
-
-Install the draft's final DMG and Windows installer and review native behavior,
-platform signing, updater signatures and provenance on the shipping platforms.
-Hosted checks provide source/API coverage; retain useful device results with the
-candidate commit and artifact hashes so a rebuild cannot be mistaken for the
-bytes reviewed.
-
-For a stable `vMAJOR.MINOR.PATCH`, dispatch **Publish stable draft** with the
-existing annotated tag. It requires successful main-push CI and a successful
-Release run from that tag for the same commit. The Release run has already gated
-components, or recorded the explicit emergency bypass. The publisher downloads
-the existing draft's assets and verifies the DMG, macOS updater archive and
-Windows installer attestations against that commit and `release.yml` before
-publishing. It never builds or replaces assets. Release and publication share a
-same-tag workflow lock, and publication jobs serialize their latest-release check
-and edit across tags. A stable draft becomes latest only when its canonical
-semantic version is newer than the current latest stable release; equal or older
-versions explicitly use `--latest=false`. An absent latest release (HTTP 404)
-allows the first stable promotion; other lookup errors or malformed latest tags
-stop publication. Maintainers can also publish
-reviewed drafts through GitHub's release UI.
+To rebuild a tag before publication, dispatch **Release** from that same tag and
+pass it in the `tag` input. The workflow refuses a mismatched workflow ref or
+checkout commit. An existing draft may be replaced; a published release is never
+touched. For an urgent release, the `emergency` dispatch input skips only the
+component suite and the generated notes visibly disclose that bypass. Main CI,
+security, build and signing checks still gate the draft.
 
 ## Published assets
-
-The website links `releases/latest/download/<name>`, so these names are a
-contract:
 
 | Asset | Purpose |
 | --- | --- |
 | `Quasar-macOS-arm64.dmg` | macOS download |
 | `Quasar-macOS-arm64.app.tar.gz` + `.sig` | macOS updater payload |
 | `Quasar-Windows-x64-setup.exe` + `.sig` | Windows download and updater payload |
-| `latest.json` | Updater manifest (`darwin-aarch64[-app]`, `windows-x86_64[-nsis]`) |
+| `Quasar-Linux-x86_64.AppImage` | Linux manual download |
+| `Quasar-Linux-runtime-sources.tar` | Corresponding Linux runtime source archive |
+| `latest.json` | Updater manifest for macOS and Windows only |
 | `SHA256SUMS` | Digests of every other asset |
 
-Renaming does not invalidate an updater signature. Windows signatures bind the
-release version and `windows-x86_64-nsis` target as well as the final bytes;
-the updater rejects an unbound or mismatched signature.
+`latest.json` uses the Tauri v2 static updater format and points only to assets
+under the same tag in `fordft/Quasar`. It contains the base updater targets
+`darwin-aarch64` and `windows-x86_64`; the upstream bundle-specific aliases are
+retained for the same two artifacts. Windows updater signatures bind the final
+bytes, release version and `windows-x86_64-nsis` target. Renaming a file does
+not invalidate a minisign signature, but publication verification requires the
+exact asset names above.
 
-## What the workflow verifies
+## What users receive
 
-- The tag is `v` + the `zephium-desktop` version, valid semver, and
-  `tauri.conf.json` carries no competing version.
-- `cargo xtask check-release-engine-security` passes.
-- macOS: `codesign --verify --deep --strict`, the signing team is
-  `APPLE_TEAM_ID`, Gatekeeper (`spctl`) accepts the app, the app and the DMG
-  are notarized and stapled, the main executable's entitlements are exactly
-  camera and microphone, and no other Mach-O carries any.
-- Both updater signatures verify against the public key in
-  `desktop/tauri.conf.json`, and the asset set is exactly the one above.
-- Build provenance is attested for the DMG, the updater archive and the
-  installer (`gh attestation verify <file> --repo fordft/Quasar`).
+- **macOS (Apple Silicon):** automatic updates are enabled for release builds.
+  With the complete Apple secret set, the app is Developer ID signed, notarized
+  and stapled. Without that set, it is ad-hoc signed and not notarized, so macOS
+  may require approval in Privacy & Security. The release notes state which
+  configuration was used.
+- **Windows (x64):** automatic updates are enabled for release builds. With the
+  complete SignPath configuration, the installer is Authenticode signed and
+  timestamped. Without it, the installer is unsigned and SmartScreen reputation
+  applies. The release notes state which configuration was used.
+- **Linux (x86_64):** the AppImage remains a browsing-only manual download. It
+  is excluded from `latest.json` and does not automatically update; users install
+  a newer AppImage themselves. AI and Work remain unavailable in the Linux
+  preview configuration.
 
-The macOS dSYM and Windows PDB are kept as workflow artifacts for 90 days.
-Download them for any release you need to symbolicate later.
-
-## Windows signing
-
-SignPath integration is **inactive** until the accepted project's certificate is
-issued and the owner completes the setup below. No signing request is sent while
-all three configuration values are absent. Partial configuration fails the release;
-drafts remain explicitly labelled unsigned
-while setup is pending. No secret belongs in an untrusted PR job.
-
-If the repository already holds a shared `SIGNPATH_API_TOKEN` for signing tests,
-an owner may explicitly set Actions variable `SIGNPATH_RELEASE_MODE` to `unsigned`
-while waiting for the production certificate. This keeps Windows drafts unsigned
-without removing the test token. It is allowed only while
-`SIGNPATH_ORGANIZATION_ID`, `SIGNPATH_SIGNER_SUBJECT` and the forthcoming
-`SIGNPATH_RELEASE_CERT_THUMBPRINT` are absent. Remove the
-variable before configuring production signing; a stale unsigned mode alongside
-any production setting fails the release. macOS signing and updater signatures
-remain mandatory in this mode. With the variable unset, partial configuration
-still fails rather than silently producing unsigned Windows assets.
-
-The owner creates these exact SignPath resources:
-
-- Project slug **`zephium`**, linked to the public
-  `zephium-browser/Zephium` repository and GitHub.com Trusted Build System.
-- Signing policy **`release-signing`**, using the issued production certificate,
-  approved release submitters and human approval, restricted to this repository's
-  `.github/workflows/release.yml`, protected `v*` tags and GitHub-hosted runners.
-- Artifact configuration **`windows-nsis`**: a ZIP root (the upload-artifact
-  envelope) containing exactly one PE `Zephium_*_x64-setup.exe`, with
-  Authenticode signing and timestamping. NSIS is treated as a PE file; this signs
-  the downloaded setup, and does not claim signatures on its embedded payload.
-- Install the SignPath GitHub App and grant this repository access as required
-  by SignPath's origin verification policy.
-
-Then add repository Actions secrets **`SIGNPATH_API_TOKEN`** (a submitter token
-restricted to the project/policy) and **`SIGNPATH_ORGANIZATION_ID`** (the UUID
-from the dashboard), plus Actions variable **`SIGNPATH_SIGNER_SUBJECT`** with
-the issued certificate's complete, exact X.500 Subject. Do not guess the subject
-from the product name or activate using a test certificate. The existing updater
-key secrets are still required independently.
-
-The Windows job uploads `signpath-unsigned-windows-x64`, waits for approval,
-verifies `Get-AuthenticodeSignature` is `Valid`, checks the exact subject and a
-timestamp, then replaces the setup. Only afterwards does
-`cargo run --locked -p xtask -- sign-windows-updater <setup> <version>`
-regenerates the updater signature over the final bytes, binding the version and
-target. This step also runs when SignPath is inactive; the draft job verifies
-the signature against the configured public key. Signing failures never
-fall back to unsigned assets. The action is pinned to verified v3.0 commit
-`f6d04783b4569d051e0c80105fe66e82819d0092`.
-
-The Windows job has a bounded 180-minute budget: up to 75 minutes for the build,
-75 for the signing action, and 30 for setup and final verification/uploads. Within
-the signing action, human approval waits at most 60 minutes, service availability
-five minutes and download three minutes. Its explicit step cap bounds other
-request/processing overhead; a signing timeout fails rather than falling back.
-
-Before the first signed public release, qualify the exact downloaded setup on
-a clean Windows device: expected publisher, trust chain, timestamp, final hash,
-installation, updater signature and provenance. The accepted project and pending
-certificate alone do not establish those results. Follow the
-[SignPath GitHub integration](https://docs.signpath.io/trusted-build-systems/github)
-and [artifact reference](https://docs.signpath.io/artifact-configuration/reference).
-
-Until then, SmartScreen judges each installer by its own download reputation.
-After publishing, submit `Quasar-Windows-x64-setup.exe` at
-<https://www.microsoft.com/wdsi/filesubmission> as a software developer
-("Incorrectly detected as malware/malicious" when it is flagged). Keep the
-asset name and download URL unchanged between releases, and keep the bundle's
-`publisher` at `Quasar`: Windows keys the per-user install by it.
+Preview workflow `quasar-preview-<run>` builds remain the test channel. They are
+prereleases, never marked latest, and do not produce updater payloads. They are
+not a substitute for reviewed stable releases.
 
 ## Recovery
 
-- **Before publishing**, anything can be redone: delete the draft, fix the
-  cause, and rerun. If the tagged source was wrong, delete and recreate the
-  tag, or simply bump the version.
-- **After publishing**, never replace assets, edit binaries, or delete the
-  release or tag. Users and the updater may already hold those bytes. Fix
-  forward with a higher version (`1.0.0-beta.2`).
-- If the updater private key leaks, ship a release whose embedded key is new,
-  signed with the old key, and treat it as a security incident.
+- **Before publishing**, a draft can be deleted and recreated after the cause is
+  fixed. If the tagged source was wrong, delete and recreate the tag before
+  publication, or prefer a higher version.
+- **After publishing**, never replace assets, edit binaries, delete the release
+  or move/delete the tag. Users and the updater may already hold those bytes.
+  Fix forward with a higher version.
+- **If signing configuration changes**, make the secret set complete or empty
+  before starting the release. The gate fails partial sets rather than silently
+  changing trust.

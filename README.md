@@ -74,8 +74,9 @@ Quasar uses `app.quasar` for installed builds and `app.quasar.dev` for developme
 separate from Zephium's application profiles. Existing Zephium data is not
 moved or adopted automatically.
 
-Automatic updates are disabled until Quasar has its own signing key and update
-endpoint. Builds do not install releases from the upstream Zephium project.
+Production macOS and Windows releases update themselves through Quasar's own
+signed update feed. Linux releases remain manual AppImage downloads. Builds never
+install releases from the upstream Zephium project.
 
 ## Branding and checks
 
