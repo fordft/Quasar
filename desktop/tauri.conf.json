@@ -99,8 +99,10 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "",
-      "endpoints": []
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEU2MkJBMEJFRjk2QTdDNDQKUldSRWZHcjV2cUFyNWlIQ1o2RmxzZnVIZVBnSWU5ZlUrMjlUWEwwYVRlNjFoazBkbWxjcWtRekIK",
+      "endpoints": [
+        "https://github.com/fordft/Quasar/releases/latest/download/latest.json"
+      ]
     }
   }
 }

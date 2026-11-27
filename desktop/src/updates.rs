@@ -62,11 +62,10 @@ static RELAUNCH_AFTER_EXIT: AtomicBool = AtomicBool::new(false);
 #[cfg(target_os = "windows")]
 static INSTALL_AFTER_EXIT: Mutex<Option<(Parked, std::path::PathBuf)>> = Mutex::new(None);
 
-// Enable only after Quasar has its own update endpoint and verification key.
-const SUPPORTED: bool = false;
+const SUPPORTED: bool = !cfg!(debug_assertions) && cfg!(any(target_os = "macos", windows));
 
 fn supported_identity(native_release: bool, identifier: &str) -> bool {
-    native_release && identifier == "app.zephium"
+    native_release && identifier == "app.quasar"
 }
 
 fn supported(app: &tauri::AppHandle) -> bool {
@@ -686,18 +685,19 @@ mod tests {
 
     #[test]
     fn only_the_release_production_identity_can_use_the_production_updater() {
-        assert!(supported_identity(true, "app.zephium"));
+        assert!(supported_identity(true, "app.quasar"));
         for identifier in [
-            "app.zephium.dev",
-            "app.zephium.protection-qa",
-            "app.zephium.files-qa",
-            "app.zephium.webext-qa",
+            "app.quasar.dev",
+            "app.quasar.protection-qa",
+            "app.quasar.files-integration-qa",
+            "app.quasar.webext-qa",
+            "app.zephium",
             "",
-            "app.zephium.evil",
+            "app.quasar.evil",
         ] {
             assert!(!supported_identity(true, identifier), "{identifier}");
         }
-        assert!(!supported_identity(false, "app.zephium"));
+        assert!(!supported_identity(false, "app.quasar"));
     }
 
     #[test]
