@@ -114,7 +114,11 @@ it("takes each feature's pages out of navigation and search while its switch is 
 it("offers SmartScreen search results only on Windows", async () => {
   for (const windows of [false, true]) {
     vi.resetModules();
-    vi.doMock("$shared/platform", () => ({ IS_WINDOWS: windows, IS_MAC: !windows, IS_LINUX: false }));
+    vi.doMock("$shared/platform", () => ({
+      IS_WINDOWS: windows,
+      IS_MAC: !windows,
+      IS_LINUX: false,
+    }));
     const model = await import("../lib/settings-model");
     expect(
       model.searchSettings("SmartScreen").some((field) => field.target === "privacy.smartscreen"),
@@ -178,7 +182,11 @@ it.each([
   "update install timing uses native OS %s despite the user agent",
   async (os, windows) => {
     vi.resetModules();
-    vi.doMock("$shared/platform", () => ({ IS_WINDOWS: windows, IS_MAC: !windows, IS_LINUX: false }));
+    vi.doMock("$shared/platform", () => ({
+      IS_WINDOWS: windows,
+      IS_MAC: !windows,
+      IS_LINUX: false,
+    }));
     try {
       const { fields } = await import("../lib/catalog");
       expect(fields["updates.auto-check"].description(os)).toBe(
