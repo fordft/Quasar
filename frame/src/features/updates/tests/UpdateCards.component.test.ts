@@ -90,7 +90,7 @@ test("after an update, the card links its release notes and goes once read", asy
 test("the cards sit flush with the column's edges, which the window already insets", async () => {
   await start({ state: "upToDate" }, { "notice.seen-version": "1.0.0" });
   const screen = await render(UpdateCards);
-  await expect.element(screen.getByText("Zephium updated to 1.0.1")).toBeVisible();
+  await expect.element(screen.getByText("Quasar updated to 1.0.1")).toBeVisible();
   const stack = screen.container.querySelector(".update-stack")!.getBoundingClientRect();
   const column = screen.container.getBoundingClientRect();
   expect(stack.left).toBe(column.left);
@@ -222,7 +222,7 @@ test("a profile only a restart can trust raises a pill that restarts Zephium", a
     restart_reason: "profile",
   });
   const screen = await render(UpdateCards);
-  await screen.getByRole("button", { name: "Restart Zephium" }).click();
+  await screen.getByRole("button", { name: "Restart Quasar" }).click();
   expect(native.appRelaunch).toHaveBeenCalledOnce();
   expect(native.relaunch).not.toHaveBeenCalled();
   expect(screen.getByRole("button", { name: /dismiss|close/i }).query()).toBeNull();
