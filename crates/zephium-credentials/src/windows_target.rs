@@ -4,11 +4,18 @@ use crate::{isolated_identity, VaultError};
 
 pub(super) const MAX_TARGET_UNITS: usize = 32767;
 const TARGET_PREFIX: &str = "app.zephium.";
+// Quasar's own entries, and the legacy family accepted from callers.
+const QUASAR_TARGET_PREFIX: &str = "app.quasar.";
 // Keep scoped names outside the legacy family accepted from callers.
 const BUILD_PREFIX: &str = "app.zephium-build/";
+const LONGEST_TARGET_PREFIX: usize = if TARGET_PREFIX.len() > QUASAR_TARGET_PREFIX.len() {
+    TARGET_PREFIX.len()
+} else {
+    QUASAR_TARGET_PREFIX.len()
+};
 // Leave room for the identity delimiter and the shortest enumeration filter.
 const MAX_IDENTITY_BYTES: usize =
-    (MAX_TARGET_UNITS - BUILD_PREFIX.len() - TARGET_PREFIX.len() - 2) / 2;
+    (MAX_TARGET_UNITS - BUILD_PREFIX.len() - LONGEST_TARGET_PREFIX - 2) / 2;
 
 pub(super) struct TargetNamespace {
     prefix: String,
@@ -37,7 +44,10 @@ impl TargetNamespace {
     }
 
     pub(super) fn wide(&self, target: &str, filter: bool) -> Result<Vec<u16>, VaultError> {
-        if !target.starts_with(TARGET_PREFIX) || target.contains('\0') || target.contains('*') {
+        if !(target.starts_with(TARGET_PREFIX) || target.starts_with(QUASAR_TARGET_PREFIX))
+            || target.contains('\0')
+            || target.contains('*')
+        {
             return Err(VaultError::Invalid);
         }
         let max_units = MAX_TARGET_UNITS - usize::from(filter);
@@ -74,9 +84,19 @@ mod tests {
     #[test]
     fn windows_targets_share_legacy_names_only_for_shipped_and_dev() {
         let target = "app.zephium.account|https://api.zephium.app";
-        for identity in ["app.zephium", "app.zephium.dev"] {
+        let quasar_target = "app.quasar.chatgpt.session";
+        for identity in [
+            "app.zephium",
+            "app.zephium.dev",
+            "app.quasar",
+            "app.quasar.dev",
+        ] {
             let namespace = TargetNamespace::new(identity).unwrap();
             assert_eq!(namespace.wide(target, false).unwrap(), terminated(target));
+            assert_eq!(
+                namespace.wide(quasar_target, false).unwrap(),
+                terminated(quasar_target)
+            );
         }
 
         let qa = TargetNamespace::new("qa").unwrap();
@@ -108,6 +128,13 @@ mod tests {
             shipped.wide(prefix, true).unwrap(),
             terminated(&format!("{prefix}*"))
         );
+        let quasar_prefix = "app.quasar.chatgpt.";
+        let quasar_target = format!("{quasar_prefix}session");
+        assert_eq!(
+            shipped.listed_target(quasar_prefix, &quasar_target),
+            Some(quasar_target.as_str())
+        );
+        assert_eq!(qa.listed_target(quasar_prefix, &quasar_target), None);
         assert_eq!(qa.listed_target(prefix, &qa_name), Some(target.as_str()));
         assert_eq!(
             shipped.listed_target(prefix, &target),
@@ -133,11 +160,15 @@ mod tests {
             qa.wide("app.zephium.account", false).unwrap(),
             terminated(scoped_name)
         );
-        for namespace in [qa, shipped] {
+        for namespace in [&qa, &shipped] {
+            assert!(namespace.wide("app.quasar.chatgpt.session", false).is_ok());
+            assert!(namespace.wide("app.zephium.account", false).is_ok());
             for name in [
                 "other.application",
                 "app.zephium.a*",
                 "app.zephium.a\0b",
+                "app.quasar.a*",
+                "app.quasar.a\0b",
                 scoped_name,
             ] {
                 assert_eq!(namespace.wide(name, false), Err(VaultError::Invalid));

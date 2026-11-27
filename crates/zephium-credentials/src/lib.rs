@@ -74,7 +74,7 @@ pub fn turn_within(patience: Duration) -> Result<Turn, VaultError> {
 #[cfg(any(windows, target_os = "macos", test))]
 fn isolated_identity(identifier: &str) -> Option<&str> {
     match identifier {
-        "app.zephium" | "app.zephium.dev" => None,
+        "app.zephium" | "app.zephium.dev" | "app.quasar" | "app.quasar.dev" => None,
         other => Some(other),
     }
 }

@@ -222,6 +222,8 @@ mod tests {
     fn only_other_identities_get_items_of_their_own() {
         assert_eq!(account_for(Some("app.zephium")), "zephium");
         assert_eq!(account_for(Some("app.zephium.dev")), "zephium");
+        assert_eq!(account_for(Some("app.quasar")), "zephium");
+        assert_eq!(account_for(Some("app.quasar.dev")), "zephium");
         assert_eq!(account_for(None), "zephium");
         assert_eq!(
             account_for(Some("app.zephium.webext-qa")),
