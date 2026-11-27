@@ -76,6 +76,17 @@ fn registration() -> &'static Registration {
     REGISTRATION.get_or_init(|| Registration::for_product("Quasar"))
 }
 
+/// Whether the person's own choice for https links is this installation, so a
+/// link opened through the system would land back in this app.
+pub(crate) fn handles_https() -> bool {
+    read_string(
+        r"Software\Microsoft\Windows\Shell\Associations\UrlAssociations\https\UserChoice",
+        "ProgId",
+    )
+    .as_deref()
+        == Some(registration().prog_id.as_str())
+}
+
 /// Whether the person's own choice for both web schemes is Zephium.
 pub(crate) fn is_default() -> bool {
     SCHEMES.iter().all(|scheme| {

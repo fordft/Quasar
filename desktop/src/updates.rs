@@ -62,7 +62,8 @@ static RELAUNCH_AFTER_EXIT: AtomicBool = AtomicBool::new(false);
 #[cfg(target_os = "windows")]
 static INSTALL_AFTER_EXIT: Mutex<Option<(Parked, std::path::PathBuf)>> = Mutex::new(None);
 
-const SUPPORTED: bool = !cfg!(debug_assertions) && cfg!(any(target_os = "macos", windows));
+// Enable only after Quasar has its own update endpoint and verification key.
+const SUPPORTED: bool = false;
 
 fn supported_identity(native_release: bool, identifier: &str) -> bool {
     native_release && identifier == "app.zephium"
