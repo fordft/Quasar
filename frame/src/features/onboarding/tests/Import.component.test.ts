@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
 import { render } from "vitest-browser-svelte";
 import { page } from "vitest/browser";
 import "$styles/global.css";
@@ -193,4 +193,67 @@ test("a locked browser is not asked about access", async () => {
   await expect
     .element(screen.getByRole("button", { name: "Allow access" }))
     .not.toBeInTheDocument();
+});
+
+function partialFailure(problem: "busy" | "permission" | "unreadable"): ImportJob {
+  return finished([
+    { kind: "bookmarks", state: "done", done: 12, total: 12 },
+    { kind: "history", state: "failed", done: 0, total: null, problem },
+  ]);
+}
+
+test.each([
+  ["busy", "Quit Chrome first. It keeps its data locked while open."],
+  ["unreadable", "Couldn't read what Chrome keeps."],
+] as const)(
+  "a %s failure can be retried without repeating successful kinds",
+  async (problem, hint) => {
+    const fake = importer();
+    const start = vi.fn(async () => true);
+    fake.adapter.start = start;
+    browserImport.provide(fake.adapter);
+    await browserImport.detect();
+    const screen = await render(Import);
+    await screen.getByRole("radio", { name: "Chrome", exact: true }).click();
+    await screen.getByRole("button", { name: "Import", exact: true }).click();
+    fake.emit(partialFailure(problem));
+
+    await expect.element(screen.getByText(hint, { exact: true })).toBeVisible();
+    await expect.element(screen.getByText("12 items brought over")).toBeVisible();
+    await screen.getByRole("button", { name: "Try again", exact: true }).click();
+
+    await expect
+      .element(screen.getByRole("button", { name: "History", exact: true }))
+      .toHaveAttribute("aria-pressed", "true");
+    await expect
+      .element(screen.getByRole("button", { name: "Bookmarks", exact: true }))
+      .toHaveAttribute("aria-pressed", "false");
+    expect(start).toHaveBeenCalledOnce();
+    await screen.getByRole("button", { name: "Import", exact: true }).click();
+    expect(start).toHaveBeenLastCalledWith("chrome", "Default", ["history"]);
+  },
+);
+
+test("permission can be granted from a failed result before retrying only unfinished kinds", async () => {
+  const fake = importer();
+  const start = vi.fn(async () => true);
+  const openPermissionSettings = vi.fn(async () => {});
+  fake.adapter.start = start;
+  fake.adapter.openPermissionSettings = openPermissionSettings;
+  browserImport.provide(fake.adapter);
+  await browserImport.detect();
+  const screen = await render(Import);
+  await screen.getByRole("radio", { name: "Chrome", exact: true }).click();
+  await screen.getByRole("button", { name: "Import", exact: true }).click();
+  fake.emit(partialFailure("permission"));
+
+  await expect.element(screen.getByText("12 items brought over")).toBeVisible();
+  await screen.getByRole("button", { name: "Allow access", exact: true }).click();
+  expect(openPermissionSettings).toHaveBeenCalledWith("chrome");
+  await screen.getByRole("button", { name: "Try again", exact: true }).click();
+  await expect
+    .element(screen.getByRole("button", { name: "History", exact: true }))
+    .toHaveAttribute("aria-pressed", "true");
+  await screen.getByRole("button", { name: "Import", exact: true }).click();
+  expect(start).toHaveBeenLastCalledWith("chrome", "Default", ["history"]);
 });

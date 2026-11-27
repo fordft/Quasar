@@ -67,6 +67,38 @@ describe("temporary full browser column", () => {
     }
   });
 
+  it("holds an ordinary expansion until every owner releases", () => {
+    setMode("compact");
+    const first = expandBriefly();
+    const second = expandBriefly();
+    try {
+      expect(sidebarMode()).toBe("default");
+      first();
+      first();
+      expect(sidebarMode()).toBe("default");
+      second();
+      expect(sidebarMode()).toBe("compact");
+    } finally {
+      first();
+      second();
+      setMode("default");
+    }
+  });
+
+  it("keeps a mode deliberately chosen during an ordinary expansion", () => {
+    setMode("hidden");
+    const release = expandBriefly();
+    try {
+      expect(sidebarMode()).toBe("default");
+      setMode("default");
+      release();
+      expect(sidebarMode()).toBe("default");
+    } finally {
+      release();
+      setMode("default");
+    }
+  });
+
   it("keeps a mode deliberately chosen while the column was held", () => {
     setMode("hidden");
     const release = expandBriefly({ fullColumn: true });

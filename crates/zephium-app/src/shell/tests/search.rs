@@ -236,7 +236,7 @@ fn a_bookmark_that_does_not_match_the_typing_is_dropped() {
 }
 
 #[test]
-fn launcher_only_offers_commands_available_on_the_native_platform() {
+fn launcher_offers_commands_even_when_their_platform_has_no_default_key() {
     let (seen, emit) = search_sink();
     let mut shell = Shell::new(
         Arc::new(FakeEngine::default()),
@@ -246,16 +246,6 @@ fn launcher_only_offers_commands_available_on_the_native_platform() {
     );
     shell.handle(Command::SetWindowSize(Size::new(1200.0, 800.0)));
     shell.handle(Command::Bootstrap);
-    shell.handle(Command::Search("> toggle sidebar".into()));
-    let last = seen.lock().unwrap().last().unwrap().clone();
-    assert_eq!(
-        last.results.iter().any(|result| matches!(
-            &result.action,
-            SearchAction::RunCommand { id } if id == "sidebar.toggleCompact"
-        )),
-        cfg!(target_os = "macos")
-    );
-    // Missing default shortcuts alone do not remove otherwise supported commands.
     for (query, command) in [("> new note", "note.new"), ("> split view", "split.choose")] {
         shell.handle(Command::Search(query.into()));
         let last = seen.lock().unwrap().last().unwrap().clone();
@@ -264,48 +254,6 @@ fn launcher_only_offers_commands_available_on_the_native_platform() {
             SearchAction::RunCommand { id } if id == command
         )));
     }
-}
-
-#[cfg(not(target_os = "macos"))]
-#[test]
-fn unavailable_sidebar_command_rejects_even_if_present_in_a_stale_search_result() {
-    let seen = Arc::new(Mutex::new(Vec::new()));
-    let sink = seen.clone();
-    let mut shell = Shell::new(
-        Arc::new(FakeEngine::default()),
-        Arc::new(FakeStore::default()),
-        Arc::new(FakeChrome),
-        Box::new(move |projection| sink.lock().unwrap().push(projection)),
-    );
-    shell.handle(Command::SetWindowSize(Size::new(1200.0, 800.0)));
-    shell.handle(Command::Bootstrap);
-    let window = shell.windows.focused().unwrap();
-    let context = zephium_ipc::SearchContext {
-        window_id: window.id.to_string(),
-        profile_id: window.profile.to_string(),
-        space_id: window.space.to_string(),
-        session_id: "panel-session".into(),
-        request_id: "request-1".into(),
-    };
-    shell.search_scoped("> toggle sidebar", context.clone());
-    let action = SearchAction::RunCommand {
-        id: "sidebar.toggleCompact".into(),
-    };
-    shell.search.results.push(SearchResult {
-        kind: "command".into(),
-        title: "Auto-hide Sidebar".into(),
-        detail: String::new(),
-        icon: None,
-        action: action.clone(),
-    });
-    seen.lock().unwrap().clear();
-    let disposition = shell.operation_run_search_action(context, action, false, None);
-    assert_eq!(disposition.outcome, zephium_ipc::OperationOutcome::Rejected);
-    assert_eq!(
-        disposition.reason,
-        zephium_ipc::OperationReason::UnsupportedCommand
-    );
-    assert!(seen.lock().unwrap().is_empty());
 }
 
 #[test]

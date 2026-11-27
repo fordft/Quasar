@@ -22,6 +22,7 @@
   import CaptureControl from "$shared/ui/CaptureControl";
   import { preferences } from "$domain/preferences";
   import * as find from "../lib/find.svelte";
+  import { isHidden } from "$session/sidebar-mode.svelte";
   import { flushSync, untrack, type Snippet } from "svelte";
   import { duration, easing, reducedMotion } from "$shared/lib/motion";
   import {
@@ -165,6 +166,11 @@
   $effect(() => {
     const command = ui.uiCommand();
     if (command.seq === 0 || command.id !== "url.focus" || input === undefined) return;
+    if ((compact || isHidden()) && !untrack(editInLauncher)) {
+      // Work, blank tabs and extension pages have no web address to edit.
+      void commands.runCommand("launcher.toggle");
+      return;
+    }
     if (untrack(editInLauncher)) return;
     input.focus();
     input.select();

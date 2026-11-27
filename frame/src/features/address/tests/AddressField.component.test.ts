@@ -12,6 +12,7 @@ const native = vi.hoisted(() => ({
   defaultZoom: "100",
   page: null as string | null,
   edit: vi.fn(async () => true),
+  run: vi.fn(async (_id: string) => ({ accepted: true, operation_id: null })),
   answer: vi.fn(async () => ({ accepted: true, operation_id: null })),
 }));
 
@@ -43,7 +44,7 @@ vi.mock("$shared/ipc/bindings", async () => {
       },
     ],
     tabsBootstrap: async () => {},
-    runCommand: async () => ({ accepted: true, operation_id: null }),
+    runCommand: native.run,
     launcherEdit: native.edit,
     tabsAnswerPageRequest: native.answer as never,
     settingGet: async (key: string) => (key === "zoom.default" ? native.defaultZoom : null),
@@ -61,6 +62,7 @@ afterEach(() => {
   native.defaultZoom = "100";
   native.page = null;
   native.edit.mockClear();
+  native.run.mockClear();
 });
 
 async function field(
@@ -146,6 +148,40 @@ test("the location shortcut on a refused page edits the refused address", async 
   await expect.poll(() => native.edit.mock.calls.length).toBe(1);
   expect(native.edit).toHaveBeenCalledWith(tabs.activeId(), "https://blocked-badware.test/win");
   uiCommands.dispose();
+});
+
+for (const tab of [
+  { name: "blank tab", url: null },
+  { name: "extension tab", url: null, content: "extension_owned" },
+] as const) {
+  test(`compact ${tab.name} opens an empty launcher for the address shortcut`, async () => {
+    const commandRun = native.run;
+    const { input } = await field({ compact: true }, tab);
+    const resting = input.value;
+    expect(tabs.activeTab()?.url).toBe(tab.url);
+    emitNativeEvent("uiCommand", "url.focus");
+    await expect.poll(() => commandRun.mock.calls.map(([id]) => id)).toContain("launcher.toggle");
+    expect(native.edit).not.toHaveBeenCalled();
+    expect(document.activeElement).not.toBe(input);
+    expect(input.value).toBe(resting);
+  });
+}
+
+test("an expanded blank tab focuses the address input for the address shortcut", async () => {
+  const { input } = await field({}, { url: null });
+  emitNativeEvent("uiCommand", "url.focus");
+  await expect.poll(() => document.activeElement).toBe(input);
+  expect(native.edit).not.toHaveBeenCalled();
+});
+
+test("Work opens an empty launcher instead of editing the background tab", async () => {
+  const commandRun = native.run;
+  const { input } = await field({ compact: true });
+  native.page = "work";
+  emitNativeEvent("uiCommand", "url.focus");
+  await expect.poll(() => commandRun.mock.calls.map(([id]) => id)).toContain("launcher.toggle");
+  expect(native.edit).not.toHaveBeenCalled();
+  expect(input.value).toBe("www.wikipedia.org");
 });
 
 test("editing shows the whole address and rests on the host", async () => {

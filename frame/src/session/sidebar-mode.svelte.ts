@@ -45,6 +45,7 @@ export const isCompact = () => mode === "compact";
 export const isHidden = () => mode === "hidden" && !held && !fullColumnShown();
 
 let fullColumnHolds = $state(0);
+let briefExpansions = 0;
 export const fullColumnShown = () => fullColumnHolds > 0;
 
 /** A destination that wants the column in view, the rail of Work or a tool,
@@ -263,9 +264,9 @@ export function adoptMode(stored: SidebarMode) {
 
 export function setMode(next: SidebarMode) {
   cancelSidebarResize();
+  desiredMode = next;
   if (next === mode) return;
   mode = next;
-  desiredMode = next;
   publish(true);
   save(next);
 }
@@ -286,12 +287,19 @@ export function expandBriefly({ fullColumn = false }: { fullColumn?: boolean } =
       if (--fullColumnHolds === 0) publish(true);
     };
   }
-  const away = mode;
+  const away = mode === "default" && briefExpansions > 0 ? desiredMode : mode;
   if (away === "default") return () => {};
-  mode = "default";
-  publish(true);
+  briefExpansions++;
+  if (mode !== "default") {
+    mode = "default";
+    publish(true);
+  }
+  let released = false;
   return () => {
-    if (mode !== "default" || desiredMode !== away) return;
+    if (released) return;
+    released = true;
+    briefExpansions--;
+    if (briefExpansions > 0 || mode !== "default" || desiredMode !== away) return;
     cancelSidebarResize();
     mode = away;
     publish(true);

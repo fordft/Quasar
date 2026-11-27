@@ -826,6 +826,22 @@ mod tests {
     }
 
     #[test]
+    fn commands_without_default_shortcuts_remain_offered_and_customizable() {
+        let resolved = resolve_on(&HashMap::new(), Platform::Other);
+        for id in ["note.new", "split.choose"] {
+            let command = resolved
+                .iter()
+                .find(|command| command.id == id)
+                .unwrap_or_else(|| panic!("{id} remains offered"));
+            assert_eq!(command.accelerator, None, "{id}");
+            assert_eq!(
+                validate_binding_on(&resolved, id, Some("Ctrl+Shift+F12"), Platform::Other),
+                Ok(Some("Ctrl+Shift+F12".into()))
+            );
+        }
+    }
+
+    #[test]
     fn autofill_password_is_offered_only_on_macos() {
         let offered = |platform| {
             resolve_on(&HashMap::new(), platform)

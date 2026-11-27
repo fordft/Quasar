@@ -93,12 +93,27 @@
       ? kinds.filter((candidate) => candidate !== kind)
       : [...kinds, kind];
   }
+
+  function choose(id: string) {
+    if (browserImport.busy()) return;
+    const completed = browserImport.current();
+    if (completed?.finished) {
+      // A retry only offers unfinished kinds; successful writes stay kept.
+      kinds =
+        completed.source === id && (failure || completed.cancelled)
+          ? completed.kinds.filter((entry) => entry.state !== "done").map((entry) => entry.kind)
+          : ["essentials", "bookmarks", "history"];
+      browserImport.dismiss();
+      void browserImport.detect();
+    }
+    chosen = id;
+  }
 </script>
 
 <!-- Access granted in System Settings tells nobody; look again on return. -->
 <svelte:window
   onfocus={() => {
-    if (sources.some((candidate) => candidate.needsPermission)) void browserImport.detect();
+    if (!browserImport.busy()) void browserImport.detect();
   }}
 />
 
@@ -113,7 +128,7 @@
         aria-checked={chosen === candidate.id}
         disabled={browserImport.busy()}
         style:--i={index}
-        onclick={() => (chosen = candidate.id)}
+        onclick={() => choose(candidate.id)}
       >
         <span class="plate"
           >{#if browserMark(candidate.browser)}<Mark
@@ -127,35 +142,50 @@
   </div>
 
   <div class="next" aria-live="polite">
-    {#if job?.finished && failure}
-      <span class="reading"
-        >{failure.problem === "busy"
-          ? m.onb_import_quit({ browser: jobBrowser })
-          : failure.problem === "permission"
-            ? m.onb_import_permission({ browser: jobBrowser })
-            : failure.problem === "storage"
-              ? m.onb_import_storage()
-              : m.onb_import_failed({ browser: jobBrowser })}</span
-      >
-      {#if failure.problem === "permission"}
-        <Button
-          variant="primary"
-          size="compact"
-          shape="capsule"
-          onclick={() => void browserImport.openPermissionSettings(job.source)}
-          >{m.onb_import_allow()}</Button
+    {#if job?.finished}
+      {@const completed = job}
+      {#if failure}
+        {#if total > 0}
+          <span class="done"
+            ><Icon icon={Tick02Icon} size={14} />{m.onb_import_done({
+              count: number.format(total),
+            })}</span
+          >
+        {/if}
+        <span class="reading"
+          >{failure.problem === "busy"
+            ? m.onb_import_quit({ browser: jobBrowser })
+            : failure.problem === "permission"
+              ? m.onb_import_permission({ browser: jobBrowser })
+              : failure.problem === "storage"
+                ? m.onb_import_storage()
+                : m.onb_import_failed({ browser: jobBrowser })}</span
+        >
+        {#if failure.problem === "permission"}
+          <Button
+            variant="primary"
+            size="compact"
+            shape="capsule"
+            onclick={() => void browserImport.openPermissionSettings(completed.source)}
+            >{m.onb_import_allow()}</Button
+          >
+        {/if}
+      {:else if completed.kinds.some((entry) => entry.state === "partial")}
+        <span class="reading">{m.import_kind_partial()}</span>
+      {:else if !completed.cancelled && completed.kinds.every((entry) => entry.total === 0)}
+        <span class="reading">{m.import_kind_none()}</span>
+      {:else}
+        <span class="done"
+          ><Icon icon={Tick02Icon} size={14} />{m.onb_import_done({
+            count: number.format(total),
+          })}</span
         >
       {/if}
-    {:else if job?.finished && job.kinds.some((entry) => entry.state === "partial")}
-      <span class="reading">{m.import_kind_partial()}</span>
-    {:else if job?.finished && !job.cancelled && job.kinds.every((entry) => entry.total === 0)}
-      <span class="reading">{m.import_kind_none()}</span>
-    {:else if job?.finished}
-      <span class="done"
-        ><Icon icon={Tick02Icon} size={14} />{m.onb_import_done({
-          count: number.format(total),
-        })}</span
-      >
+      {#if failure || completed.cancelled}
+        <Button size="compact" shape="capsule" onclick={() => choose(completed.source)}
+          >{m.surface_retry()}</Button
+        >
+      {/if}
     {:else if job}
       <span class="meter"><i style:transform={`scaleX(${share})`}></i></span>
       <span class="reading">{m.onb_import_reading({ count: number.format(total) })}</span>
@@ -186,7 +216,7 @@
           variant="primary"
           size="compact"
           shape="capsule"
-          disabled={!available || offered.length === 0 || source.running}
+          disabled={!available || offered.length === 0 || source.running || browserImport.busy()}
           pending={browserImport.busy()}
           onclick={() => void browserImport.start(source.id, source.profiles[0]?.id ?? "", offered)}
           >{m.onb_import_action()}</Button
