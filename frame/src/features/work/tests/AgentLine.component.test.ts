@@ -643,7 +643,7 @@ test("a run that ended short says what is missing and offers the one thing that 
   session.dispose();
 });
 
-test("a run stopped by spent Zephium AI usage says so and offers the fix", async () => {
+test("a run stopped by spent legacy usage says so and offers the fix", async () => {
   const session = new WorkSession("profile");
   session.selected = "objective";
   const failed = agentRun("failed");
@@ -661,19 +661,28 @@ test("a run stopped by spent Zephium AI usage says so and offers the fix", async
   session.projection = { ...structuredClone(projection), executions: [failed] };
   const screen = await render(AgentLine, { session });
   await expect
-    .element(screen.getByText("You’ve used your included Zephium AI usage.", { exact: true }))
+    .element(
+      screen.getByText("This legacy AI connection has been retired. Connect ChatGPT to continue.", {
+        exact: true,
+      }),
+    )
     .toBeVisible();
-  await screen.getByRole("button", { name: "Upgrade or use a key" }).click();
+  await screen.getByRole("button", { name: "Manage ChatGPT usage" }).click();
   expect(native.command).toHaveBeenCalledWith("settings.account");
   await screen.unmount();
   session.dispose();
 });
 
 test.each([
-  ["plan_required", "This model needs a different Zephium plan.", "See plans", "settings.account"],
+  [
+    "plan_required",
+    "This model needs a different ChatGPT plan.",
+    "Manage ChatGPT usage",
+    "settings.account",
+  ],
   [
     "billing_review",
-    "Your Zephium account is under billing review.",
+    "Your ChatGPT account is under billing review.",
     "Open account",
     "settings.account",
   ],
@@ -685,14 +694,14 @@ test.each([
   ],
   [
     "free_usage_paused",
-    "Free Zephium AI usage is paused right now. Credits and your own key still work.",
-    "See plans",
+    "This legacy AI connection has been retired. Connect ChatGPT to continue.",
+    "Manage ChatGPT usage",
     "settings.account",
   ],
   [
     "hosted_paused",
-    "Zephium AI is paused for now. Try again later, or use your own key.",
-    "Use your own key",
+    "This legacy AI connection has been retired. Connect ChatGPT to continue.",
+    "Connect ChatGPT",
     "settings.ai",
   ],
 ] as const)(
@@ -715,7 +724,7 @@ test.each([
   },
 );
 
-test("zephium still confirming earlier requests asks for a moment and offers a plain retry", async () => {
+test("an unconfirmed legacy request says so and offers a plain retry", async () => {
   const session = new WorkSession("profile");
   session.selected = "objective";
   const failed = agentRun("failed");
@@ -728,7 +737,7 @@ test("zephium still confirming earlier requests asks for a moment and offers a p
   await expect
     .element(
       screen.getByText(
-        "Zephium AI is still confirming your earlier requests. Try again in a moment.",
+        "The result of this legacy request is unconfirmed. New AI requests use ChatGPT.",
       ),
     )
     .toBeVisible();
