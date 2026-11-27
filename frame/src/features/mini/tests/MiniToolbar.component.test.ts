@@ -52,7 +52,7 @@ test("the buttons ask for their page actions", async () => {
   await expect.element(screen.getByRole("button", { name: "Forward" })).toBeDisabled();
   await screen.getByRole("button", { name: "Back" }).click();
   await screen.getByRole("button", { name: "Reload" }).click();
-  await screen.getByRole("button", { name: "Open in Zephium" }).click();
+  await screen.getByRole("button", { name: "Open in Quasar" }).click();
   expect(onAction.mock.calls).toEqual([["back"], ["reload"], ["open_in_main"]]);
 });
 
@@ -108,7 +108,7 @@ test("a loading page shows a progress line, and nothing once it loaded", async (
 
 test("without a page, only reload's neighbours and the window stay usable", async () => {
   const screen = await render(MiniToolbar, { ...props(), frame: "controls" });
-  await expect.element(screen.getByRole("button", { name: "Open in Zephium" })).toBeDisabled();
+  await expect.element(screen.getByRole("button", { name: "Open in Quasar" })).toBeDisabled();
   await expect.element(screen.getByRole("button", { name: "Reload" })).toBeDisabled();
   await expect.element(screen.getByRole("button", { name: "Close" })).toBeEnabled();
   expect(screen.container.querySelector("[data-zephium-mini-tab]")).toBeNull();

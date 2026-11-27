@@ -250,7 +250,7 @@ test("submits a bookmark only once while the add is pending, and allows retry af
       : Promise.resolve(answer(call)),
   );
   const screen = await render(BookmarksPanel, { profile: "p", query: "" });
-  await expect.element(screen.getByRole("button", { name: /Zephium/u })).toBeVisible();
+  await expect.element(screen.getByRole("button", { name: /Quasar/u })).toBeVisible();
   compose.request("link");
   const address = screen.getByRole("textbox", { name: "Address" });
   await userEvent.type(address, "example.com{Enter}{Enter}");
@@ -279,7 +279,7 @@ test.each(["saved", "invalid"] as const)(
         : Promise.resolve(answer(call)),
     );
     const screen = await render(BookmarksPanel, { profile: "p", query: "" });
-    await expect.element(screen.getByRole("button", { name: /Zephium/u })).toBeVisible();
+    await expect.element(screen.getByRole("button", { name: /Quasar/u })).toBeVisible();
     compose.request("link");
     const address = screen.getByRole("textbox", { name: "Address" });
     await userEvent.type(address, "old.example{Enter}");
@@ -302,7 +302,7 @@ test("a pending add does not carry its form into another profile", async () => {
       : Promise.resolve(answer(call)),
   );
   const screen = await render(BookmarksPanel, { profile: "p", query: "" });
-  await expect.element(screen.getByRole("button", { name: /Zephium/u })).toBeVisible();
+  await expect.element(screen.getByRole("button", { name: /Quasar/u })).toBeVisible();
   compose.request("link");
   const address = screen.getByRole("textbox", { name: "Address" });
   await userEvent.type(address, "old.example{Enter}");

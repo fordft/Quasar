@@ -74,20 +74,20 @@ test("a secure-connection failure without a certificate has no way past", async 
 
 test("a profile only a restart can trust offers the restart, never the address", async () => {
   show({ url: "https://example.com/", reason: "restart_required", covers_page: true });
-  await expect.element(page.getByRole("heading")).toHaveTextContent("Zephium needs to restart");
+  await expect.element(page.getByRole("heading")).toHaveTextContent("Quasar needs to restart");
   await expect
     .element(page.getByRole("alert"))
     .toHaveTextContent("keep browsing safely in this profile");
   await expect.element(page.getByRole("button", { name: "Try again" })).not.toBeInTheDocument();
-  await page.getByRole("button", { name: "Restart Zephium" }).click();
+  await page.getByRole("button", { name: "Restart Quasar" }).click();
   expect(relaunched).toHaveBeenCalledOnce();
 });
 
 test("a restart that does not start says so and can be tried again", async () => {
   relaunched.mockResolvedValueOnce(false).mockRejectedValueOnce(new Error("ipc"));
   show({ url: "https://example.com/", reason: "restart_required", covers_page: true });
-  const button = page.getByRole("button", { name: "Restart Zephium" });
-  const failed = page.getByText("Zephium couldn't restart. Try again.");
+  const button = page.getByRole("button", { name: "Restart Quasar" });
+  const failed = page.getByText("Quasar couldn't restart. Try again.");
   await button.click();
   await expect.element(failed).toBeInTheDocument();
   await button.click();
@@ -104,7 +104,7 @@ test("a badware page names the list, goes back first and lets the person continu
     blocked: "badware",
     can_continue: true,
   });
-  await expect.element(page.getByRole("heading")).toHaveTextContent("Zephium blocked scam.example");
+  await expect.element(page.getByRole("heading")).toHaveTextContent("Quasar blocked scam.example");
   await expect
     .element(page.getByRole("alert"))
     .toHaveTextContent("uBlock Origin's Badware list as a known scam or malware site");

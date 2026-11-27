@@ -86,7 +86,7 @@ test("a location request names the exact site, scheme and port when not secure",
 });
 
 test("a location request says where to turn location on when macOS refuses it", async () => {
-  const off = "Turn on Location Services for Zephium in System Settings › Privacy & Security.";
+  const off = "Turn on Location Services for Quasar in System Settings › Privacy & Security.";
   const location = { ...prompt(true, true), kinds: ["geolocation" as const] };
   const allowed = await render(PagePermissionPrompt, { prompt: location });
   await expect.element(allowed.getByText(off)).not.toBeInTheDocument();

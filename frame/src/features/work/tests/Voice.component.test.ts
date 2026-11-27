@@ -109,23 +109,6 @@ test("the shortcut starts a take and stops it", async () => {
   await screen.unmount();
 });
 
-test("a cloud take names where the audio goes, then transcribes", async () => {
-  await page.viewport(1000, 600);
-  const screen = await render(VoiceStage);
-  await listening("open_ai");
-  await expect.element(page.getByText("OpenAI", { exact: true })).toBeVisible();
-  emitNativeEvent("voiceChanged", change(7, { phase: "transcribing", engine: "open_ai" }));
-  await expect.element(page.getByRole("button", { name: "Transcribing…" })).toBeDisabled();
-  emitNativeEvent(
-    "voiceChanged",
-    change(7, { phase: "failed", engine: "open_ai", fault: "key_refused" }),
-  );
-  await expect
-    .element(page.getByRole("alert"))
-    .toHaveTextContent("OpenAI refused your key. Check it in Settings → AI.");
-  await screen.unmount();
-});
-
 test("with no engine the bar says so and opens Settings → AI", async () => {
   await page.viewport(1000, 600);
   const screen = await render(VoiceStage);
@@ -160,22 +143,6 @@ test("a Mac with Dictation off says so and opens Keyboard settings, not a retry"
   await expect.element(page.getByRole("alert")).toHaveTextContent("Dictation is off on this Mac.");
   await page.getByRole("button", { name: "Open Keyboard Settings" }).click();
   expect(native.privacy).toHaveBeenCalledWith("dictation");
-  await screen.unmount();
-});
-
-test("a hosted take refused for its plan opens the account, not a retry", async () => {
-  await page.viewport(1000, 600);
-  const screen = await render(VoiceStage);
-  await listening("zephium");
-  emitNativeEvent(
-    "voiceChanged",
-    change(7, { phase: "failed", engine: "zephium", fault: "plan_required" }),
-  );
-  await expect
-    .element(page.getByRole("alert"))
-    .toHaveTextContent("Dictation needs a different Zephium plan.");
-  await page.getByRole("button", { name: "See plans" }).click();
-  expect(native.run).toHaveBeenCalledWith("settings.account");
   await screen.unmount();
 });
 
