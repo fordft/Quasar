@@ -3,9 +3,8 @@ import type { RuntimeSecurityAdvisory } from "$shared/ipc/bindings";
 const RELEASES = "https://github.com/fordft/Quasar/releases";
 const SEMVER = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/u;
 
-/** Quasar previews are tagged quasar-preview-N rather than v<version>, so the
- *  release list is the destination for every version. */
-export const releaseNotesUrl = (_version: string) => RELEASES;
+/** Quasar releases are tagged v<version>. */
+export const releaseNotesUrl = (version: string) => `${RELEASES}/tag/v${version}`;
 
 function comparePrerelease(a: string | undefined, b: string | undefined): number {
   if (a === b) return 0;
