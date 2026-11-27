@@ -32,16 +32,20 @@ fn check_assets(
     repository: &str,
     public: &str,
 ) -> Result<(), &'static str> {
-    const MAC: &str = "Zephium-macOS-arm64.app.tar.gz";
-    const WINDOWS: &str = "Zephium-Windows-x64-setup.exe";
+    const MAC: &str = "Quasar-macOS-arm64.app.tar.gz";
+    const WINDOWS: &str = "Quasar-Windows-x64-setup.exe";
+    const LINUX: &str = "Quasar-Linux-x86_64.AppImage";
+    const LINUX_SOURCES: &str = "Quasar-Linux-runtime-sources.tar";
     let expected = std::collections::BTreeSet::from([
         "SHA256SUMS".to_owned(),
         "latest.json".to_owned(),
-        "Zephium-macOS-arm64.dmg".to_owned(),
+        "Quasar-macOS-arm64.dmg".to_owned(),
         MAC.to_owned(),
         format!("{MAC}.sig"),
         WINDOWS.to_owned(),
         format!("{WINDOWS}.sig"),
+        LINUX.to_owned(),
+        LINUX_SOURCES.to_owned(),
     ]);
     let mut actual = std::collections::BTreeSet::new();
     for entry in std::fs::read_dir(directory).map_err(|_| "cannot read release assets")? {
@@ -77,12 +81,22 @@ fn check_assets(
         .and_then(|value| value.as_object())
         .ok_or("latest.json platforms are missing")?;
     let base = format!("https://github.com/{repository}/releases/download/{tag}/");
-    for (platform, asset) in [
+    let required = [
         ("darwin-aarch64", MAC),
         ("darwin-aarch64-app", MAC),
         ("windows-x86_64", WINDOWS),
         ("windows-x86_64-nsis", WINDOWS),
-    ] {
+    ];
+    if platforms.len() != required.len()
+        || platforms.keys().any(|platform| {
+            !required
+                .iter()
+                .any(|(required_platform, _)| *required_platform == platform.as_str())
+        })
+    {
+        return Err("latest.json platforms must be only the macOS and Windows updater targets");
+    }
+    for (platform, asset) in required {
         let entry = platforms
             .get(platform)
             .ok_or("required updater platform is missing")?;
@@ -208,7 +222,7 @@ fn sign(
                 .or_else(|_| key.into_secret_key(Some(password)))
         })
         .map_err(|_| "cannot unlock updater signing key")?;
-    let comment = format!("zephium-updater-v1 version={version} target={TARGET}");
+    let comment = format!("quasar-updater-v1 version={version} target={TARGET}");
     let signature = minisign::sign(
         Some(&public),
         &secret,
@@ -244,11 +258,11 @@ mod tests {
         let mut platforms = serde_json::Map::new();
         for (asset, keys) in [
             (
-                "Zephium-macOS-arm64.app.tar.gz",
+                "Quasar-macOS-arm64.app.tar.gz",
                 ["darwin-aarch64", "darwin-aarch64-app"],
             ),
             (
-                "Zephium-Windows-x64-setup.exe",
+                "Quasar-Windows-x64-setup.exe",
                 ["windows-x86_64", "windows-x86_64-nsis"],
             ),
         ] {
@@ -269,7 +283,17 @@ mod tests {
             check_assets(directory, "v1.2.4", "example/repo", &public)
         };
         std::fs::write(directory.join("SHA256SUMS"), "fixture checksums").unwrap();
-        std::fs::write(directory.join("Zephium-macOS-arm64.dmg"), "fixture DMG").unwrap();
+        std::fs::write(directory.join("Quasar-macOS-arm64.dmg"), "fixture DMG").unwrap();
+        std::fs::write(
+            directory.join("Quasar-Linux-x86_64.AppImage"),
+            "fixture AppImage",
+        )
+        .unwrap();
+        std::fs::write(
+            directory.join("Quasar-Linux-runtime-sources.tar"),
+            "fixture source archive",
+        )
+        .unwrap();
         assert_eq!(check(&good), Ok(()));
         for date in [
             serde_json::Value::Null,
@@ -302,9 +326,9 @@ mod tests {
             bad["platforms"].as_object_mut().unwrap().remove(key);
             assert!(check(&bad).is_err(), "missing platform {key}");
             for url in [
-                "https://github.com/example/repo/releases/download/v1.2.3/Zephium-Windows-x64-setup.exe",
-                "https://example.com/Zephium-Windows-x64-setup.exe",
-                "https://github.com/example/repo/releases/download/v1.2.4/../Zephium-Windows-x64-setup.exe",
+                "https://github.com/example/repo/releases/download/v1.2.3/Quasar-Windows-x64-setup.exe",
+                "https://example.com/Quasar-Windows-x64-setup.exe",
+                "https://github.com/example/repo/releases/download/v1.2.4/../Quasar-Windows-x64-setup.exe",
             ] {
                 let mut bad = good.clone();
                 bad["platforms"][key]["url"] = url.into();
@@ -317,6 +341,15 @@ mod tests {
         let mut bad = good.clone();
         bad["version"] = "1.2.3".into();
         assert!(check(&bad).is_err(), "wrong version");
+        let mut bad = good.clone();
+        bad["platforms"]["linux-x86_64"] = serde_json::json!({
+            "url": "https://github.com/example/repo/releases/download/v1.2.4/Quasar-Linux-x86_64.AppImage",
+            "signature": "not-an-updater-signature",
+        });
+        assert!(
+            check(&bad).is_err(),
+            "Linux must stay out of the updater manifest"
+        );
         assert_eq!(check(&good), Ok(()));
         for asset in std::fs::read_dir(directory).unwrap() {
             let asset = asset.unwrap().path();
@@ -330,8 +363,8 @@ mod tests {
         }
         // Keep each original signature while changing only its downloaded bytes.
         for asset in [
-            "Zephium-macOS-arm64.app.tar.gz",
-            "Zephium-Windows-x64-setup.exe",
+            "Quasar-macOS-arm64.app.tar.gz",
+            "Quasar-Windows-x64-setup.exe",
         ] {
             let path = directory.join(asset);
             let bytes = std::fs::read(&path).unwrap();
@@ -365,7 +398,7 @@ mod tests {
         let parsed = minisign::SignatureBox::from_string(&decoded).unwrap();
         assert_eq!(
             parsed.trusted_comment().unwrap(),
-            "zephium-updater-v1 version=1.2.4 target=windows-x86_64-nsis"
+            "quasar-updater-v1 version=1.2.4 target=windows-x86_64-nsis"
         );
         let other = minisign::KeyPair::generate_unencrypted_keypair().unwrap();
         assert!(sign(

@@ -22,12 +22,12 @@ class ReleaseWorkflowTests(unittest.TestCase):
         macos = job(workflow, 'macos')
         steps = re.split(r'^      - ', macos, flags=re.M)[1:]
         build = next(i for i, step in enumerate(steps)
-                     if step.startswith('name: Build, sign and notarize\n'))
+                     if step.startswith('name: Build and sign\n'))
         check = steps[build + 1]
         self.assertTrue(check.startswith('name: Check macOS WebKit imports\n'))
         self.assertIn('cargo run --locked -p xtask -- check-macos-imports', check)
         self.assertIn('target/aarch64-apple-darwin/release/bundle/macos/'
-                      'Zephium.app/Contents/MacOS/zephium-desktop', check)
+                      'Quasar.app/Contents/MacOS/Quasar', check)
         self.assertNotRegex(check, r'(?m)^        if:')
         self.assertNotIn('continue-on-error:', check)
 
@@ -70,21 +70,22 @@ class ReleaseWorkflowTests(unittest.TestCase):
     def test_components_have_one_retry_and_an_explicit_emergency_opt_out(self):
         workflow = WORKFLOW.read_text()
         self.assertRegex(workflow, r'emergency:\n(?:.*\n){1,4}?        type: boolean')
-        self.assertIn("if: ${{ !inputs.emergency }}", job(workflow, 'components'))
+        self.assertIn("if: ${{ github.repository == 'fordft/Quasar' && !inputs.emergency }}", job(workflow, 'components'))
         self.assertIn('--retry=1', (ROOT / '.github/workflows/components.yml').read_text())
 
 
     def test_draft_gates_all_required_jobs_including_skipped_component_cases(self):
         publish = job(WORKFLOW.read_text(), 'publish')
         dependencies = re.search(r'^    needs: \[([^]]+)\]', publish, re.M).group(1).split(', ')
-        self.assertEqual(set(dependencies), {'gate', 'ci', 'components', 'macos', 'windows'})
+        self.assertEqual(set(dependencies), {'gate', 'ci', 'components', 'macos', 'windows', 'linux'})
         match = re.search(r'^    if: \$\{\{ (.+) \}\}', publish, re.M)
         self.assertIsNotNone(match, 'draft needs an explicit condition for emergency skipped components')
         expression = match.group(1)
-        for statuses in itertools.product(['success', 'failure', 'skipped', 'cancelled'], repeat=5):
+        for statuses in itertools.product(['success', 'failure', 'skipped', 'cancelled'], repeat=6):
             results = dict(zip(dependencies, statuses))
             for emergency, cancelled in itertools.product([False, True], repeat=2):
-                condition = expression.replace('!cancelled()', str(not cancelled))
+                condition = expression.replace("github.repository == 'fordft/Quasar'", 'True')
+                condition = condition.replace('!cancelled()', str(not cancelled))
                 condition = condition.replace('inputs.emergency', str(emergency))
                 condition = re.sub(r'needs\.(\w+)\.result', lambda m: repr(results[m[1]]), condition)
                 condition = condition.replace('&&', ' and ').replace('||', ' or ')
@@ -110,7 +111,8 @@ class ReleaseWorkflowTests(unittest.TestCase):
                 result = subprocess.run(['bash', '-euo', 'pipefail', '-c', script], cwd=root,
                     env=dict(os.environ, PATH=f'{root}:{os.environ["PATH"]}', RUNNER_TEMP=directory,
                              TAG='v1.2.3', VERSION='1.2.3', GITHUB_REPOSITORY='example/repo',
-                             SIGNPATH_ENABLED='false', EMERGENCY_SKIP_COMPONENTS=emergency), capture_output=True, text=True)
+                             APPLE_ENABLED='false', SIGNPATH_ENABLED='false',
+                             EMERGENCY_SKIP_COMPONENTS=emergency), capture_output=True, text=True)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 notes = (root / 'notes.md').read_text()
                 self.assertEqual('EMERGENCY: Component tests were skipped' in notes, emergency == 'true')

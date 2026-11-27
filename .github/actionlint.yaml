@@ -1,0 +1,6 @@
+# actionlint v1.7.12 predates GitHub's Ubuntu 26.04 runner labels. The preview
+# and release pipelines use the hosted x86_64 image for its glibc 2.43 baseline.
+self-hosted-runner:
+  labels:
+    - ubuntu-26.04
+    - ubuntu-26.04-arm

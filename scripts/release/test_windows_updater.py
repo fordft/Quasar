@@ -26,7 +26,7 @@ class WindowsUpdaterWorkflowTests(unittest.TestCase):
 
     def producer(self):
         workflow = (ROOT / '.github/workflows/release.yml').read_text()
-        windows = workflow.split('\n  windows:\n', 1)[1].split('\n  publish:\n', 1)[0]
+        windows = re.search(r'^  windows:\n(.*?)(?=^  \w[\w-]*:\n|\Z)', workflow, re.M | re.S).group(1)
         match = re.search(
             r'      - name: Sign the final Windows bytes for the updater\n(.*?)(?=\n      - )',
             windows, re.S)
@@ -48,13 +48,13 @@ class WindowsUpdaterWorkflowTests(unittest.TestCase):
         for result in [0, 7]:
             with self.subTest(result=result), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
-                artifact = root / 'target/release/bundle/nsis/Zephium_1.2.4_x64-setup.exe'
+                artifact = root / 'target/release/bundle/nsis/Quasar_1.2.4_x64-setup.exe'
                 artifact.parent.mkdir(parents=True)
                 artifact.write_bytes(b'final publisher-signed installer bytes')
                 cargo = root / 'cargo'
                 cargo.write_text('''#!/bin/sh
 test "$1 $2 $3 $4 $5 $6" = "run --locked -p xtask -- sign-windows-updater" || exit 90
-test "$7" = "target/release/bundle/nsis/Zephium_1.2.4_x64-setup.exe" || exit 91
+test "$7" = "target/release/bundle/nsis/Quasar_1.2.4_x64-setup.exe" || exit 91
 test "$8" = "1.2.4" || exit 92
 test "$(cat "$7")" = "final publisher-signed installer bytes" || exit 93
 test "$TAURI_SIGNING_PRIVATE_KEY" = fixture-key || exit 94

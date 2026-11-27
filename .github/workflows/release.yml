@@ -30,7 +30,7 @@ env:
 
 jobs:
   gate:
-    if: github.repository == 'zephium-browser/Zephium'
+    if: github.repository == 'fordft/Quasar'
     name: Gate
     runs-on: ubuntu-24.04
     timeout-minutes: 150
@@ -40,9 +40,11 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
       pubkey: ${{ steps.version.outputs.pubkey }}
+      apple: ${{ steps.signing.outputs.apple }}
       signpath: ${{ steps.signpath.outputs.enabled }}
     steps:
-      - name: Require release secrets
+      - name: Require updater secrets and assess macOS signing
+        id: signing
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -55,15 +57,30 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
           missing=()
-          for name in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY \
-            APPLE_TEAM_ID APPLE_API_ISSUER APPLE_API_KEY APPLE_API_KEY_PATH \
-            TAURI_SIGNING_PRIVATE_KEY TAURI_SIGNING_PRIVATE_KEY_PASSWORD; do
+          for name in TAURI_SIGNING_PRIVATE_KEY TAURI_SIGNING_PRIVATE_KEY_PASSWORD; do
             [[ -n "${!name}" ]] || missing+=("${name}")
           done
           if (( ${#missing[@]} )); then
-            echo "::error title=Missing release secrets::Add ${missing[*]} as repository Actions secrets (see .github/RELEASE.md)."
+            echo "::error title=Missing updater secrets::Add ${missing[*]} as repository Actions secrets (see .github/RELEASE.md)."
             exit 1
           fi
+
+          apple_names=(APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_TEAM_ID APPLE_API_ISSUER APPLE_API_KEY APPLE_API_KEY_PATH)
+          apple_missing=()
+          for name in "${apple_names[@]}"; do
+            [[ -n "${!name}" ]] || apple_missing+=("${name}")
+          done
+          if (( ${#apple_missing[@]} == 0 )); then
+            apple=true
+            echo '::notice::Apple signing secrets are complete: the macOS release will be Developer ID signed and notarized.'
+          elif (( ${#apple_missing[@]} == ${#apple_names[@]} )); then
+            apple=false
+            echo '::notice::Apple signing secrets are absent: the macOS release will be ad-hoc signed and not notarized.'
+          else
+            echo "::error title=Partial Apple signing configuration::Missing ${apple_missing[*]}. Configure all Apple secrets or none (see .github/RELEASE.md)."
+            exit 1
+          fi
+          echo "apple=${apple}" >> "${GITHUB_OUTPUT}"
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -74,8 +91,6 @@ jobs:
       - name: Assess Windows publisher signing configuration
         id: signpath
         env:
-          SIGNPATH_RELEASE_MODE: ${{ vars.SIGNPATH_RELEASE_MODE }}
-          SIGNPATH_RELEASE_CERT_THUMBPRINT: ${{ vars.SIGNPATH_RELEASE_CERT_THUMBPRINT }}
           SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
           SIGNPATH_ORGANIZATION_ID: ${{ secrets.SIGNPATH_ORGANIZATION_ID }}
           SIGNPATH_SIGNER_SUBJECT: ${{ vars.SIGNPATH_SIGNER_SUBJECT }}
@@ -104,8 +119,18 @@ jobs:
             echo "::error title=Duplicate version::Remove version from desktop/tauri.conf.json; desktop/Cargo.toml is the only source."
             exit 1
           fi
-          if ! pubkey="$(jq -er '.plugins.updater.pubkey' desktop/tauri.conf.json)"; then
+          if ! pubkey="$(jq -er '.plugins.updater.pubkey | select(length > 32)' desktop/tauri.conf.json)"; then
             echo "::error title=Missing updater key::desktop/tauri.conf.json has no plugins.updater.pubkey."
+            exit 1
+          fi
+          if ! pubkey_text="$(python3 -c 'import base64, sys; print(base64.b64decode(sys.argv[1], validate=True).decode("utf-8"))' "${pubkey}" 2>/dev/null)" ||
+            ! grep -q '^untrusted comment: minisign public key:' <<<"${pubkey_text}"; then
+            echo "::error title=Invalid updater key::desktop/tauri.conf.json plugins.updater.pubkey is not a base64-encoded minisign public key."
+            exit 1
+          fi
+          endpoint='https://github.com/fordft/Quasar/releases/latest/download/latest.json'
+          if ! jq -e --arg endpoint "${endpoint}" '.plugins.updater.endpoints == [$endpoint]' desktop/tauri.conf.json >/dev/null; then
+            echo "::error title=Wrong updater endpoint::desktop/tauri.conf.json must use exactly ${endpoint}."
             exit 1
           fi
           echo "version=${version}" >> "${GITHUB_OUTPUT}"
@@ -120,7 +145,7 @@ jobs:
   # commit, which takes ~20 minutes, so the wait is its own job: the builds and
   # the component suite run meanwhile, and nothing is drafted until it passes.
   ci:
-    if: github.repository == 'zephium-browser/Zephium'
+    if: github.repository == 'fordft/Quasar'
     name: Main CI for the release commit
     runs-on: ubuntu-24.04
     timeout-minutes: 150
@@ -161,14 +186,14 @@ jobs:
   # Components gate drafts unless an explicit emergency dispatch skips them.
   # Builds run concurrently; a failed component shard always blocks publication.
   components:
-    if: ${{ !inputs.emergency }}
+    if: ${{ github.repository == 'fordft/Quasar' && !inputs.emergency }}
     needs: gate
     permissions:
       contents: read
     uses: ./.github/workflows/components.yml
 
   macos:
-    if: github.repository == 'zephium-browser/Zephium'
+    if: github.repository == 'fordft/Quasar'
     name: macOS (Apple Silicon)
     needs: gate
     runs-on: macos-latest
@@ -177,6 +202,7 @@ jobs:
       contents: read
     env:
       VERSION: ${{ needs.gate.outputs.version }}
+      APPLE_ENABLED: ${{ needs.gate.outputs.apple }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -194,6 +220,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Write the App Store Connect API key
+        if: needs.gate.outputs.apple == 'true'
         env:
           KEY_CONTENT: ${{ secrets.APPLE_API_KEY_PATH }}
         run: (umask 077 && printf '%s' "${KEY_CONTENT}" > "${RUNNER_TEMP}/AuthKey.p8")
@@ -204,7 +231,16 @@ jobs:
           python3 scripts/release/third_party_notices.py target/THIRD_PARTY_NOTICES.txt \
             || python scripts/release/third_party_notices.py target/THIRD_PARTY_NOTICES.txt
 
-      - name: Build, sign and notarize
+      - name: Select the macOS signing configuration
+        run: |
+          if [[ "${APPLE_ENABLED}" == true ]]; then
+            build_config="${RELEASE_CONFIG}"
+          else
+            build_config="$(jq -c '.bundle.macOS.signingIdentity = "-"' <<<"${RELEASE_CONFIG}")"
+          fi
+          echo "BUILD_CONFIG=${build_config}" >> "${GITHUB_ENV}"
+
+      - name: Build and sign
         working-directory: desktop
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
@@ -224,14 +260,16 @@ jobs:
           # (background, icon positions) unless told not to; without it the
           # DMG opens as a plain folder window.
           TAURI_BUNDLER_DMG_IGNORE_CI: "true"
-        run: >-
-          pnpm tauri build --target aarch64-apple-darwin --bundles app,dmg
-          --config "${RELEASE_CONFIG}"
+        run: |
+          if [[ "${APPLE_ENABLED}" != true ]]; then
+            unset APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_TEAM_ID APPLE_API_ISSUER APPLE_API_KEY APPLE_API_KEY_PATH
+          fi
+          pnpm tauri build --target aarch64-apple-darwin --bundles app,dmg --config "${BUILD_CONFIG}"
 
       - name: Check macOS WebKit imports
         run: >-
           cargo run --locked -p xtask -- check-macos-imports
-          target/aarch64-apple-darwin/release/bundle/macos/Zephium.app/Contents/MacOS/zephium-desktop
+          target/aarch64-apple-darwin/release/bundle/macos/Quasar.app/Contents/MacOS/Quasar
 
       - name: Locate the bundles
         run: |
@@ -242,8 +280,10 @@ jobs:
             echo "DMG=${bundle}/dmg/Quasar_${VERSION}_aarch64.dmg"
           } >> "${GITHUB_ENV}"
 
-      # Tauri notarizes and staples the app, but only signs the DMG.
+      # With Apple credentials Tauri notarizes and staples the app, but only
+      # signs the DMG. Without them the preview-style ad-hoc signature is final.
       - name: Notarize and staple the DMG
+        if: needs.gate.outputs.apple == 'true'
         env:
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
           APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
@@ -266,15 +306,19 @@ jobs:
         run: |
           set -euo pipefail
           codesign --verify --deep --strict --verbose=2 "${APP}"
-          codesign --verify --strict --verbose=2 "${DMG}"
-          team="$(codesign -dv "${APP}" 2>&1 | sed -n 's/^TeamIdentifier=//p')"
-          if [[ "${team}" != "${APPLE_TEAM_ID}" ]]; then
-            echo "::error title=Wrong signing team::The app is signed by team '${team}', not APPLE_TEAM_ID."
-            exit 1
+          if [[ "${APPLE_ENABLED}" == true ]]; then
+            codesign --verify --strict --verbose=2 "${DMG}"
+            team="$(codesign -dv "${APP}" 2>&1 | sed -n 's/^TeamIdentifier=//p')"
+            if [[ "${team}" != "${APPLE_TEAM_ID}" ]]; then
+              echo "::error title=Wrong signing team::The app is signed by team '${team}', not APPLE_TEAM_ID."
+              exit 1
+            fi
+            spctl -a -vv -t exec "${APP}"
+            xcrun stapler validate "${APP}"
+            xcrun stapler validate "${DMG}"
+          else
+            echo '::notice::Apple signing is not configured: verified the ad-hoc app signature; notarization and Gatekeeper acceptance are not available.'
           fi
-          spctl -a -vv -t exec "${APP}"
-          xcrun stapler validate "${APP}"
-          xcrun stapler validate "${DMG}"
 
           entitlements() {
             codesign -d --entitlements - --xml "$1" 2>/dev/null | python3 -c '
@@ -326,7 +370,7 @@ jobs:
           retention-days: 90
 
   windows:
-    if: github.repository == 'zephium-browser/Zephium'
+    if: github.repository == 'fordft/Quasar'
     name: Windows (x64)
     needs: gate
     runs-on: windows-latest
@@ -380,7 +424,7 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: signpath-unsigned-windows-x64
-          path: target/release/bundle/nsis/Zephium_${{ env.VERSION }}_x64-setup.exe
+          path: target/release/bundle/nsis/Quasar_${{ env.VERSION }}_x64-setup.exe
           if-no-files-found: error
           retention-days: 1
 
@@ -391,7 +435,7 @@ jobs:
         with:
           api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
           organization-id: ${{ secrets.SIGNPATH_ORGANIZATION_ID }}
-          project-slug: zephium
+          project-slug: quasar
           signing-policy-slug: release-signing
           artifact-configuration-slug: windows-nsis
           github-artifact-id: ${{ steps.signpath-unsigned.outputs.artifact-id }}
@@ -408,7 +452,7 @@ jobs:
           SIGNPATH_SIGNER_SUBJECT: ${{ vars.SIGNPATH_SIGNER_SUBJECT }}
         run: |
           $ErrorActionPreference = 'Stop'
-          $name = "Zephium_${env:VERSION}_x64-setup.exe"
+          $name = "Quasar_${env:VERSION}_x64-setup.exe"
           $signed = Join-Path $env:RUNNER_TEMP "signpath-signed/$name"
           $signature = Get-AuthenticodeSignature -LiteralPath $signed
           if ($signature.Status -ne 'Valid' -or
@@ -419,14 +463,15 @@ jobs:
           Copy-Item -LiteralPath $signed -Destination "target/release/bundle/nsis/$name" -Force
 
       # Authenticode changes bytes, so replace the bundler's updater signature
-      # only after verifying and copying the signed setup.
+      # only after verifying and copying the signed setup. Unsigned releases use
+      # the same final-byte signing step.
       - name: Sign the final Windows bytes for the updater
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: >-
           cargo run --locked -p xtask -- sign-windows-updater
-          "target/release/bundle/nsis/Zephium_${VERSION}_x64-setup.exe" "${VERSION}"
+          "target/release/bundle/nsis/Quasar_${VERSION}_x64-setup.exe" "${VERSION}"
 
       - name: Stage release assets
         run: |
@@ -450,10 +495,100 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
+  linux:
+    if: github.repository == 'fordft/Quasar'
+    name: Linux (x86_64 AppImage)
+    needs: gate
+    runs-on: ubuntu-26.04
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    env:
+      VERSION: ${{ needs.gate.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: rustup toolchain install --profile minimal
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          shared-key: release-linux
+          cache-on-failure: true
+      - name: Linux dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf libxdo-dev xvfb xdotool dbus-x11 libmanette-0.2-0 libavif16 libflite1 librav1e0.8
+      - name: Prepare supported Linux engine
+        run: |
+          python3 scripts/release/prepare-linux-runtime.py
+          echo "LD_LIBRARY_PATH=$GITHUB_WORKSPACE/target/linux-runtime/root/usr/lib/x86_64-linux-gnu" >> "$GITHUB_ENV"
+      - name: Verify Linux runtime dependencies
+        run: |
+          ldd target/linux-runtime/root/usr/lib/x86_64-linux-gnu/libwebkit2gtk-4.1.so.0
+          python3 -c 'import ctypes; w = ctypes.CDLL("libwebkit2gtk-4.1.so.0"); v = [getattr(w, "webkit_get_" + p + "_version")() for p in ("major", "minor", "micro")]; print("Bundled WebKitGTK:", v); assert v == [2, 54, 2]'
+      - run: pnpm install --frozen-lockfile
+
+      - name: Write third-party notices
+        shell: bash
+        run: |
+          python3 scripts/release/third_party_notices.py target/THIRD_PARTY_NOTICES.txt \
+            || python scripts/release/third_party_notices.py target/THIRD_PARTY_NOTICES.txt
+
+      - name: Build Linux browsing release
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: '1'
+        run: >-
+          pnpm -C desktop build --verbose --bundles appimage
+          --config '{"bundle":{"createUpdaterArtifacts":false,"resources":{"../target/THIRD_PARTY_NOTICES.txt":"licenses/THIRD_PARTY_NOTICES.txt"}}}'
+
+      - name: Finalize and smoke Linux AppImage
+        run: |
+          # Restore the checksum-verified originals before finalizing the
+          # complete matching engine, codec and helper set.
+          python3 scripts/release/prepare-linux-runtime.py
+          python3 scripts/release/finalize-linux-appimage.py target/release/bundle/appimage/app.quasar.AppDir
+          image="$(realpath target/release/bundle/appimage/*.AppImage)"
+          mkdir -p target/preview-extracted
+          (cd target/preview-extracted && "$image" --appimage-extract >/dev/null)
+          env -u LD_LIBRARY_PATH xvfb-run -a dbus-run-session -- python3 scripts/ci/smoke-desktop.py target/preview-extracted/squashfs-root/AppRun
+
+      - name: Stage release assets
+        run: |
+          mkdir dist
+          cp target/release/bundle/appimage/*.AppImage dist/Quasar-Linux-x86_64.AppImage
+          cp target/linux-runtime/Quasar-Linux-runtime-sources.tar dist/
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-linux
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: smoke-linux-release
+          path: target/preview-smoke/
+          if-no-files-found: ignore
+          retention-days: 7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: linux-release-packaging-diagnostics
+          path: target/release/Quasar
+          if-no-files-found: ignore
+          retention-days: 3
+
   publish:
     name: Draft release
-    needs: [gate, ci, components, macos, windows]
-    if: ${{ github.repository == 'zephium-browser/Zephium' && !cancelled() && needs.gate.result == 'success' && needs.ci.result == 'success' && needs.macos.result == 'success' && needs.windows.result == 'success' && (needs.components.result == 'success' || (inputs.emergency && needs.components.result == 'skipped')) }}
+    needs: [gate, ci, components, macos, windows, linux]
+    if: ${{ github.repository == 'fordft/Quasar' && !cancelled() && needs.gate.result == 'success' && needs.ci.result == 'success' && needs.macos.result == 'success' && needs.windows.result == 'success' && needs.linux.result == 'success' && (needs.components.result == 'success' || (inputs.emergency && needs.components.result == 'skipped')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -463,6 +598,7 @@ jobs:
     env:
       VERSION: ${{ needs.gate.outputs.version }}
       UPDATER_PUBKEY: ${{ needs.gate.outputs.pubkey }}
+      APPLE_ENABLED: ${{ needs.gate.outputs.apple }}
       SIGNPATH_ENABLED: ${{ needs.gate.outputs.signpath }}
       EMERGENCY_SKIP_COMPONENTS: ${{ inputs.emergency }}
     steps:
@@ -475,7 +611,7 @@ jobs:
       - name: Verify the asset set and updater signatures
         working-directory: dist
         run: |
-          expected="Quasar-Windows-x64-setup.exe Quasar-Windows-x64-setup.exe.sig Quasar-macOS-arm64.app.tar.gz Quasar-macOS-arm64.app.tar.gz.sig Quasar-macOS-arm64.dmg"
+          expected="Quasar-Linux-runtime-sources.tar Quasar-Linux-x86_64.AppImage Quasar-Windows-x64-setup.exe Quasar-Windows-x64-setup.exe.sig Quasar-macOS-arm64.app.tar.gz Quasar-macOS-arm64.app.tar.gz.sig Quasar-macOS-arm64.dmg"
           actual="$(printf '%s\n' * | LC_ALL=C sort | paste -sd ' ')"
           if [[ "${actual}" != "${expected}" ]]; then
             echo "::error title=Unexpected release assets::Got [${actual}]."
@@ -524,6 +660,8 @@ jobs:
             dist/Quasar-macOS-arm64.dmg
             dist/Quasar-macOS-arm64.app.tar.gz
             dist/Quasar-Windows-x64-setup.exe
+            dist/Quasar-Linux-x86_64.AppImage
+            dist/Quasar-Linux-runtime-sources.tar
 
       - name: Create the draft release
         env:
@@ -536,19 +674,25 @@ jobs:
             fi
             gh release delete "${TAG}" --repo "${GITHUB_REPOSITORY}" --yes
           fi
-          windows_signing="The Windows installer is unsigned while SignPath certificate setup is pending. SmartScreen may ask for confirmation."
+          macos_signing='The macOS app is ad-hoc signed and is not Apple-notarized; macOS may require approval in Privacy & Security.'
+          if [[ "${APPLE_ENABLED}" == true ]]; then
+            macos_signing='The macOS app is Developer ID signed, notarized and stapled.'
+          fi
+          windows_signing='The Windows installer is unsigned. SmartScreen may ask for confirmation.'
           if [[ "${SIGNPATH_ENABLED}" == true ]]; then
-            windows_signing="The Windows installer carries a verified Authenticode publisher signature and timestamp. SmartScreen reputation checks still apply."
+            windows_signing='The Windows installer carries a verified Authenticode publisher signature and timestamp. SmartScreen reputation checks still apply.'
           fi
           cat > "${RUNNER_TEMP}/notes.md" <<EOF
           Download Quasar ${VERSION}:
 
           - macOS (Apple Silicon): [Quasar-macOS-arm64.dmg](https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/Quasar-macOS-arm64.dmg)
           - Windows (x64): [Quasar-Windows-x64-setup.exe](https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/Quasar-Windows-x64-setup.exe)
+          - Linux (x86_64): [Quasar-Linux-x86_64.AppImage](https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/Quasar-Linux-x86_64.AppImage)
+          - Linux runtime sources: [Quasar-Linux-runtime-sources.tar](https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/Quasar-Linux-runtime-sources.tar)
 
-          Installed copies update themselves. ${windows_signing}
+          ${macos_signing} ${windows_signing} Linux is a browsing-only manual download and does not receive automatic updates.
 
-          Verify a download with \`SHA256SUMS\` or \`gh attestation verify <file> --repo ${GITHUB_REPOSITORY}\`.
+          macOS and Windows release builds update themselves through Quasar's signed update feed. Verify a download with \`SHA256SUMS\` or \`gh attestation verify <file> --repo ${GITHUB_REPOSITORY}\`.
           EOF
           if [[ "${EMERGENCY_SKIP_COMPONENTS}" == true ]]; then
             printf '\n**EMERGENCY: Component tests were skipped for this release.**\n' >> "${RUNNER_TEMP}/notes.md"
