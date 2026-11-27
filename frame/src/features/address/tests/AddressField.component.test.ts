@@ -155,6 +155,7 @@ for (const tab of [
   { name: "extension tab", url: null, content: "extension_owned" },
 ] as const) {
   test(`compact ${tab.name} opens an empty launcher for the address shortcut`, async () => {
+    await uiCommands.init();
     const commandRun = native.run;
     const { input } = await field({ compact: true }, tab);
     const resting = input.value;
@@ -164,24 +165,30 @@ for (const tab of [
     expect(native.edit).not.toHaveBeenCalled();
     expect(document.activeElement).not.toBe(input);
     expect(input.value).toBe(resting);
+    uiCommands.dispose();
   });
 }
 
 test("an expanded blank tab focuses the address input for the address shortcut", async () => {
+  await uiCommands.init();
   const { input } = await field({}, { url: null });
   emitNativeEvent("uiCommand", "url.focus");
   await expect.poll(() => document.activeElement).toBe(input);
   expect(native.edit).not.toHaveBeenCalled();
+  uiCommands.dispose();
 });
 
 test("Work opens an empty launcher instead of editing the background tab", async () => {
+  await uiCommands.init();
   const commandRun = native.run;
-  const { input } = await field({ compact: true });
   native.page = "work";
+  const { input } = await field({ compact: true });
+  native.edit.mockClear();
   emitNativeEvent("uiCommand", "url.focus");
   await expect.poll(() => commandRun.mock.calls.map(([id]) => id)).toContain("launcher.toggle");
   expect(native.edit).not.toHaveBeenCalled();
   expect(input.value).toBe("www.wikipedia.org");
+  uiCommands.dispose();
 });
 
 test("editing shows the whole address and rests on the host", async () => {

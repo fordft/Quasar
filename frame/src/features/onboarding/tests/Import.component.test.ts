@@ -257,3 +257,75 @@ test("permission can be granted from a failed result before retrying only unfini
   await screen.getByRole("button", { name: "Import", exact: true }).click();
   expect(start).toHaveBeenLastCalledWith("chrome", "Default", ["history"]);
 });
+
+test("choosing another browser dismisses a completed result and admits that source", async () => {
+  const fake = importer();
+  const start = vi.fn(async () => true);
+  fake.adapter.start = start;
+  fake.adapter.sources = async () => [
+    {
+      id: "chrome",
+      browser: "chrome",
+      name: "Chrome",
+      profiles: [{ id: "Default", name: "Person 1" }],
+      kinds: ["bookmarks", "history"],
+      needsPermission: false,
+      running: false,
+    },
+    {
+      id: "safari",
+      browser: "safari",
+      name: "Safari",
+      profiles: [{ id: "safari-default", name: "Personal" }],
+      kinds: ["bookmarks", "history"],
+      needsPermission: false,
+      running: false,
+    },
+  ];
+  browserImport.provide(fake.adapter);
+  await browserImport.detect();
+  const screen = await render(Import);
+  await screen.getByRole("radio", { name: "Chrome", exact: true }).click();
+  fake.emit({
+    ...finished([
+      { kind: "bookmarks", state: "done", done: 12, total: 12 },
+      { kind: "history", state: "failed", done: 0, total: null, problem: "busy" },
+    ]),
+  });
+  await expect.element(screen.getByText("12 items brought over")).toBeVisible();
+
+  await screen.getByRole("radio", { name: "Safari", exact: true }).click();
+  expect(browserImport.current()).toBeNull();
+  expect(start).not.toHaveBeenCalled();
+  await screen.getByRole("button", { name: "Import", exact: true }).click();
+  expect(start).toHaveBeenCalledWith("safari", "safari-default", ["bookmarks", "history"]);
+});
+
+test("source selection stays disabled until native confirms cancellation", async () => {
+  const fake = importer();
+  const start = vi.fn(async () => true);
+  const cancel = vi.fn(async () => {});
+  fake.adapter.start = start;
+  fake.adapter.cancel = cancel;
+  browserImport.provide(fake.adapter);
+  await browserImport.detect();
+  const screen = await render(Import);
+  await screen.getByRole("radio", { name: "Chrome", exact: true }).click();
+  fake.emit({
+    ...finished([{ kind: "history", state: "running", done: 0, total: null }]),
+    finished: false,
+  });
+  await expect.element(screen.getByRole("radio", { name: "Chrome", exact: true })).toBeDisabled();
+  await screen.getByRole("button", { name: "Stop", exact: true }).click();
+  expect(cancel).toHaveBeenCalledOnce();
+  expect(browserImport.current()?.finished).toBe(false);
+  await expect.element(screen.getByRole("radio", { name: "Chrome", exact: true })).toBeDisabled();
+
+  fake.emit({
+    ...finished([{ kind: "history", state: "skipped", done: 0, total: null }]),
+    cancelled: true,
+  });
+  await screen.getByRole("button", { name: "Try again", exact: true }).click();
+  await screen.getByRole("button", { name: "Import", exact: true }).click();
+  expect(start).toHaveBeenLastCalledWith("chrome", "Default", ["history"]);
+});

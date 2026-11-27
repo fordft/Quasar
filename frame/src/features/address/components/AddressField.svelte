@@ -153,20 +153,29 @@
   /** ⌘L edits a page's address in the launcher, which has room for what a
    *  sidebar-wide field cannot show; a click edits it here. False where
    *  there is no page to edit and the field takes the typing. */
-  function editInLauncher(): boolean {
+  function editablePage(): {
+    tab: NonNullable<ReturnType<typeof tabs.activeTab>>;
+    url: string;
+  } | null {
     const tab = tabs.activeTab();
     const url = failedUrl ?? tab?.url;
-    if (!tab || !url || (tab.content ?? "web") !== "web") return false;
+    if (!tab || !url || (tab.content ?? "web") !== "web") return null;
+    return { tab, url };
+  }
+
+  function editInLauncher(): boolean {
+    const page = editablePage();
+    if (!page) return false;
     // Work has no page in front, so there the launcher opens empty.
     if (surface.currentPage() === "work") void commands.runCommand("launcher.toggle");
-    else void commands.launcherEdit(tab.id, url);
+    else void commands.launcherEdit(page.tab.id, page.url);
     return true;
   }
 
   $effect(() => {
     const command = ui.uiCommand();
     if (command.seq === 0 || command.id !== "url.focus" || input === undefined) return;
-    if ((compact || isHidden()) && !untrack(editInLauncher)) {
+    if ((compact || isHidden()) && !untrack(editablePage)) {
       // Work, blank tabs and extension pages have no web address to edit.
       void commands.runCommand("launcher.toggle");
       return;
