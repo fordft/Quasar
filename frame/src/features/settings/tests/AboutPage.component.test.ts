@@ -64,7 +64,7 @@ afterEach(() => {
 test("updates are checked, downloaded and relaunched from About", async () => {
   native.status = { state: "upToDate" };
   const screen = await render(AboutPage);
-  await expect.element(screen.getByText("Zephium is up to date")).toBeVisible();
+  await expect.element(screen.getByText("Quasar is up to date")).toBeVisible();
   await expect.element(screen.getByText("Version 1.0.1")).toBeVisible();
 
   await screen.getByRole("button", { name: "Check now" }).click();
@@ -80,7 +80,7 @@ test("updates are checked, downloaded and relaunched from About", async () => {
   expect(preferences.set).toHaveBeenCalledWith("updates.auto-check", "false");
 
   await screen.getByRole("button", { name: "Release Notes" }).click();
-  expect(native.openUrl).toHaveBeenCalledWith("https://zephium.app/changelog#v1-0-1", true);
+  expect(native.openUrl).toHaveBeenCalledWith("https://github.com/fordft/Quasar/releases", true);
 });
 
 test("a failed check says so and can be tried again", async () => {
@@ -139,7 +139,7 @@ test("manual installation opens the exact release instead of retrying an impossi
   native.status = { state: "manualInstall", version: "1.0.2" };
   const screen = await render(AboutPage);
   await screen.getByRole("button", { name: "Download and install manually" }).click();
-  expect(native.openUrl).toHaveBeenCalledWith("https://zephium.app/changelog#v1-0-2", true);
+  expect(native.openUrl).toHaveBeenCalledWith("https://github.com/fordft/Quasar/releases", true);
   expect(screen.getByRole("button", { name: "Relaunch to update" }).query()).toBeNull();
 });
 
