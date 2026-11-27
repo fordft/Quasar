@@ -5,11 +5,15 @@
 mod download;
 #[cfg(target_os = "macos")]
 mod drag_drop;
-mod navigation;
 #[cfg(target_os = "macos")]
-mod script_dialog;
+pub(crate) mod http_auth;
+mod navigation;
 #[cfg(feature = "mac-proxy")]
 mod proxy;
+#[cfg(target_os = "macos")]
+mod script_dialog;
+#[cfg(target_os = "macos")]
+pub(crate) mod server_trust;
 #[cfg(target_os = "macos")]
 mod synthetic_mouse_events;
 mod util;
@@ -31,7 +35,7 @@ use class::{
   wry_navigation_delegate::WryNavigationDelegate,
   wry_web_view::WryWebViewIvars,
   wry_web_view_delegate::{WryWebViewDelegate, IPC_MESSAGE_HANDLER_NAME},
-  wry_web_view_ui_delegate::WryWebViewUIDelegate,
+  wry_web_view_ui_delegate::{WryWebViewUIDelegate, WryWebViewUIDelegateOptions},
 };
 
 use dpi::{LogicalPosition, LogicalSize};
@@ -612,6 +616,20 @@ impl InnerWebView {
         ns_string!("allowsPictureInPictureMediaPlayback"),
       );
 
+      #[cfg(target_os = "macos")]
+      if let Some(policy) = pl_attrs.https_upgrade {
+        use objc2_web_kit::WKWebpagePreferencesUpgradeToHTTPSPolicy as Policy;
+        let preferences = config.defaultWebpagePreferences();
+        // WebKit names this policy from macOS 15.2; earlier systems keep
+        // upgrading only the hosts it knows support https.
+        if preferences.respondsToSelector(objc2::sel!(setPreferredHTTPSNavigationPolicy:)) {
+          preferences.setPreferredHTTPSNavigationPolicy(match policy {
+            crate::AppleHttpsUpgrade::AutomaticFallback => Policy::AutomaticFallbackToHTTP,
+            crate::AppleHttpsUpgrade::UserMediatedFallback => Policy::UserMediatedFallbackToHTTP,
+          });
+        }
+      }
+
       if attributes.javascript_disabled {
         // <https://developer.apple.com/documentation/webkit/wkwebviewconfiguration/defaultwebpagepreferences>
         // Available: macOS 10.15+, iOS 13+
@@ -869,6 +887,8 @@ impl InnerWebView {
       let new_window_req_handler: Option<
         std::rc::Rc<dyn Fn(String, crate::NewWindowFeatures) -> crate::NewWindowResponse>,
       > = attributes.new_window_req_handler.map(std::rc::Rc::from);
+      #[cfg(target_os = "macos")]
+      let script_dialogs = std::rc::Rc::new(script_dialog::ScriptDialogs::default());
       let navigation_policy_delegate = WryNavigationDelegate::new(
         webview.clone(),
         pending_scripts.clone(),
@@ -881,12 +901,21 @@ impl InnerWebView {
         attributes.main_frame_navigation_attempt_handler,
         #[cfg(target_os = "macos")]
         attributes.credential_challenge_denied_handler,
+        #[cfg(target_os = "macos")]
+        pl_attrs.http_auth_handler,
+        #[cfg(target_os = "macos")]
+        pl_attrs.certificate_failure_handler,
+        #[cfg(target_os = "macos")]
+        pl_attrs.server_trust_exceptions,
         download_delegate.clone(),
         attributes.on_page_load_handler,
         attributes.navigation_event_handler,
         attributes.navigation_failure_handler,
+        attributes.native_url_refused_handler.clone(),
         attributes.navigation_presentation_guard,
         pl_attrs.on_web_content_process_terminate_handler,
+        #[cfg(target_os = "macos")]
+        script_dialogs.clone(),
         mtm,
       );
 
@@ -895,14 +924,24 @@ impl InnerWebView {
 
       let ui_delegate: Retained<WryWebViewUIDelegate> = WryWebViewUIDelegate::new(
         mtm,
-        #[cfg(target_os = "macos")]
-        attributes.page_close_handler,
-        new_window_req_handler,
-        attributes.permission_handler,
-        #[cfg(target_os = "macos")]
-        pl_attrs.permission_request_handler,
-        #[cfg(target_os = "macos")]
-        pl_attrs.file_upload_handler,
+        WryWebViewUIDelegateOptions {
+          #[cfg(target_os = "macos")]
+          page_close_handler: attributes.page_close_handler,
+          new_window_req_handler,
+          permission_handler: attributes.permission_handler,
+          #[cfg(target_os = "macos")]
+          permission_request_handler: pl_attrs.permission_request_handler,
+          #[cfg(target_os = "macos")]
+          file_upload_handler: pl_attrs.file_upload_handler,
+          #[cfg(target_os = "macos")]
+          autofill_button_handler: pl_attrs.autofill_button_handler,
+          #[cfg(target_os = "macos")]
+          media_return_handler: pl_attrs.media_return_handler,
+          #[cfg(target_os = "macos")]
+          script_dialogs,
+          #[cfg(target_os = "macos")]
+          native_url_refused_handler: attributes.native_url_refused_handler,
+        },
       );
       let proto_ui_delegate = ProtocolObject::from_ref(&*ui_delegate);
       webview.setUIDelegate(Some(proto_ui_delegate));
@@ -1260,13 +1299,21 @@ impl InnerWebView {
         .webview
         .respondsToSelector(objc2::sel!(printOperationWithPrintInfo:));
       if can_print {
-        // Create a shared print info
-        let print_info = objc2_app_kit::NSPrintInfo::sharedPrintInfo();
-        // let print_info: id = msg_send![print_info, init];
-        print_info.setTopMargin(_options.margins.top.into());
-        print_info.setRightMargin(_options.margins.right.into());
-        print_info.setBottomMargin(_options.margins.bottom.into());
-        print_info.setLeftMargin(_options.margins.left.into());
+        // A copy, so a print never changes the person's own page setup.
+        // Margins are the system's unless the caller asked for some.
+        let shared = objc2_app_kit::NSPrintInfo::sharedPrintInfo();
+        let print_info: Retained<objc2_app_kit::NSPrintInfo> = objc2::msg_send![&shared, copy];
+        let margins = &_options.margins;
+        if margins.top != 0.0
+          || margins.right != 0.0
+          || margins.bottom != 0.0
+          || margins.left != 0.0
+        {
+          print_info.setTopMargin(margins.top.into());
+          print_info.setRightMargin(margins.right.into());
+          print_info.setBottomMargin(margins.bottom.into());
+          print_info.setLeftMargin(margins.left.into());
+        }
 
         // Create new print operation from the webview content
         let print_operation = self.webview.printOperationWithPrintInfo(&print_info);
@@ -1763,6 +1810,37 @@ impl InnerWebView {
       WKWebsiteDataStore::removeDataStoreForIdentifier_completionHandler(&identifier, &block, mtm);
     }
   }
+}
+
+#[cfg(target_os = "macos")]
+thread_local! {
+  static CONTEXT_MENU_DOWNLOAD: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Marks the native download handler's call for a download the person
+/// started from WebKit's own context menu.
+#[cfg(target_os = "macos")]
+pub(crate) struct ContextMenuDownload(bool);
+
+#[cfg(target_os = "macos")]
+impl ContextMenuDownload {
+  pub(crate) fn begin() -> Self {
+    Self(CONTEXT_MENU_DOWNLOAD.with(|flag| flag.replace(true)))
+  }
+}
+
+#[cfg(target_os = "macos")]
+impl Drop for ContextMenuDownload {
+  fn drop(&mut self) {
+    CONTEXT_MENU_DOWNLOAD.with(|flag| flag.set(self.0));
+  }
+}
+
+/// Whether the native download handler is running for a download the person
+/// started from WebKit's context menu rather than one a page started.
+#[cfg(target_os = "macos")]
+pub fn context_menu_download_in_progress() -> bool {
+  CONTEXT_MENU_DOWNLOAD.with(|flag| flag.get())
 }
 
 pub fn url_from_webview(webview: &WKWebView) -> Result<String> {

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import EngineMark from "$shared/ui/EngineMark";
   import { Globe02Icon, Tick02Icon } from "@hugeicons/core-free-icons";
   import * as m from "$shared/i18n/messages";
   import { browserImport, type ImportKind } from "$domain/browser-import";
@@ -24,6 +25,7 @@
   );
   let available = $derived(browserImport.available());
   let job = $derived(browserImport.current());
+  let refused = $derived(browserImport.startFailure());
   let nothingFound = $derived(browserImport.found()?.length === 0);
   let failure = $derived(job?.kinds.find((entry) => entry.state === "failed") ?? null);
   let jobBrowser = $derived(sources.find((candidate) => candidate.id === job?.source)?.name ?? "");
@@ -91,27 +93,12 @@
       ? kinds.filter((candidate) => candidate !== kind)
       : [...kinds, kind];
   }
-
-  function choose(id: string) {
-    if (browserImport.busy()) return;
-    const completed = browserImport.current();
-    if (completed?.finished) {
-      // A retry only offers unfinished kinds; successful writes stay kept.
-      kinds =
-        completed.source === id && (failure || completed.cancelled)
-          ? completed.kinds.filter((entry) => entry.state !== "done").map((entry) => entry.kind)
-          : ["essentials", "bookmarks", "history"];
-      browserImport.dismiss();
-      void browserImport.detect();
-    }
-    chosen = id;
-  }
 </script>
 
 <!-- Access granted in System Settings tells nobody; look again on return. -->
 <svelte:window
   onfocus={() => {
-    if (!browserImport.busy()) void browserImport.detect();
+    if (sources.some((candidate) => candidate.needsPermission)) void browserImport.detect();
   }}
 />
 
@@ -126,7 +113,7 @@
         aria-checked={chosen === candidate.id}
         disabled={browserImport.busy()}
         style:--i={index}
-        onclick={() => choose(candidate.id)}
+        onclick={() => (chosen = candidate.id)}
       >
         <span class="plate"
           >{#if browserMark(candidate.browser)}<Mark
@@ -140,40 +127,35 @@
   </div>
 
   <div class="next" aria-live="polite">
-    {#if job?.finished}
-      {@const completed = job}
-      {#if !failure || total > 0}
-        <span class="done"
-          ><Icon icon={Tick02Icon} size={14} />{m.onb_import_done({
-            count: number.format(total),
-          })}</span
+    {#if job?.finished && failure}
+      <span class="reading"
+        >{failure.problem === "busy"
+          ? m.onb_import_quit({ browser: jobBrowser })
+          : failure.problem === "permission"
+            ? m.onb_import_permission({ browser: jobBrowser })
+            : failure.problem === "storage"
+              ? m.onb_import_storage()
+              : m.onb_import_failed({ browser: jobBrowser })}</span
+      >
+      {#if failure.problem === "permission"}
+        <Button
+          variant="primary"
+          size="compact"
+          shape="capsule"
+          onclick={() => void browserImport.openPermissionSettings(job.source)}
+          >{m.onb_import_allow()}</Button
         >
       {/if}
-      {#if failure}
-        <span class="reading"
-          >{failure.problem === "busy"
-            ? m.onb_import_quit({ browser: jobBrowser })
-            : failure.problem === "permission"
-              ? m.onb_import_permission({ browser: jobBrowser })
-              : failure.problem === "storage"
-                ? m.onb_import_storage()
-                : m.onb_import_failed({ browser: jobBrowser })}</span
-        >
-        {#if failure.problem === "permission"}
-          <Button
-            variant="primary"
-            size="compact"
-            shape="capsule"
-            onclick={() => void browserImport.openPermissionSettings(completed.source)}
-            >{m.onb_import_allow()}</Button
-          >
-        {/if}
-      {/if}
-      {#if failure || job.cancelled}
-        <Button size="compact" shape="capsule" onclick={() => choose(completed.source)}
-          >{m.surface_retry()}</Button
-        >
-      {/if}
+    {:else if job?.finished && job.kinds.some((entry) => entry.state === "partial")}
+      <span class="reading">{m.import_kind_partial()}</span>
+    {:else if job?.finished && !job.cancelled && job.kinds.every((entry) => entry.total === 0)}
+      <span class="reading">{m.import_kind_none()}</span>
+    {:else if job?.finished}
+      <span class="done"
+        ><Icon icon={Tick02Icon} size={14} />{m.onb_import_done({
+          count: number.format(total),
+        })}</span
+      >
     {:else if job}
       <span class="meter"><i style:transform={`scaleX(${share})`}></i></span>
       <span class="reading">{m.onb_import_reading({ count: number.format(total) })}</span>
@@ -204,7 +186,8 @@
           variant="primary"
           size="compact"
           shape="capsule"
-          disabled={!available || offered.length === 0 || source.running || browserImport.busy()}
+          disabled={!available || offered.length === 0 || source.running}
+          pending={browserImport.busy()}
           onclick={() => void browserImport.start(source.id, source.profiles[0]?.id ?? "", offered)}
           >{m.onb_import_action()}</Button
         >
@@ -215,6 +198,9 @@
     <p class="note">{m.onb_import_none()}</p>
   {/if}
   {#if hint}<p class="note">{hint}</p>{/if}
+  {#if refused && (job || source?.id === refused.id)}
+    <p class="note start-error" role="alert">{m.import_start_failed({ browser: refused.name })}</p>
+  {/if}
 
   <div class="search">
     <p class="label" aria-hidden="true">{m.onb_search_with()}</p>
@@ -232,7 +218,8 @@
           role="radio"
           aria-checked={engine === id}
           disabled={preferences.saving()}
-          onclick={() => void preferences.set("search.engine", id)}>{label}</button
+          onclick={() => void preferences.set("search.engine", id)}
+          ><EngineMark engine={id} size={14} />{label}</button
         >
       {/each}
     </div>
@@ -292,9 +279,13 @@
 
   .engines button {
     position: relative;
+    display: inline-flex;
     flex: 1 1 auto;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
     block-size: 30px;
-    padding: 0 13px;
+    padding: 0 9px;
     border: 0;
     border-radius: var(--radius-capsule);
     background: none;
@@ -313,6 +304,22 @@
 
   .engines button[aria-checked="true"] {
     color: var(--color-text);
+  }
+
+  /* The chosen engine's mark is in colour; the others wait in grey. */
+  .engines button :global(.engine-mark) {
+    transition:
+      filter var(--motion-fast) var(--ease-out),
+      opacity var(--motion-fast) var(--ease-out);
+  }
+
+  .engines button:not([aria-checked="true"]) :global(.engine-mark) {
+    opacity: 0.6;
+    filter: grayscale(1);
+  }
+
+  .engines button:not([aria-checked="true"]):hover :global(.engine-mark) {
+    opacity: 0.85;
   }
 
   .engines button:focus-visible {
@@ -468,6 +475,10 @@
     margin: -12px 0 0;
     color: var(--color-faint);
     line-height: 1.45;
+  }
+
+  .note.start-error {
+    color: var(--color-danger);
   }
 
   @keyframes lift {

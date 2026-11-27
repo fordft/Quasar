@@ -103,7 +103,7 @@ jobs:
         env:
           APPIMAGE_EXTRACT_AND_RUN: '1'
         run: >-
-          pnpm -C desktop build --verbose --bundles appimage
+          pnpm -C desktop build --verbose --no-default-features --bundles appimage
           --config '{"build":{"beforeBuildCommand":null},"bundle":{"createUpdaterArtifacts":false,"resources":{"../target/THIRD_PARTY_NOTICES.txt":"licenses/THIRD_PARTY_NOTICES.txt"}}}'
       - name: Build macOS preview
         if: matrix.platform == 'macos'

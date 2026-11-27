@@ -104,7 +104,15 @@ and do not establish a separate Quasar service or support channel.
 
 Quasar builds on Zephium and preserves the upstream authors' copyright and
 license notices. The source is licensed under [MPL-2.0](LICENSE).
-Bundled EasyList and EasyPrivacy data retain their
-[CC BY-SA 3.0 license and notices](assets/blocker-seed/v1/NOTICE).
+Bundled EasyList and EasyPrivacy data are used under
+[CC BY-SA 3.0](assets/blocker-seed/v1/LICENSE-CC-BY-SA-3.0.txt), and uBlock
+Origin's filters and quick fixes, unmodified, under
+[GPL-3.0](assets/blocker-seed/v1/LICENSE-GPL-3.0.txt); see
+[the notice](assets/blocker-seed/v1/NOTICE) for attribution.
 The wordmark's DejaVu-derived outlines retain their
 [font license](assets/brand/WORDMARK-LICENSE.txt).
+
+Zephium stands on [Tauri](https://tauri.app), [Wry](https://github.com/tauri-apps/wry),
+Brave's [adblock-rust](https://github.com/brave/adblock-rust),
+[EasyList](https://easylist.to) and uBlock Origin's
+[uAssets](https://github.com/uBlockOrigin/uAssets).

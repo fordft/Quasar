@@ -1,176 +1,196 @@
-import { afterEach, expect, test, vi } from "vitest";
+import { afterEach, expect, test } from "vitest";
 import { render } from "vitest-browser-svelte";
-import { flushSync } from "svelte";
-import {
-  browserImport,
-  type ImportAdapter,
-  type ImportJob,
-  type ImportProblem,
-  type ImportSource,
-} from "$domain/browser-import";
+import { page } from "vitest/browser";
+import "$styles/global.css";
+import { browserImport, type ImportAdapter, type ImportJob } from "$domain/browser-import";
 import Import from "../components/steps/Import.svelte";
-
-vi.mock("$domain/preferences", () => ({
-  preferences: { value: () => "google", saving: () => false, set: vi.fn(async () => {}) },
-}));
-
-function native() {
-  let sources: ImportSource[] = [
-    {
-      id: "chrome",
-      browser: "chrome",
-      name: "Chrome",
-      profiles: [{ id: "Default", name: "Person 1" }],
-      kinds: ["bookmarks", "history"],
-      needsPermission: false,
-      running: false,
-    },
-    {
-      id: "safari",
-      browser: "safari",
-      name: "Safari",
-      profiles: [{ id: "safari-default", name: "Default" }],
-      kinds: ["bookmarks", "history"],
-      needsPermission: false,
-      running: false,
-    },
-  ];
-  let listener: ((job: ImportJob) => void) | null = null;
-  const port: ImportAdapter = {
-    sources: vi.fn(async () => sources),
-    start: vi.fn(async () => true),
-    cancel: vi.fn(async () => {}),
-    openPermissionSettings: vi.fn(async () => {}),
-    onProgress: (next) => {
-      listener = next;
-      return () => (listener = null);
-    },
-  };
-  return {
-    port,
-    emit: (job: ImportJob) => flushSync(() => listener?.(job)),
-    permission: (needed: boolean) => {
-      sources = sources.map((source) => ({ ...source, needsPermission: needed }));
-    },
-  };
-}
-
-function failed(problem: ImportProblem): ImportJob {
-  return {
-    source: "chrome",
-    profile: "Default",
-    kinds: [
-      { kind: "bookmarks", state: "done", done: 12, total: 12 },
-      { kind: "history", state: "failed", done: 0, total: null, problem },
-    ],
-    finished: true,
-    cancelled: false,
-  };
-}
 
 afterEach(() => browserImport.provide(null));
 
-test.each([
-  ["busy", "Quit Chrome first. It keeps its data locked while open."],
-  ["unreadable", "Couldn't read what Chrome keeps."],
-] as const)(
-  "a %s failure can be retried without repeating successful kinds",
-  async (problem, hint) => {
-    const nativeImport = native();
-    browserImport.provide(nativeImport.port);
+test("new import browsers render their own loaded artwork in both themes", async () => {
+  const browsers = [
+    ["helium", "Helium"],
+    ["dia", "Dia"],
+    ["comet", "Comet"],
+    ["chromium", "Chromium"],
+    ["floorp", "Floorp"],
+    ["librewolf", "LibreWolf"],
+    ["waterfox", "Waterfox"],
+    ["opera-gx", "Opera GX"],
+  ] as const;
+  const fake = importer();
+  fake.adapter.sources = async () =>
+    browsers.map(([id, name]) => ({
+      id,
+      browser: id,
+      name,
+      profiles: [{ id: "Default", name: "Personal" }],
+      kinds: ["bookmarks", "history"],
+      needsPermission: false,
+      running: false,
+    }));
+  browserImport.provide(fake.adapter);
+  await browserImport.detect();
+  const screen = await render(Import);
+  await page.viewport(600, 760);
+  try {
+    for (const theme of ["light", "dark"]) {
+      document.documentElement.dataset.theme = theme;
+      for (const [, name] of browsers) {
+        const choice = screen.getByRole("radio", { name, exact: true });
+        await expect.element(choice).toBeVisible();
+        await expect
+          .poll(() => {
+            const image = choice.element().querySelector("img");
+            return image?.complete && image.naturalWidth > 0;
+          })
+          .toBe(true);
+      }
+      await Promise.all(
+        document.getAnimations().map((animation) => animation.finished.catch(() => {})),
+      );
+      await page.screenshot({ path: `../../../../../target/onboarding/import-marks-${theme}.png` });
+    }
+  } finally {
+    delete document.documentElement.dataset.theme;
+  }
+});
+
+function importer() {
+  let emit: (job: ImportJob) => void = () => {};
+  const adapter: ImportAdapter = {
+    sources: async () => [
+      {
+        id: "chrome",
+        browser: "chrome",
+        name: "Chrome",
+        profiles: [{ id: "Default", name: "Person 1" }],
+        kinds: ["bookmarks", "history"],
+        needsPermission: false,
+        running: false,
+      },
+    ],
+    start: async () => true,
+    cancel: async () => {},
+    onProgress: (listener) => {
+      emit = listener;
+      return () => {};
+    },
+    openPermissionSettings: async () => {},
+  };
+  return { adapter, emit: (job: ImportJob) => emit(job) };
+}
+
+const finished = (kinds: ImportJob["kinds"]): ImportJob => ({
+  source: "chrome",
+  profile: "Default",
+  finished: true,
+  cancelled: false,
+  kinds,
+});
+
+test.each([false, true])(
+  "a refused start is reported during onboarding (transport error: %s)",
+  async (transportError) => {
+    const fake = importer();
+    let refuse!: () => void;
+    const reply = new Promise<boolean>((resolve, reject) => {
+      refuse = () => {
+        if (transportError) reject(new Error("transport unavailable"));
+        else resolve(false);
+      };
+    });
+    fake.adapter.start = async () => reply;
+    browserImport.provide(fake.adapter);
     await browserImport.detect();
     const screen = await render(Import);
-    await screen.getByRole("radio", { name: "Chrome", exact: true }).click();
-    await screen.getByRole("button", { name: "Import", exact: true }).click();
-    nativeImport.emit(failed(problem));
-    await expect.element(screen.getByText(hint, { exact: true })).toBeVisible();
-    await expect.element(screen.getByText("12 items brought over")).toBeVisible();
+    await screen.getByRole("radio", { name: "Chrome" }).click();
+    const start = screen.getByRole("button", { name: "Import", exact: true });
+    await start.click();
+    await expect.element(start).toHaveAttribute("aria-busy", "true");
+    refuse();
 
-    // Returning after quitting the source refreshes discovery, keeping the
-    // partial result until the person explicitly asks to try again.
-    const detections = vi.mocked(nativeImport.port.sources).mock.calls.length;
-    window.dispatchEvent(new Event("focus"));
     await expect
-      .poll(() => vi.mocked(nativeImport.port.sources).mock.calls.length)
-      .toBeGreaterThan(detections);
-    expect(browserImport.current()?.finished).toBe(true);
-    await screen.getByRole("button", { name: "Try again", exact: true }).click();
-    await expect
-      .element(screen.getByRole("button", { name: "History", exact: true }))
-      .toHaveAttribute("aria-pressed", "true");
-    await expect
-      .element(screen.getByRole("button", { name: "Bookmarks", exact: true }))
-      .toHaveAttribute("aria-pressed", "false");
-    expect(nativeImport.port.start).toHaveBeenCalledOnce();
-    await screen.getByRole("button", { name: "Import", exact: true }).click();
-    expect(nativeImport.port.start).toHaveBeenLastCalledWith("chrome", "Default", ["history"]);
-    await screen.unmount();
+      .element(screen.getByRole("alert"))
+      .toHaveTextContent("Couldn't start the import from Chrome. Try again.");
+
+    fake.emit({ ...finished([]), finished: false });
+    await expect.element(screen.getByRole("button", { name: "Stop" })).toBeVisible();
+    await expect.element(screen.getByRole("alert")).toBeVisible();
   },
 );
 
-test("permission can be granted from a failed result, then refreshed and retried on revisit", async () => {
-  const nativeImport = native();
-  browserImport.provide(nativeImport.port);
-  await browserImport.detect();
-  nativeImport.emit(failed("permission"));
-  nativeImport.permission(true);
+test("an import that found nothing says so instead of counting zero items brought over", async () => {
+  const fake = importer();
+  browserImport.provide(fake.adapter);
   await browserImport.detect();
   const screen = await render(Import);
+  await screen.getByRole("radio", { name: "Chrome" }).click();
+  await screen.getByRole("button", { name: "Import", exact: true }).click();
+
+  fake.emit(
+    finished([
+      { kind: "bookmarks", state: "done", done: 0, total: 0 },
+      { kind: "history", state: "done", done: 0, total: 0 },
+    ]),
+  );
+  await expect.element(screen.getByText("Nothing to import")).toBeVisible();
+  await expect.element(screen.getByText(/items brought over/u)).not.toBeInTheDocument();
+
+  fake.emit(
+    finished([
+      { kind: "bookmarks", state: "done", done: 12, total: 12 },
+      { kind: "history", state: "done", done: 0, total: 0 },
+    ]),
+  );
+  await expect.element(screen.getByText("12 items brought over")).toBeVisible();
+});
+
+test("an import stopped at a limit explains what was kept", async () => {
+  const fake = importer();
+  browserImport.provide(fake.adapter);
+  await browserImport.detect();
+  const screen = await render(Import);
+  fake.emit(finished([{ kind: "bookmarks", state: "partial", done: 0, total: 0 }]));
   await expect
-    .element(screen.getByText("Chrome needs access in System Settings first."))
+    .element(screen.getByText("Import stopped at a limit. Items already brought over stay."))
     .toBeVisible();
-  await expect.element(screen.getByText("12 items brought over")).toBeVisible();
-  await screen.getByRole("button", { name: "Allow access", exact: true }).click();
-  expect(nativeImport.port.openPermissionSettings).toHaveBeenCalledWith("chrome");
-  nativeImport.permission(false);
-  window.dispatchEvent(new Event("focus"));
-  await expect.poll(() => browserImport.found()?.[0]?.needsPermission).toBe(false);
-  expect(browserImport.current()).toEqual(failed("permission"));
-  await screen.getByRole("button", { name: "Try again", exact: true }).click();
-  await screen.getByRole("button", { name: "Import", exact: true }).click();
-  expect(nativeImport.port.start).toHaveBeenCalledWith("chrome", "Default", ["history"]);
-  await screen.unmount();
+  await expect.element(screen.getByText("Nothing to import")).not.toBeInTheDocument();
 });
 
-test("choosing another browser dismisses a completed result and admits a new source", async () => {
-  const nativeImport = native();
-  browserImport.provide(nativeImport.port);
+test("a refusal by macOS says what to turn on and offers the setting", async () => {
+  const fake = importer();
+  const opened: string[] = [];
+  fake.adapter.openPermissionSettings = async (source) => {
+    opened.push(source);
+  };
+  browserImport.provide(fake.adapter);
   await browserImport.detect();
-  nativeImport.emit({ ...failed("busy"), kinds: [failed("busy").kinds[0]!] });
   const screen = await render(Import);
-  await expect.element(screen.getByText("12 items brought over")).toBeVisible();
-  await screen.getByRole("radio", { name: "Safari", exact: true }).click();
-  expect(browserImport.current()).toBeNull();
-  expect(nativeImport.port.start).not.toHaveBeenCalled();
+  await screen.getByRole("radio", { name: "Chrome" }).click();
   await screen.getByRole("button", { name: "Import", exact: true }).click();
-  expect(nativeImport.port.start).toHaveBeenCalledWith("safari", "safari-default", [
-    "bookmarks",
-    "history",
-  ]);
-  await screen.unmount();
+
+  fake.emit(
+    finished([{ kind: "bookmarks", state: "failed", done: 0, total: null, problem: "permission" }]),
+  );
+  await expect.element(screen.getByText(/Full Disk Access to read Chrome/u)).toBeVisible();
+  await screen.getByRole("button", { name: "Allow access" }).click();
+  expect(opened).toEqual(["chrome"]);
 });
 
-test("source selection stays disabled until native confirms cancellation", async () => {
-  const nativeImport = native();
-  browserImport.provide(nativeImport.port);
+test("a locked browser is not asked about access", async () => {
+  const fake = importer();
+  browserImport.provide(fake.adapter);
   await browserImport.detect();
-  nativeImport.emit({
-    ...failed("busy"),
-    finished: false,
-    kinds: [{ kind: "history", state: "running", done: 0, total: null }],
-  });
   const screen = await render(Import);
-  await expect.element(screen.getByRole("radio", { name: "Safari", exact: true })).toBeDisabled();
-  await screen.getByRole("button", { name: "Stop", exact: true }).click();
-  expect(nativeImport.port.cancel).toHaveBeenCalledOnce();
-  expect(browserImport.current()?.finished).toBe(false);
-  nativeImport.emit({
-    ...failed("busy"),
-    cancelled: true,
-    kinds: [{ kind: "history", state: "skipped", done: 0, total: null }],
-  });
-  await screen.getByRole("button", { name: "Try again", exact: true }).click();
+  await screen.getByRole("radio", { name: "Chrome" }).click();
   await screen.getByRole("button", { name: "Import", exact: true }).click();
-  expect(nativeImport.port.start).toHaveBeenCalledWith("chrome", "Default", ["history"]);
-  await screen.unmount();
+
+  fake.emit(
+    finished([{ kind: "bookmarks", state: "failed", done: 0, total: null, problem: "busy" }]),
+  );
+  await expect.element(screen.getByText(/Quit Chrome first/u)).toBeVisible();
+  await expect
+    .element(screen.getByRole("button", { name: "Allow access" }))
+    .not.toBeInTheDocument();
 });

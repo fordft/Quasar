@@ -5,7 +5,6 @@ import "$styles/global.css";
 import { emitNativeEvent } from "$shared/testing/native-events";
 import { revision, tabFixture } from "$shared/testing/fixtures";
 import { tabs } from "$domain/tabs";
-import * as sidebar from "$session/sidebar-mode.svelte";
 import * as find from "../lib/find.svelte";
 import AddressField from "../components/AddressField.svelte";
 
@@ -15,14 +14,14 @@ vi.mock("$shared/ipc/bindings", async () => {
   return mockBindings({
     tabsBootstrap: async () => {},
     pageFind: native.find,
+    sidebarSetHidden: async () => {},
+    sidebarPeek: async () => {},
     sidebarSetWidth: async () => {},
-    settingSet: async () => ({ accepted: true, operation_id: null }),
   });
 });
 
 afterEach(() => {
   find.dispose();
-  sidebar.setAutoHide(false);
   tabs.dispose();
   vi.clearAllMocks();
 });
@@ -88,22 +87,39 @@ test("find next with the field closed picks up the last search", async () => {
   await expect.element(screen.getByText("No results")).toBeVisible();
 });
 
-test("open Find keeps its column visible across auto-hide toggles until it closes", async () => {
-  const { screen, address, tab } = await field();
+test.each(["refused", "failed"])("a %s find answers with no results", async (failure) => {
+  if (failure === "refused") native.find.mockResolvedValueOnce(false);
+  else native.find.mockRejectedValueOnce(new Error("unavailable"));
+  const { screen, tab } = await field();
   find.show(tab.id);
-  await expect.element(screen.getByRole("searchbox")).toHaveFocus();
-  sidebar.pointerLeft();
-  window.dispatchEvent(new Event("blur"));
-  sidebar.setAutoHide(true);
-  expect(sidebar.isHidden()).toBe(false);
-  sidebar.setAutoHide(false);
-  sidebar.setAutoHide(true);
+  await userEvent.type(screen.getByRole("searchbox"), "missing");
+  await expect.element(screen.getByText("No results")).toBeVisible();
+});
+
+test("an older find refusal cannot answer a newer search", async () => {
+  let refuse!: (accepted: boolean) => void;
+  native.find.mockReturnValueOnce(new Promise((resolve) => (refuse = resolve)));
+  const { screen, tab } = await field();
   find.show(tab.id);
-  await new Promise((resolve) => setTimeout(resolve, sidebar.HIDE_DELAY + 80));
-  expect(sidebar.isHidden()).toBe(false);
-  await expect.element(screen.getByRole("searchbox")).toBeVisible();
-  expect(address.value).toBe("www.wikipedia.org");
-  find.hide();
-  await new Promise((resolve) => setTimeout(resolve, sidebar.HIDE_DELAY + 80));
-  expect(sidebar.isHidden()).toBe(true);
+  find.setText("old");
+  await vi.waitFor(() => expect(native.find).toHaveBeenCalledWith("old", true));
+  find.setText("new");
+  await vi.waitFor(() => expect(native.find).toHaveBeenCalledWith("new", true));
+  emitNativeEvent("find", { query: "new", matches: 2, active: 1 });
+  refuse(false);
+  await expect.element(screen.getByText("1 of 2")).toBeVisible();
+});
+
+test("a refused step keeps the match count and buttons available for retry", async () => {
+  const { screen, tab } = await field();
+  find.show(tab.id);
+  find.setText("needle");
+  await vi.waitFor(() => expect(native.find).toHaveBeenCalledWith("needle", true));
+  emitNativeEvent("find", { query: "needle", matches: 4, active: 2 });
+  native.find.mockResolvedValueOnce(false);
+  await screen.getByRole("button", { name: "Next match" }).click();
+  await expect.element(screen.getByText("2 of 4")).toBeVisible();
+  await expect.element(screen.getByRole("alert")).toHaveTextContent("Step failed");
+  await expect.element(screen.getByRole("button", { name: "Next match" })).toBeEnabled();
+  await expect.element(screen.getByRole("button", { name: "Previous match" })).toBeEnabled();
 });

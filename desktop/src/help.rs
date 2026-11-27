@@ -1,4 +1,4 @@
-//! The Help menu, and where its links lead. Each opens in a tab of Zephium
+//! The Help menu, and where its links lead. Each opens in a tab of Quasar
 //! itself; About is the About page of Settings.
 
 use tauri::menu::{
@@ -10,6 +10,8 @@ use crate::menu_text;
 
 pub(crate) const ABOUT: &str = "settings.about";
 pub(crate) const MENU: &str = "help.menu";
+/// Opens About, where the diagnostics for a bug report are copied.
+pub(crate) const DIAGNOSTICS: &str = "help.diagnostics";
 const DOCS: &str = "help.docs";
 const RELEASES: &str = "help.releases";
 const ISSUES: &str = "help.issues";
@@ -31,6 +33,8 @@ fn entries(handle: &tauri::AppHandle, shortcuts: &MenuItem<tauri::Wry>) -> tauri
         MenuItemBuilder::with_id(RELEASES, menu_text::label("Release Notes")).build(handle)?;
     let issues =
         MenuItemBuilder::with_id(ISSUES, menu_text::label("Report an Issue…")).build(handle)?;
+    let diagnostics =
+        MenuItemBuilder::with_id(DIAGNOSTICS, menu_text::label("Diagnostics…")).build(handle)?;
     #[cfg_attr(target_os = "macos", allow(unused_mut))]
     let mut entries: Entries = vec![
         Box::new(docs),
@@ -39,6 +43,7 @@ fn entries(handle: &tauri::AppHandle, shortcuts: &MenuItem<tauri::Wry>) -> tauri
         Box::new(shortcuts.clone()),
         Box::new(PredefinedMenuItem::separator(handle)?),
         Box::new(issues),
+        Box::new(diagnostics),
     ];
     // Windows and Linux have no application menu to hold it.
     #[cfg(not(target_os = "macos"))]
@@ -83,9 +88,13 @@ mod tests {
             url(DOCS),
             Some("https://github.com/fordft/Quasar/tree/main/docs")
         );
-        assert!(url(RELEASES).is_some_and(|url| url.starts_with("https://github.com/")));
+        assert_eq!(
+            url(RELEASES),
+            Some("https://github.com/fordft/Quasar/releases")
+        );
         assert!(url(ISSUES).is_some_and(|url| url.ends_with("/issues")));
         assert_eq!(url(ABOUT), None);
+        assert_eq!(url(DIAGNOSTICS), None);
         assert_eq!(url("browser.settings"), None);
     }
 

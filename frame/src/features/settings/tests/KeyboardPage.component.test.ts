@@ -15,6 +15,9 @@ import { acceleratorKeys } from "$shared/lib/accelerator";
 import { recordingNative } from "./shortcut-recording-native";
 import * as m from "$shared/i18n/messages";
 
+// These tests read the macOS keycaps (⌘, ⌥, ⇧); Windows spells its shortcuts out.
+vi.mock("$shared/platform", () => ({ IS_MAC: true, IS_WINDOWS: false }));
+
 const entry = (id: string, title: string, accelerator: string | null, customized = false) =>
   ({
     id,
@@ -65,12 +68,34 @@ beforeEach(async () => {
     entry("tab.new", "New Tab", IS_MAC ? "Cmd+T" : "Ctrl+T"),
     entry("tab.close", "Close Tab", IS_MAC ? "Cmd+W" : "Ctrl+W"),
     entry("page.print", "Print…", "Cmd+Shift+P", true),
+    { ...entry("profile.next", "Next Profile", "Ctrl+Cmd+P"), group: "keys" },
+    { ...entry("profile.previous", "Previous Profile", "Ctrl+Cmd+Shift+P"), group: "keys" },
   ]);
   await keymap.init();
 });
 afterEach(() => {
   keymap.dispose();
   vi.clearAllMocks();
+});
+
+test("shows both profile shortcuts and rebinds the previous-profile command", async () => {
+  native.bind.mockResolvedValue({ kind: "applied" });
+  const screen = await render(KeyboardPage);
+  await expect
+    .element(screen.getByRole("heading", { name: "Profiles", exact: true }))
+    .toBeVisible();
+  await expect
+    .element(screen.getByRole("button", { name: "Change the shortcut for Next profile" }))
+    .toBeVisible();
+  const previous = screen.getByRole("button", { name: "Change the shortcut for Previous profile" });
+  await expect.element(previous).toBeVisible();
+  await page.viewport(1000, 900);
+  await page.screenshot({ path: "../../../../../target/settings-profile-shortcuts.png" });
+  await previous.click();
+  await userEvent.keyboard("{Control>}{Meta>}k{/Meta}{/Control}");
+  await vi.waitFor(() =>
+    expect(native.bind).toHaveBeenLastCalledWith("profile.previous", "Ctrl+Cmd+KeyK", false),
+  );
 });
 
 test("records a shortcut, names a conflict, and takes the keys when asked", async () => {

@@ -60,18 +60,12 @@ pub struct CommandSpec {
     pub title: &'static str,
     pub keys: Keys,
     pub group: Group,
+    /// The command this one is another key for. It runs that command and is
+    /// listed beside it in Keyboard settings.
+    pub alternate_of: Option<&'static str>,
 }
 
 impl CommandSpec {
-    /// Platform support is independent of whether a default shortcut exists.
-    pub fn available_on(&self, platform: Platform) -> bool {
-        self.id != "sidebar.toggleAutoHide" || platform == Platform::Mac
-    }
-
-    pub fn available(&self) -> bool {
-        self.available_on(Platform::CURRENT)
-    }
-
     pub fn default_accelerator(&self) -> Option<&'static str> {
         self.keys.on(Platform::CURRENT)
     }
@@ -89,6 +83,29 @@ const fn command(id: &'static str, title: &'static str, keys: Keys, group: Group
         title,
         keys,
         group,
+        alternate_of: None,
+    }
+}
+
+const fn alternate(
+    id: &'static str,
+    title: &'static str,
+    keys: Keys,
+    of: &'static str,
+) -> CommandSpec {
+    CommandSpec {
+        id,
+        title,
+        keys,
+        group: Group::Keys,
+        alternate_of: Some(of),
+    }
+}
+
+const fn other_only(keys: &'static str) -> Keys {
+    Keys {
+        mac: None,
+        other: Some(keys),
     }
 }
 
@@ -120,11 +137,53 @@ pub const REGISTRY: &[CommandSpec] = &[
         Keys::same("CmdOrCtrl+Shift+N"),
         Group::File,
     ),
+    // Opens the launcher for a page of its own in a mini window.
+    command(
+        "window.newMini",
+        "New Mini Window",
+        Keys::same("CmdOrCtrl+Shift+M"),
+        Group::File,
+    ),
+    // Keys a mini window answers while it is in front. Elsewhere they do
+    // nothing, so they stay out of the menus.
+    command(
+        "mini.openInMain",
+        "Open Mini Window in Zephium",
+        Keys::same("CmdOrCtrl+O"),
+        Group::Keys,
+    ),
+    command(
+        "mini.keepOnTop",
+        "Keep Mini Window on Top",
+        Keys::NONE,
+        Group::Keys,
+    ),
     command(
         "window.closePrivate",
         "Close Private Window",
         Keys::NONE,
         Group::File,
+    ),
+    // The private window is a session the one window shows beside the regular
+    // one. Toggling starts it when there is none, so the key is never dead;
+    // the other two name a side, for the Window menu's checked entries.
+    command(
+        "window.togglePrivate",
+        "Toggle Private Window",
+        Keys::same("CmdOrCtrl+Shift+P"),
+        Group::Window,
+    ),
+    command(
+        "window.showRegular",
+        "Regular Window",
+        Keys::NONE,
+        Group::Window,
+    ),
+    command(
+        "window.showPrivate",
+        "Private Window",
+        Keys::NONE,
+        Group::Window,
     ),
     // Ctrl+Alt is AltGr on many Windows and Linux layouts, so only macOS
     // gets a default here.
@@ -135,6 +194,12 @@ pub const REGISTRY: &[CommandSpec] = &[
         Group::File,
     ),
     command("split.choose", "Split View…", Keys::NONE, Group::File),
+    command(
+        "page.save",
+        "Save Page As…",
+        Keys::same("CmdOrCtrl+S"),
+        Group::File,
+    ),
     command(
         "page.print",
         "Print…",
@@ -167,17 +232,15 @@ pub const REGISTRY: &[CommandSpec] = &[
         Group::Edit,
     ),
     command(
-        "sidebar.toggleCompact",
-        "Compact Mode",
-        Keys::same("CmdOrCtrl+Shift+S"),
-        Group::View,
+        "page.autofillPassword",
+        "AutoFill Password…",
+        Keys::NONE,
+        Group::Edit,
     ),
-    // Hiding the sidebar needs somewhere for the window controls to live while
-    // it is away; only macOS has them outside it.
     command(
-        "sidebar.toggleAutoHide",
-        "Auto-hide Sidebar",
-        mac_only("CmdOrCtrl+S"),
+        "sidebar.toggleCompact",
+        "Toggle Sidebar",
+        Keys::same("CmdOrCtrl+Shift+S"),
         Group::View,
     ),
     command(
@@ -186,6 +249,30 @@ pub const REGISTRY: &[CommandSpec] = &[
         Keys::same("CmdOrCtrl+R"),
         Group::View,
     ),
+    alternate(
+        "nav.reload.alt",
+        "Reload Page (Alternate)",
+        other_only("F5"),
+        "nav.reload",
+    ),
+    command(
+        "nav.hardReload",
+        "Hard Reload",
+        Keys::same("CmdOrCtrl+Shift+R"),
+        Group::View,
+    ),
+    alternate(
+        "nav.hardReload.alt",
+        "Hard Reload (Alternate)",
+        other_only("Ctrl+F5"),
+        "nav.hardReload",
+    ),
+    alternate(
+        "nav.hardReload.alt2",
+        "Hard Reload (Second Alternate)",
+        other_only("Shift+F5"),
+        "nav.hardReload",
+    ),
     command(
         "nav.stop",
         "Stop Loading",
@@ -193,10 +280,29 @@ pub const REGISTRY: &[CommandSpec] = &[
         Group::View,
     ),
     command(
+        "page.viewSource",
+        "View Page Source",
+        Keys::same("CmdOrCtrl+U"),
+        Group::View,
+    ),
+    command(
         "page.devtools",
         "Developer Tools",
         split("CmdOrCtrl+Alt+I", "Ctrl+Shift+I"),
         Group::View,
+    ),
+    alternate(
+        "page.devtools.alt",
+        "Developer Tools (Alternate)",
+        other_only("F12"),
+        "page.devtools",
+    ),
+    // macOS has its own full screen key, and F11 there shows the desktop.
+    command(
+        "window.fullscreen",
+        "Full Screen",
+        other_only("F11"),
+        Group::Keys,
     ),
     command(
         "url.focus",
@@ -230,6 +336,25 @@ pub const REGISTRY: &[CommandSpec] = &[
         Group::History,
     ),
     command(
+        "nav.home",
+        "Home Page",
+        split("CmdOrCtrl+Shift+H", "Alt+Home"),
+        Group::History,
+    ),
+    // Alt+Arrow is text editing on macOS, where Command+[ and ] go back.
+    alternate(
+        "nav.back.alt",
+        "Back (Alternate)",
+        other_only("Alt+Left"),
+        "nav.back",
+    ),
+    alternate(
+        "nav.forward.alt",
+        "Forward (Alternate)",
+        other_only("Alt+Right"),
+        "nav.forward",
+    ),
+    command(
         "tab.reopen",
         "Reopen Closed Tab",
         Keys::same("CmdOrCtrl+Shift+T"),
@@ -256,16 +381,40 @@ pub const REGISTRY: &[CommandSpec] = &[
     command(
         "tab.next",
         "Next Tab",
-        Keys::same("Ctrl+Tab"),
+        Keys::same("Ctrl+PageDown"),
         Group::Window,
     ),
     command(
         "tab.previous",
         "Previous Tab",
-        Keys::same("Ctrl+Shift+Tab"),
+        Keys::same("Ctrl+PageUp"),
         Group::Window,
     ),
-    // The same walk down the sidebar as Ctrl+Tab, on the arrows that point
+    command(
+        "tab.recent.next",
+        "Next Recent Tab",
+        Keys::same("Ctrl+Tab"),
+        Group::Keys,
+    ),
+    command(
+        "tab.recent.previous",
+        "Previous Recent Tab",
+        Keys::same("Ctrl+Shift+Tab"),
+        Group::Keys,
+    ),
+    alternate(
+        "tab.next.alt",
+        "Next Tab (Alternate)",
+        mac_only("CmdOrCtrl+Shift+]"),
+        "tab.next",
+    ),
+    alternate(
+        "tab.previous.alt",
+        "Previous Tab (Alternate)",
+        mac_only("CmdOrCtrl+Shift+["),
+        "tab.previous",
+    ),
+    // The same walk down the sidebar, on the arrows that point
     // along it. Ctrl+Alt stays clear of text: only letters and digits are
     // AltGr's.
     command(
@@ -291,7 +440,7 @@ pub const REGISTRY: &[CommandSpec] = &[
     ),
     command(
         "tool.ai",
-        "Ask Quasar",
+        "Ask Zephium",
         Keys::same("CmdOrCtrl+E"),
         Group::Window,
     ),
@@ -327,6 +476,12 @@ pub const REGISTRY: &[CommandSpec] = &[
         "Keyboard Shortcuts",
         Keys::NONE,
         Group::Help,
+    ),
+    command(
+        "settings.clearData",
+        "Clear Browsing Data…",
+        split("CmdOrCtrl+Shift+Backspace", "Ctrl+Shift+Delete"),
+        Group::Keys,
     ),
     command(
         "tab.select.1",
@@ -449,6 +604,19 @@ pub const REGISTRY: &[CommandSpec] = &[
         Group::Keys,
     ),
     command(
+        "profile.next",
+        "Next Profile",
+        // Ctrl+P prints on Windows, so the other platform gets a function key.
+        split("Ctrl+Cmd+P", "F9"),
+        Group::Keys,
+    ),
+    command(
+        "profile.previous",
+        "Previous Profile",
+        split("Ctrl+Cmd+Shift+P", "Shift+F9"),
+        Group::Keys,
+    ),
+    command(
         "work.pane.close",
         "Close Pane",
         Keys::same("Escape"),
@@ -488,6 +656,10 @@ pub const REGISTRY: &[CommandSpec] = &[
     command("theme.dark", "Appearance: Dark", Keys::NONE, Group::Global),
 ];
 
+/// Commands only macOS carries out. WebView2 offers saved passwords itself
+/// as a field takes focus, so Windows has nothing to open.
+const MAC_ONLY: &[&str] = &["page.autofillPassword"];
+
 /// Overrides one person may hold. Bounded so a stored keymap can never grow
 /// past the registry it describes.
 pub const MAX_OVERRIDES: usize = 64;
@@ -504,6 +676,11 @@ pub struct ResolvedCommand {
 
 pub fn get(id: &str) -> Option<&'static CommandSpec> {
     REGISTRY.iter().find(|c| c.id == id)
+}
+
+/// The command that runs for `id`: itself, or the one it is another key for.
+pub fn runs_as(id: &str) -> &str {
+    get(id).and_then(|c| c.alternate_of).unwrap_or(id)
 }
 
 /// Applies keymap overrides onto the defaults. An override with an empty
@@ -532,7 +709,7 @@ pub fn resolve(overrides: &HashMap<String, String>) -> Vec<ResolvedCommand> {
 fn resolve_on(overrides: &HashMap<String, String>, platform: Platform) -> Vec<ResolvedCommand> {
     REGISTRY
         .iter()
-        .filter(|c| c.available_on(platform))
+        .filter(|c| platform == Platform::Mac || !MAC_ONLY.contains(&c.id))
         .map(|c| {
             let canonical =
                 |text: &str| Accelerator::parse(text, platform).map(|a| a.format(platform));
@@ -563,7 +740,6 @@ fn resolve_on(overrides: &HashMap<String, String>, platform: Platform) -> Vec<Re
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum KeymapError {
     UnknownCommand,
-    Unavailable,
     Fixed,
     Accelerator(AcceleratorError),
     /// Already bound to another command, named here.
@@ -587,9 +763,6 @@ fn validate_binding_on(
     platform: Platform,
 ) -> Result<Option<String>, KeymapError> {
     let spec = get(id).ok_or(KeymapError::UnknownCommand)?;
-    if !spec.available_on(platform) {
-        return Err(KeymapError::Unavailable);
-    }
     if !spec.customizable() {
         return Err(KeymapError::Fixed);
     }
@@ -650,6 +823,17 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn autofill_password_is_offered_only_on_macos() {
+        let offered = |platform| {
+            resolve_on(&HashMap::new(), platform)
+                .iter()
+                .any(|c| c.id == "page.autofillPassword")
+        };
+        assert!(offered(Platform::Mac));
+        assert!(!offered(Platform::Other));
     }
 
     #[test]
@@ -736,68 +920,153 @@ mod tests {
     }
 
     #[test]
-    fn compact_sidebar_is_a_registered_view_command() {
-        let command = get("sidebar.toggleCompact").expect("compact sidebar command");
-        assert_eq!(command.title, "Compact Mode");
-        assert_eq!(command.group, Group::View);
+    fn the_private_window_keys_sit_beside_new_private_and_leave_the_system_cycle_alone() {
+        let new = get("window.newPrivate").expect("new private command");
+        assert_eq!(new.keys, Keys::same("CmdOrCtrl+Shift+N"));
+        let toggle = get("window.togglePrivate").expect("toggle command");
+        assert_eq!(toggle.keys, Keys::same("CmdOrCtrl+Shift+P"));
+        assert!(toggle.customizable());
+        for id in ["window.showRegular", "window.showPrivate"] {
+            let side = get(id).expect("side command");
+            assert_eq!(side.keys, Keys::NONE, "{id}");
+            assert_eq!(side.group, Group::Window, "{id}");
+        }
+        // Command-` and Command-Shift-` cycle the Mac's windows.
+        for command in REGISTRY {
+            for platform in PLATFORMS {
+                let keys = command.keys.on(platform).unwrap_or_default();
+                assert!(!keys.contains('`'), "{} takes {keys}", command.id);
+            }
+        }
+    }
+
+    fn bound_to(platform: Platform) -> HashMap<String, &'static str> {
+        resolve_on(&HashMap::new(), platform)
+            .into_iter()
+            .filter_map(|c| Some((c.accelerator?, c.id)))
+            .collect()
     }
 
     #[test]
-    fn auto_hide_is_a_mac_only_view_command_on_the_arc_key() {
-        let command = get("sidebar.toggleAutoHide").expect("auto-hide sidebar command");
-        assert_eq!(command.title, "Auto-hide Sidebar");
-        assert_eq!(command.group, Group::View);
-        assert_eq!(command.keys.on(Platform::Mac), Some("CmdOrCtrl+S"));
-        assert_eq!(command.keys.on(Platform::Other), None);
-        assert!(command.available_on(Platform::Mac));
-        assert!(!command.available_on(Platform::Other));
-    }
-
-    #[test]
-    fn unsupported_commands_cannot_be_resolved_or_customized() {
-        let id = "sidebar.toggleAutoHide";
-        let overrides = HashMap::from([(id.into(), "CmdOrCtrl+Shift+F12".into())]);
-        let resolved = resolve_on(&overrides, Platform::Other);
-        assert!(!resolved.iter().any(|command| command.id == id));
-        for accelerator in [None, Some("Ctrl+Shift+F12")] {
+    fn recent_and_sidebar_walks_have_distinct_defaults_on_both_platforms() {
+        for platform in [Platform::Mac, Platform::Other] {
+            let keys = bound_to(platform);
+            assert_eq!(keys.get("Ctrl+Tab").copied(), Some("tab.recent.next"));
             assert_eq!(
-                validate_binding_on(&resolved, id, accelerator, Platform::Other),
-                Err(KeymapError::Unavailable)
+                keys.get("Ctrl+Shift+Tab").copied(),
+                Some("tab.recent.previous")
+            );
+            assert_eq!(keys.get("Ctrl+PageDown").copied(), Some("tab.next"));
+            assert_eq!(keys.get("Ctrl+PageUp").copied(), Some("tab.previous"));
+        }
+    }
+
+    #[test]
+    fn windows_and_linux_answer_chromes_keys() {
+        let keys = bound_to(Platform::Other);
+        for (text, id) in [
+            ("F5", "nav.reload.alt"),
+            ("Ctrl+R", "nav.reload"),
+            ("Ctrl+Shift+R", "nav.hardReload"),
+            ("Ctrl+F5", "nav.hardReload.alt"),
+            ("Shift+F5", "nav.hardReload.alt2"),
+            ("F11", "window.fullscreen"),
+            ("F12", "page.devtools.alt"),
+            ("Ctrl+Shift+I", "page.devtools"),
+            ("Alt+Left", "nav.back.alt"),
+            ("Alt+Right", "nav.forward.alt"),
+            ("Alt+Home", "nav.home"),
+            ("Ctrl+PageUp", "tab.previous"),
+            ("Ctrl+PageDown", "tab.next"),
+            ("Ctrl+Shift+Delete", "settings.clearData"),
+            ("Ctrl+H", "tool.history"),
+            ("Ctrl+J", "tool.downloads"),
+        ] {
+            assert_eq!(keys.get(text).copied(), Some(id), "{text}");
+            assert_eq!(
+                runs_as(id),
+                id.trim_end_matches(".alt").trim_end_matches(".alt2")
             );
         }
-        let resolved = resolve_on(&overrides, Platform::Mac);
-        let command = resolved.iter().find(|command| command.id == id).unwrap();
-        assert!(command.customized);
-        assert_eq!(command.accelerator.as_deref(), Some("Cmd+Shift+F12"));
+    }
+
+    #[test]
+    fn macos_adds_only_the_keys_it_does_not_already_hold() {
+        let keys = bound_to(Platform::Mac);
+        assert_eq!(keys.get("Cmd+Shift+R").copied(), Some("nav.hardReload"));
+        assert_eq!(keys.get("Cmd+Shift+H").copied(), Some("nav.home"));
+        assert_eq!(keys.get("Cmd+Shift+]").copied(), Some("tab.next.alt"));
+        assert_eq!(keys.get("Cmd+Shift+[").copied(), Some("tab.previous.alt"));
         assert_eq!(
-            validate_binding_on(&resolved, id, None, Platform::Mac),
-            Ok(None)
+            keys.get("Cmd+Shift+Backspace").copied(),
+            Some("settings.clearData")
+        );
+        // Function keys and Option+Arrow belong to the system and to text.
+        for id in [
+            "nav.reload.alt",
+            "nav.hardReload.alt",
+            "nav.hardReload.alt2",
+            "window.fullscreen",
+            "page.devtools.alt",
+            "nav.back.alt",
+            "nav.forward.alt",
+        ] {
+            assert_eq!(get(id).expect(id).keys.mac, None, "{id}");
+        }
+        // Command-Option-Arrow already switches spaces.
+        assert_eq!(keys.get("Cmd+Option+Right").copied(), Some("space.next"));
+    }
+
+    #[test]
+    fn an_alternate_runs_its_command_and_stays_rebindable() {
+        for command in REGISTRY.iter().filter(|c| c.alternate_of.is_some()) {
+            let of = command.alternate_of.unwrap();
+            let target = get(of).unwrap_or_else(|| panic!("{} names {of}", command.id));
+            assert_eq!(target.alternate_of, None, "{} chains", command.id);
+            assert_eq!(command.group, Group::Keys, "{}", command.id);
+            assert!(command.customizable(), "{}", command.id);
+            assert_eq!(runs_as(command.id), of);
+        }
+        assert_eq!(runs_as("tab.new"), "tab.new");
+        assert_eq!(runs_as("nope"), "nope");
+    }
+
+    #[test]
+    fn a_second_key_cannot_take_one_another_command_holds() {
+        let resolved = resolve_on(&HashMap::new(), Platform::Other);
+        let bind = |id, text| validate_binding_on(&resolved, id, Some(text), Platform::Other);
+        assert_eq!(
+            bind("tab.new", "F5"),
+            Err(KeymapError::Conflict("nav.reload.alt"))
+        );
+        assert_eq!(
+            bind("tab.new", "Alt+Left"),
+            Err(KeymapError::Conflict("nav.back.alt"))
+        );
+        assert_eq!(
+            bind("nav.reload", "Ctrl+Shift+R"),
+            Err(KeymapError::Conflict("nav.hardReload"))
+        );
+        assert!(bind("nav.back.alt", "Alt+Up").is_err());
+        assert_eq!(
+            bind("nav.back.alt", "Alt+Home"),
+            Err(KeymapError::Conflict("nav.home"))
+        );
+        let mut overrides = HashMap::new();
+        overrides.insert("nav.back.alt".into(), "".into());
+        let resolved = resolve_on(&overrides, Platform::Other);
+        assert_eq!(
+            validate_binding_on(&resolved, "tab.new", Some("Alt+Left"), Platform::Other),
+            Ok(Some("Alt+Left".into()))
         );
     }
 
     #[test]
-    fn missing_default_shortcuts_do_not_make_other_commands_unavailable() {
-        for platform in PLATFORMS {
-            for command in REGISTRY {
-                if command.id != "sidebar.toggleAutoHide" {
-                    assert!(
-                        command.available_on(platform),
-                        "{} on {platform:?}",
-                        command.id
-                    );
-                }
-            }
-        }
-        let resolved = resolve_on(&HashMap::new(), Platform::Other);
-        for id in ["note.new", "split.choose"] {
-            assert!(resolved
-                .iter()
-                .any(|command| command.id == id && command.accelerator.is_none()));
-            assert_eq!(
-                validate_binding_on(&resolved, id, Some("Ctrl+Shift+F12"), Platform::Other),
-                Ok(Some("Ctrl+Shift+F12".into()))
-            );
-        }
+    fn the_sidebar_toggle_is_a_registered_view_command() {
+        // The id predates hiding the sidebar; shortcuts people saved name it.
+        let command = get("sidebar.toggleCompact").expect("sidebar toggle command");
+        assert_eq!(command.title, "Toggle Sidebar");
+        assert_eq!(command.group, Group::View);
     }
 
     #[test]

@@ -7,6 +7,6 @@
     "brand:icons": "tauri icon ../assets/brand/quasar-icon.svg"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "2.11.4"
+    "@tauri-apps/cli": "2.12.4"
   }
 }

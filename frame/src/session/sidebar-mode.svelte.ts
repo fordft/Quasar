@@ -1,6 +1,13 @@
 import { commands } from "$shared/ipc/bindings";
+import { settle } from "$domain/operations";
+import { observe } from "$shared/lib/observe";
 
-export type SidebarMode = "default" | "compact";
+/** Compact is the rail that Work, Tasks and tools put the column into; the
+ *  shape a person picks is expanded or hidden. */
+export type SidebarMode = "default" | "compact" | "hidden";
+
+/** What the toggle puts the column into. */
+const PUT_AWAY: SidebarMode = "hidden";
 
 /** The rail width. Native admits it as a real sidebar width, not a mode flag. */
 export const COMPACT_WIDTH = 56;
@@ -15,15 +22,17 @@ export const MAX_EXPANDED_WIDTH = 460;
 export const SNAP_THRESHOLD = 140;
 
 const MODE_SETTING = "sidebar.mode";
+const WIDTH_SETTING = "sidebar.width";
 
 let mode = $state.raw<SidebarMode>("default");
 let desiredMode: SidebarMode = "default";
 let expandedWidth = $state.raw(240);
-let drag: { mode: SidebarMode; desired: SidebarMode; expanded: number; pending: number } | null =
-  null;
+let drag = $state.raw<{ mode: SidebarMode; expanded: number } | null>(null);
 let resizeSettlement = $state(0);
-// One document-local ordering counter, seeded above earlier document owners.
-let resizeRevision = $state(Math.trunc(performance.timeOrigin * 1024));
+// One ordering counter, seeded above every earlier owner: an earlier
+// document, and an earlier copy of this module in the same document, which a
+// module reloaded in place leaves behind with native still holding its count.
+let resizeRevision = $state(Math.trunc((performance.timeOrigin + performance.now()) * 1024));
 export const sidebarResizeRevision = () => resizeRevision;
 export function claimSidebarResizeOwner() {
   return ++resizeRevision;
@@ -33,26 +42,38 @@ export const sidebarResizeSettlement = () => resizeSettlement;
 
 export const sidebarMode = () => mode;
 export const isCompact = () => mode === "compact";
+export const isHidden = () => mode === "hidden" && !held && !fullColumnShown();
+
+let fullColumnHolds = $state(0);
+export const fullColumnShown = () => fullColumnHolds > 0;
+
+/** A destination that wants the column in view, the rail of Work or a tool,
+ *  holds a hidden sidebar out for as long as it is shown. */
+let held = $state.raw(false);
+export function holdShown(value: boolean) {
+  if (value === held) return;
+  held = value;
+  if (mode === "hidden") publish(true);
+}
 export const expanded = () => expandedWidth;
-/** The chrome gap between the rail and an open utility panel. */
+/** The gap between the rail and a tool's panel beside it. */
 export const PANEL_GAP = 8;
 let panelExtent = $state.raw(0);
 
-/** The width native admits for a sidebar that is out of the way. */
-export const HIDDEN_WIDTH = 0;
-
 export const effectiveWidth = () =>
-  hidden()
-    ? HIDDEN_WIDTH
+  fullColumnShown()
+    ? expandedWidth
     : panelExtent > 0
       ? COMPACT_WIDTH + PANEL_GAP + panelExtent
       : mode === "compact"
         ? COMPACT_WIDTH
-        : expandedWidth;
+        : // Hidden keeps its width: it comes back over the page at that width.
+          expandedWidth;
 
 export const hasPanel = () => panelExtent > 0;
 
-/** A utility panel borrows width beside the rail without changing the persisted mode. */
+/** A tool's panel stands beside the rail, without changing the persisted width
+ *  or mode. */
 export function setPanelExtent(extent: number) {
   const next = Math.max(0, Math.min(MAX_EXPANDED_WIDTH - COMPACT_WIDTH - PANEL_GAP, extent));
   if (next === panelExtent) return;
@@ -64,10 +85,39 @@ function clampExpanded(value: number) {
   return Math.max(MIN_EXPANDED_WIDTH, Math.min(MAX_EXPANDED_WIDTH, Math.round(value)));
 }
 
+let persistedWidth: number | null = null;
+let widthSaveRevision = 0;
+
+function rememberWidth(value: number) {
+  expandedWidth = value;
+  if (value === persistedWidth) return;
+  const revision = ++widthSaveRevision;
+  // An in-flight write may replace the last confirmed width, even if it fails
+  // to report back. Keep the displayed width retryable until storage confirms it.
+  persistedWidth = null;
+  void persistWidth(value, revision);
+}
+
+async function persistWidth(value: number, revision: number) {
+  try {
+    const result = await settle(commands.settingSet(WIDTH_SETTING, String(value)));
+    if (result.outcome === "failed" || result.outcome === "rejected") return;
+    const stored = await observe(commands.settingGet(WIDTH_SETTING), 1500);
+    if (
+      revision === widthSaveRevision &&
+      stored.state === "received" &&
+      stored.value === String(value)
+    )
+      persistedWidth = value;
+  } catch {
+    // A transport or readback failure leaves this width eligible for retry.
+  }
+}
+
 /** Resolves a raw drag width to whichever designed shape it lands in. */
 export function resolveDragWidth(value: number): { mode: SidebarMode; expanded: number } {
   if (!Number.isFinite(value) || value < SNAP_THRESHOLD) {
-    return { mode: "compact", expanded: expandedWidth };
+    return { mode: PUT_AWAY, expanded: expandedWidth };
   }
   return { mode: "default", expanded: clampExpanded(value) };
 }
@@ -80,213 +130,78 @@ export function resolveDragWidth(value: number): { mode: SidebarMode; expanded: 
 function publish(travel = false) {
   resizeRevision++;
   if (drag) cancelSidebarResize();
-  publishedHidden = hidden();
   const width = effectiveWidth();
   void commands.sidebarSetWidth(width, travel, resizeRevision);
-}
-
-// ── Auto-hide ────────────────────────────────────────────────────────────
-// The sidebar can step out of the way. It is a width of nothing, not a drawn
-// state: native gives the page the room, chrome keeps only the window's
-// gutter, and moving the pointer onto that gutter brings the sidebar back
-// until the pointer leaves. Chrome and page tile, never overlap, so the page
-// is pushed aside while the sidebar is out, as it is for any change of width.
-
-const AUTOHIDE_SETTING = "sidebar.autohide";
-/** Rest on the edge this long before the sidebar comes out, so crossing it
- *  on the way to the window controls does not. */
-export const REVEAL_DELAY = 120;
-/** Leave the sidebar this long before it goes back, so a stray move off
- *  the column does not. */
-export const HIDE_DELAY = 450;
-
-/** The preference. */
-let autoHide = $state.raw(false);
-/** Whether this page and these tools let the sidebar hide at all: Settings,
- *  Tasks, Notes, Work and an open tool panel each live in the column. */
-let autoHideApplies = $state.raw(true);
-/** The sidebar out for now, though the preference is on. */
-let revealed = $state.raw(false);
-let publishedHidden = false;
-let pointerInside = false;
-let holds = 0;
-let revealTimer: ReturnType<typeof setTimeout> | undefined;
-let hideTimer: ReturnType<typeof setTimeout> | undefined;
-
-const hidden = () => autoHide && autoHideApplies && !revealed && panelExtent === 0;
-/** The sidebar is out of the way right now. */
-export const isHidden = hidden;
-/** The preference is on, whether or not the sidebar is out at the moment. */
-export const autoHides = () => autoHide;
-
-function clearTimers() {
-  clearTimeout(revealTimer);
-  clearTimeout(hideTimer);
-}
-
-/** Publishes the width when hiding or revealing changed it. */
-function settleHidden(travel: boolean) {
-  if (hidden() !== publishedHidden) publish(travel);
-}
-
-function applyAutoHide(next: boolean, travel: boolean) {
-  if (next === autoHide) return;
-  autoHide = next;
-  clearTimers();
-  revealed = holds > 0;
-  pointerInside = false;
-  settleHidden(travel);
-}
-
-let savingAutoHide: { value: boolean; timer: ReturnType<typeof setTimeout> } | null = null;
-
-function saveAutoHide(next: boolean) {
-  if (savingAutoHide) clearTimeout(savingAutoHide.timer);
-  savingAutoHide = { value: next, timer: setTimeout(() => (savingAutoHide = null), 2000) };
-  void commands.settingSet(AUTOHIDE_SETTING, String(next));
-}
-
-/** A stored preference reached this column: from here, or from elsewhere. */
-export function adoptAutoHide(next: boolean) {
-  if (savingAutoHide) {
-    if (next === savingAutoHide.value) {
-      clearTimeout(savingAutoHide.timer);
-      savingAutoHide = null;
-    }
-    return;
-  }
-  // A restored preference lands without ceremony; native lays out once.
-  applyAutoHide(next, false);
-}
-
-export function setAutoHide(next: boolean) {
-  if (next === autoHide) return;
-  applyAutoHide(next, true);
-  saveAutoHide(next);
-}
-
-export function toggleAutoHide() {
-  setAutoHide(!autoHide);
-}
-
-/** Page and tools tell whether the sidebar may hide; back from a place it
- *  could not, it stays out while held or if the pointer is still on it. */
-export function setAutoHideApplies(applies: boolean) {
-  if (applies === autoHideApplies) return;
-  autoHideApplies = applies;
-  clearTimers();
-  revealed = holds > 0 || (applies && pointerInside);
-  settleHidden(true);
-}
-
-function reveal() {
-  if (revealed) return;
-  revealed = true;
-  settleHidden(true);
-}
-
-function scheduleHide() {
-  clearTimeout(hideTimer);
-  hideTimer = setTimeout(() => {
-    if (pointerInside) return;
-    // Something is using the sidebar: look again shortly.
-    if (holds > 0) return scheduleHide();
-    revealed = false;
-    settleHidden(true);
-  }, HIDE_DELAY);
-}
-
-/** The pointer reached the window's edge, where a hidden sidebar waits. */
-export function pointerEnteredEdge() {
-  pointerInside = true;
-  clearTimeout(hideTimer);
-  if (!autoHide || !autoHideApplies || revealed || panelExtent > 0) return;
-  clearTimeout(revealTimer);
-  revealTimer = setTimeout(reveal, REVEAL_DELAY);
-}
-
-/** The pointer is on the sidebar itself. */
-export function pointerEnteredSidebar() {
-  pointerInside = true;
-  clearTimeout(hideTimer);
-}
-
-/** The pointer left the sidebar and its edge, or the window lost it. */
-export function pointerLeft() {
-  pointerInside = false;
-  clearTimeout(revealTimer);
-  if (revealed) scheduleHide();
-}
-
-/**
- * Keeps the sidebar out while something needs it: a tab being dragged
- * toward the page, a field being used. Returns the release.
- */
-export function holdRevealed(): () => void {
-  holds++;
-  clearTimers();
-  reveal();
-  let released = false;
-  return () => {
-    if (released) return;
-    released = true;
-    holds--;
-    if (holds === 0 && revealed && !pointerInside) scheduleHide();
-  };
-}
-
-/**
- * Brings a hidden sidebar out for as long as something there needs an answer:
- * a request from a page, a permission prompt. Returns the release.
- */
-export function revealHeld(): () => void {
-  return holdRevealed();
+  void commands.sidebarSetHidden(isHidden());
 }
 
 export function applyDragWidth(value: number) {
-  if (drag) {
-    drag.pending = value;
+  if (!Number.isFinite(value)) return;
+  if (isHidden()) {
+    const width = clampExpanded(value);
+    if (drag && width === expandedWidth) return;
+    if (drag) expandedWidth = width;
+    else rememberWidth(width);
+    void commands.sidebarSetWidth(width, false, resizeRevision);
     return;
   }
+  if (drag) return;
   const next = resolveDragWidth(value);
-  if (next.mode === mode && next.expanded === expandedWidth) return;
+  if (next.mode === mode && next.expanded === expandedWidth) {
+    if (next.mode === "default") rememberWidth(next.expanded);
+    return;
+  }
   const modeChanged = next.mode !== mode;
   mode = next.mode;
-  expandedWidth = next.expanded;
+  if (next.mode === "default") rememberWidth(next.expanded);
   desiredMode = mode;
   publish(modeChanged);
   if (modeChanged) save(mode);
 }
 
-/** The non-native capture fallback also keeps the rendered layout unchanged. */
 export function beginSidebarResize() {
   if (drag) return;
-  drag = { mode, desired: desiredMode, expanded: expandedWidth, pending: effectiveWidth() };
+  drag = { mode, expanded: expandedWidth };
 }
 
 export function finishSidebarResize(value: number) {
   if (!drag) return;
   drag = null;
-  const before = mode;
   adoptResizeWidth(value);
-  // Only a change of shape travels; the column animates its width then too.
-  void commands.sidebarSetWidth(effectiveWidth(), mode !== before, resizeRevision);
+  void commands.sidebarSetWidth(effectiveWidth(), !isHidden(), resizeRevision);
 }
 
 export function cancelSidebarResize() {
+  const original = drag;
   drag = null;
+  if (original?.mode === "hidden" && expandedWidth !== original.expanded) {
+    expandedWidth = original.expanded;
+    void commands.sidebarSetWidth(expandedWidth, false, resizeRevision);
+  }
 }
 
 /** Native has admitted one final width; adopt its display shape without another layout command. */
 export function adoptResizeWidth(value: number, revision = resizeRevision) {
   if (revision !== resizeRevision) return;
   if (!Number.isFinite(value)) return;
+  if (isHidden()) {
+    drag = null;
+    rememberWidth(clampExpanded(value));
+    resizeSettlement++;
+    return;
+  }
   // A fast drag overshoots the bounds; it lands on the nearest one.
   const next = resolveDragWidth(Math.max(COMPACT_WIDTH, Math.min(MAX_EXPANDED_WIDTH, value)));
+  if (next.mode === "hidden") {
+    expandedWidth = next.expanded;
+    resizeSettlement++;
+    setMode("hidden");
+    return;
+  }
   const changed = next.mode !== mode;
   mode = next.mode;
   desiredMode = mode;
-  expandedWidth = next.expanded;
+  rememberWidth(next.expanded);
   resizeSettlement++;
   if (changed) save(mode);
 }
@@ -295,6 +210,16 @@ let resizeListenerInstalled = false;
 function installResizeListener() {
   if (resizeListenerInstalled) return;
   resizeListenerInstalled = true;
+  window.addEventListener("zephium:sidebar-resize-progress", (event) => {
+    if (!(event instanceof CustomEvent) || !event.detail || typeof event.detail !== "object")
+      return;
+    const { width, revision, active } = event.detail;
+    if (revision !== resizeRevision || !isHidden() || !Number.isFinite(width)) return;
+    if (active === true) {
+      beginSidebarResize();
+      expandedWidth = clampExpanded(width);
+    } else if (active === false) cancelSidebarResize();
+  });
   window.addEventListener("zephium:sidebar-width-selected", (event) => {
     if (!(event instanceof CustomEvent) || !event.detail || typeof event.detail !== "object")
       return;
@@ -316,8 +241,12 @@ function save(next: SidebarMode) {
   void commands.settingSet(MODE_SETTING, next);
 }
 
+/** The rail was once a shape a person picked; it is the hidden one now. */
+const chosen = (stored: SidebarMode): SidebarMode => (stored === "compact" ? PUT_AWAY : stored);
+
 /** A stored preference reached this column: from here, or from elsewhere. */
-export function adoptMode(next: SidebarMode) {
+export function adoptMode(stored: SidebarMode) {
+  const next = chosen(stored);
   if (saving) {
     if (next === saving.mode) {
       clearTimeout(saving.timer);
@@ -341,58 +270,66 @@ export function setMode(next: SidebarMode) {
   save(next);
 }
 
-let briefExpansions = 0;
-
 /**
  * Shows the full column for a moment without touching the preference. The
- * last release puts the rail back, unless a shape was chosen meanwhile.
+ * returned function puts the rail back, unless a shape was chosen meanwhile.
  */
-export function expandBriefly(): () => void {
+export function expandBriefly({ fullColumn = false }: { fullColumn?: boolean } = {}): () => void {
   cancelSidebarResize();
-  briefExpansions++;
-  const wasHidden = hidden();
-  const wasCompact = mode === "compact";
-  if (wasCompact) mode = "default";
-  // Every caller holds its expansion, including a column revealed by hover.
-  // A hidden rail comes out in its expanded shape in one change of width.
-  const release = revealHeld();
-  if (wasCompact && !wasHidden) publish(true);
-  let released = false;
+  // A chooser needs the browser list even beside a mounted tool panel.
+  if (fullColumn) {
+    if (++fullColumnHolds === 1) publish(true);
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      if (--fullColumnHolds === 0) publish(true);
+    };
+  }
+  const away = mode;
+  if (away === "default") return () => {};
+  mode = "default";
+  publish(true);
   return () => {
-    if (released) return;
-    released = true;
-    briefExpansions--;
-    release();
-    if (briefExpansions > 0 || mode !== "default" || desiredMode !== "compact") return;
+    if (mode !== "default" || desiredMode !== away) return;
     cancelSidebarResize();
-    mode = "compact";
+    mode = away;
     publish(true);
   };
 }
 
 export function toggleMode() {
   cancelSidebarResize();
-  desiredMode = desiredMode === "compact" ? "default" : "compact";
+  desiredMode = desiredMode === "default" ? PUT_AWAY : "default";
   setMode(desiredMode);
 }
 
 /**
- * Adopts the persisted mode. The width is published afterwards so native
+ * Adopts the persisted mode and expanded width. The width is published afterwards so native
  * layout matches the restored shape on the first paint rather than after the
  * first interaction.
  */
-export async function init(hideSupported = false): Promise<void> {
+export async function init(): Promise<void> {
   installResizeListener();
   try {
-    const [stored, hide] = await Promise.all([
-      commands.settingGet(MODE_SETTING),
-      commands.settingGet(AUTOHIDE_SETTING).catch(() => null),
+    const [stored, width] = await Promise.all([
+      commands.settingGet(MODE_SETTING).catch(() => null),
+      commands.settingGet(WIDTH_SETTING).catch(() => null),
     ]);
-    if (stored === "compact") {
-      mode = "compact";
-      desiredMode = "compact";
+    const restored = Number(width);
+    if (
+      Number.isInteger(restored) &&
+      restored >= MIN_EXPANDED_WIDTH &&
+      restored <= MAX_EXPANDED_WIDTH &&
+      String(restored) === width
+    ) {
+      expandedWidth = restored;
+      persistedWidth = restored;
     }
-    if (hide === "true" && hideSupported) autoHide = true;
+    if (stored === "compact" || stored === "hidden") {
+      mode = chosen(stored);
+      desiredMode = mode;
+    }
   } catch {
     // A missing or unreadable preference is not a startup failure; the
     // default shape is always valid.

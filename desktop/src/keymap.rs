@@ -157,7 +157,7 @@ impl Keymap {
         *write(&keymap.overrides) = stored
             .into_iter()
             .filter(|(id, value)| {
-                commands::get(id).is_some_and(|spec| spec.available() && spec.customizable())
+                commands::get(id).is_some_and(|spec| spec.customizable())
                     && value.len() <= MAX_ACCELERATOR_BYTES
             })
             .take(commands::MAX_OVERRIDES)
@@ -191,7 +191,7 @@ impl Keymap {
         let shown = self.work_pane_shown.load(Ordering::Acquire);
         self.resolved()
             .iter()
-            .filter(|command| command.group != Group::Global)
+            .filter(|command| command.id != "launcher.toggle")
             .filter(|command| shown || command.group != Group::Work)
             .filter(|command| self.offers(command.id))
             .filter_map(|command| shortcut(command.id, command.accelerator.as_deref()?))
@@ -237,7 +237,13 @@ impl Keymap {
                 .resolved()
                 .iter()
                 .filter(|_| !recording)
-                .filter(|command| command.group == Group::Keys)
+                .filter(|command| {
+                    // Tab cycling also has a menu item, but the menu only sees
+                    // the key after the focused page has, and a page keystroke
+                    // hides the pointer until the mouse moves.
+                    command.group == Group::Keys
+                        || matches!(command.id, "tab.recent.next" | "tab.recent.previous")
+                })
                 .filter(|command| self.offers(command.id))
                 .filter_map(|command| {
                     let accelerator = command.accelerator.as_deref()?;
@@ -265,8 +271,7 @@ impl Keymap {
 
     /// Whether a command's feature is on, so it is matched, listed and run.
     pub(crate) fn offers(&self, command: &str) -> bool {
-        commands::get(command).is_none_or(|spec| spec.available())
-            && commands::feature_of(command).is_none_or(|feature| self.feature_on(feature))
+        commands::feature_of(command).is_none_or(|feature| self.feature_on(feature))
     }
 
     /// Follows a stored feature switch: off, its keys stop matching anywhere.
@@ -570,7 +575,6 @@ pub(crate) fn keymap_bind(
             command: command.to_owned(),
         },
         Err(KeymapError::UnknownCommand) => KeymapOutcome::Invalid,
-        Err(KeymapError::Unavailable) => KeymapOutcome::Unavailable,
         Err(KeymapError::Fixed) => KeymapOutcome::Fixed,
         Err(KeymapError::Accelerator(AcceleratorError::Invalid)) => KeymapOutcome::Invalid,
         Err(KeymapError::Accelerator(AcceleratorError::Unbindable)) => KeymapOutcome::Unbindable,
@@ -888,37 +892,27 @@ mod tests {
     }
 
     #[test]
-    fn unavailable_commands_leave_keymap_offerings_and_tables_even_with_overrides() {
-        let keymap = Keymap::default();
-        write(&keymap.overrides).insert(
-            "sidebar.toggleAutoHide".into(),
-            "CmdOrCtrl+Shift+F12".into(),
-        );
-        let supported = cfg!(target_os = "macos");
-        assert_eq!(keymap.offers("sidebar.toggleAutoHide"), supported);
-        assert_eq!(
-            keymap
-                .resolved()
-                .iter()
-                .any(|command| command.id == "sidebar.toggleAutoHide"),
-            supported
-        );
-        if !supported {
-            assert!(!keymap
-                .engine_table()
-                .iter()
-                .any(|shortcut| shortcut.id == "sidebar.toggleAutoHide"));
+    fn custom_theme_keys_take_precedence_over_zoom_aliases_in_pages() {
+        for id in ["theme.system", "theme.light", "theme.dark"] {
+            let keymap = Keymap::default();
+            write(&keymap.overrides).insert(id.to_owned(), "Ctrl+Shift+=".to_owned());
+            let table = keymap.engine_table();
             assert_eq!(
-                commands::validate_binding(
-                    &keymap.resolved(),
-                    "sidebar.toggleAutoHide",
-                    Some("Ctrl+Shift+F12")
-                ),
-                Err(KeymapError::Unavailable)
+                Shortcut::match_windows(&table, 0xBB, true, true, false)
+                    .map(|shortcut| shortcut.id.as_str()),
+                Some(id)
+            );
+            assert!(!table
+                .iter()
+                .any(|shortcut| shortcut.id == "launcher.toggle"));
+            write(&keymap.overrides).insert(id.to_owned(), String::new());
+            let table = keymap.engine_table();
+            assert_eq!(
+                Shortcut::match_windows(&table, 0xBB, true, true, false)
+                    .map(|shortcut| shortcut.id.as_str()),
+                Some("zoom.in")
             );
         }
-        // These have no default shortcut on Windows/Linux, but remain supported.
-        assert!(keymap.offers("note.new") && keymap.offers("split.choose"));
     }
 
     #[test]
@@ -976,6 +970,20 @@ mod tests {
     }
 
     #[test]
+    fn tab_cycling_keys_are_taken_before_the_page_sees_them() {
+        // A keystroke that reaches a page hides the pointer on macOS, so each
+        // platform must match Ctrl+Tab and Ctrl+Shift+Tab ahead of the page.
+        let keymap = Keymap::default();
+        keymap.refresh_tables();
+        for id in ["tab.recent.next", "tab.recent.previous"] {
+            #[cfg(target_os = "macos")]
+            assert!(read(&keymap.key_table).iter().any(|(_, held)| *held == id));
+            #[cfg(not(target_os = "macos"))]
+            assert!(keymap.engine_table().iter().any(|s| s.id == id));
+        }
+    }
+
+    #[test]
     fn page_keys_use_the_platform_primary_modifier() {
         let reload = shortcut("nav.reload", "CmdOrCtrl+R");
         if cfg!(target_os = "macos") {
@@ -985,5 +993,15 @@ mod tests {
             assert!(reload.ctrl && !reload.shift && !reload.alt);
             assert_eq!(reload.key, 0x52);
         }
+    }
+
+    #[test]
+    fn bare_function_keys_and_alt_arrows_match_as_written() {
+        let f5 = shortcut("nav.reload.alt", "F5").expect("F5 key");
+        assert!(!f5.ctrl && !f5.shift && !f5.alt);
+        assert_eq!(f5.key, 0x74);
+        let back = shortcut("nav.back.alt", "Alt+Left").expect("Alt+Left key");
+        assert!(back.alt && !back.ctrl && !back.shift);
+        assert_eq!(back.key, 0x25);
     }
 }
