@@ -451,10 +451,9 @@ jobs:
           retention-days: 90
 
   publish:
-    if: github.repository == 'zephium-browser/Zephium'
     name: Draft release
     needs: [gate, ci, components, macos, windows]
-    if: ${{ !cancelled() && needs.gate.result == 'success' && needs.ci.result == 'success' && needs.macos.result == 'success' && needs.windows.result == 'success' && (needs.components.result == 'success' || (inputs.emergency && needs.components.result == 'skipped')) }}
+    if: ${{ github.repository == 'zephium-browser/Zephium' && !cancelled() && needs.gate.result == 'success' && needs.ci.result == 'success' && needs.macos.result == 'success' && needs.windows.result == 'success' && (needs.components.result == 'success' || (inputs.emergency && needs.components.result == 'skipped')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
