@@ -82,7 +82,7 @@ test("after an update, the card links its release notes and goes once read", asy
   await expect.element(screen.getByText("Quasar updated to 1.0.1")).toBeVisible();
 
   await screen.getByRole("button", { name: "See what's new" }).click();
-  expect(native.openUrl).toHaveBeenCalledWith("https://zephium.app/changelog#v1-0-1", true);
+  expect(native.openUrl).toHaveBeenCalledWith("https://github.com/fordft/Quasar/releases", true);
   await expect.poll(() => screen.container.querySelector(".update-stack")).toBeNull();
   expect(native.settingSet).toHaveBeenCalledWith("notice.seen-version", "1.0.1");
 });
@@ -206,7 +206,7 @@ test("manual installation remains actionable in the sidebar and compact rail", a
   await start({ state: "manualInstall", version: "1.0.2" }, { "notice.seen-version": "1.0.1" });
   const screen = await render(UpdateCards);
   await screen.getByRole("button", { name: "Download and install manually" }).click();
-  expect(native.openUrl).toHaveBeenCalledWith("https://zephium.app/changelog#v1-0-2", true);
+  expect(native.openUrl).toHaveBeenCalledWith("https://github.com/fordft/Quasar/releases", true);
   await screen.unmount();
   const rail = await render(UpdateGlyph, { props: { onabout: vi.fn() } });
   await rail.getByRole("button", { name: "Download and install manually" }).click();
