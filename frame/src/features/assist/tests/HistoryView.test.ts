@@ -8,8 +8,8 @@ test.each([{ past: [] }, { past: [{ id: "past", title: "Past conversation", upda
   ({ past }) => {
     const session = { past, conversation: { id: "current" } } as unknown as AssistSession;
     const { body } = render(HistoryView, { props: { session, onback: () => {} } });
-    expect(body).toContain("Zephium keeps your 200 most recent conversations.");
+    expect(body).toContain("Quasar keeps your 200 most recent conversations.");
     if (past.length)
-      expect(body.indexOf("Zephium keeps")).toBeLessThan(body.indexOf("Past conversation"));
+      expect(body.indexOf("Quasar keeps")).toBeLessThan(body.indexOf("Past conversation"));
   },
 );
