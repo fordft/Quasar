@@ -33,7 +33,7 @@ impl Registration {
             .filter(|c| *c != '\\' && !c.is_control())
             .collect();
         let client = match client.trim() {
-            "" => "Zephium".to_owned(),
+            "" => "Quasar".to_owned(),
             name => name.to_owned(),
         };
         // A ProgID holds letters, digits and dots, at most 39 of them. A name
@@ -73,7 +73,7 @@ pub(crate) fn claim(product: &str) {
 }
 
 fn registration() -> &'static Registration {
-    REGISTRATION.get_or_init(|| Registration::for_product("Zephium"))
+    REGISTRATION.get_or_init(|| Registration::for_product("Quasar"))
 }
 
 /// Whether the person's own choice for both web schemes is Zephium.
@@ -266,12 +266,12 @@ mod tests {
 
     #[test]
     fn stable_keeps_its_names_and_every_other_identity_has_its_own() {
-        let stable = Registration::for_product("Zephium");
-        assert_eq!(stable.client, "Zephium");
-        assert_eq!(stable.prog_id, "ZephiumURL");
+        let stable = Registration::for_product("Quasar");
+        assert_eq!(stable.client, "Quasar");
+        assert_eq!(stable.prog_id, "QuasarURL");
         assert_eq!(
             stable.capabilities(),
-            r"Software\Clients\StartMenuInternet\Zephium\Capabilities"
+            r"Software\Clients\StartMenuInternet\Quasar\Capabilities"
         );
         let dev = Registration::for_product("Zephium Dev");
         assert_eq!(dev.client, "Zephium Dev");
@@ -288,7 +288,7 @@ mod tests {
     fn a_name_cannot_reach_outside_its_own_keys() {
         let odd = Registration::for_product("Zephium\\..\\Classes\u{7}");
         assert_eq!(odd.client, "Zephium..Classes");
-        assert_eq!(Registration::for_product("  ").client, "Zephium");
+        assert_eq!(Registration::for_product("  ").client, "Quasar");
         for name in ["Z".repeat(80), "Zephium Nightly ".repeat(5)] {
             let prog_id = Registration::for_product(&name).prog_id;
             assert!(prog_id.len() <= 39, "{prog_id}");
