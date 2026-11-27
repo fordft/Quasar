@@ -84,7 +84,7 @@ test("limitations wait behind one line, apart from the access it asks for", asyn
       limitations: ["Can't show its side panel"],
     },
   });
-  const limits = page.getByRole("button", { name: "Some features may not work in Zephium" });
+  const limits = page.getByRole("button", { name: "Some features may not work in Quasar" });
   await expect.element(limits).toHaveAttribute("aria-expanded", "false");
   await expect.element(page.getByText("Can't show its side panel")).not.toBeInTheDocument();
   await limits.click();
@@ -94,7 +94,7 @@ test("limitations wait behind one line, apart from the access it asks for", asyn
 test("no limitations adds no section", async () => {
   render(WebExtensionReview, { review });
   await expect
-    .element(page.getByText("Some features may not work in Zephium"))
+    .element(page.getByText("Some features may not work in Quasar"))
     .not.toBeInTheDocument();
 });
 
