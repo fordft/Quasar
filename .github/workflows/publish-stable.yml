@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   publish:
-    if: github.repository == 'zephium-browser/Zephium'
+    if: github.repository == 'fordft/Quasar'
     name: Verify exact candidate and publish
     concurrency:
       group: stable-latest-publication
@@ -68,7 +68,7 @@ jobs:
       - name: Verify final asset provenance
         run: |
           set -euo pipefail
-          for asset in Zephium-macOS-arm64.dmg Zephium-macOS-arm64.app.tar.gz Zephium-Windows-x64-setup.exe; do
+          for asset in Quasar-macOS-arm64.dmg Quasar-macOS-arm64.app.tar.gz Quasar-Windows-x64-setup.exe Quasar-Linux-x86_64.AppImage Quasar-Linux-runtime-sources.tar; do
             gh attestation verify "dist/${asset}" --repo "${GITHUB_REPOSITORY}" \
               --signer-workflow "${GITHUB_REPOSITORY}/.github/workflows/release.yml" \
               --source-digest "${CANDIDATE}"
