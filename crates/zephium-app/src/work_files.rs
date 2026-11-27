@@ -1799,7 +1799,7 @@ mod tests {
         let _serial = crate::WORK_RUNTIME_TEST_SERIAL
             .lock()
             .unwrap_or_else(|error| error.into_inner());
-        let (home, grant, _project) = home_grant();
+        let (home, _home_scope, grant, _project) = home_grant();
         assert!(!grant.is_empty());
         for application in [
             "app.quasar",
